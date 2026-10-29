@@ -112,23 +112,22 @@ function drawTitle(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .72);
   drawLogo(c, GW / 2 - 18, 92, 44); txt(c, "ONE BULLET. ONE LIFE.", GW / 2, 104, COL.dim, 8, "center");
   const L = lab(); const rows = [[L.move, "MOVE"], [L.aim, "AIM"], [L.fire, "SHOOT"], [L.dash, "PHASE DASH (OVER LOW COVER)"], [L.oc, "OVERCLOCK · SWEEP TO LOCK"], [L.hack, "SHORT CIRCUIT"], [L.reload, "RELOAD"]];
-  rows.forEach(([k, v], i) => { txt(c, k, GW / 2 - 8, 122 + i * 11, COL.cyan, 8, "right"); txt(c, v, GW / 2 + 4, 122 + i * 11, COL.ink); });
-  if ((G.unlocked || 1) > 1) { const k = DIST[DORDER[G.sel || 0]]; txt(c, `<  ${k.code} ${k.name}  >`, GW / 2, 198, COL.magenta, 8, "center"); }
-  if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO GEAR UP AT MAGPIE'S", GW / 2, 210, COL.amber, 8, "center");
-  txt(c, PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED · PRESS ANY BUTTON", GW / 2, 222, rgba(COL.dim, .8), 8, "center");
-  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP", GW / 2, 234, COL.dim, 8, "center");
-  txt(c, (G.unlocked || 1) > 1 ? "LEFT / RIGHT TO PICK A DISTRICT" : "PROTOTYPE · CLEAR THE RAIN MARKET TO UNLOCK DISTRICT 02", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
+  rows.forEach(([k, v], i) => { txt(c, k, GW / 2 - 8, 114 + i * 10, COL.cyan, 8, "right"); txt(c, v, GW / 2 + 4, 114 + i * 10, COL.ink); });
+  const k = DIST[DORDER[G.sel || 0]]; txt(c, (G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`, GW / 2, 184, COL.amber, 8, "center");
+  drawMenu(c, G.menu, t);
+  txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 222, rgba(COL.cyan, .75), 8, "center");
+  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED"), GW / 2, 234, COL.dim, 8, "center");
+  txt(c, ((G.unlocked || 1) > 1 ? (PAD.active ? "LEFT / RIGHT: DISTRICT · " : "A / D: DISTRICT · ") : "CLEAR THE RAIN MARKET TO UNLOCK D-02 · ") + (PAD.active ? "UP / DOWN + " + L.confirm : "W / S + ENTER OR CLICK"), GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
 function drawDead(c, t) {
   c.save(); c.globalCompositeOperation = "multiply"; c.fillStyle = "#b03048"; c.fillRect(0, 0, GW, GH); c.restore();
   const r = rngF(Math.floor(t / 140)); for (let i = 0; i < 10; i++) { const sy = r() * GH | 0, sh = 2 + r() * 8 | 0, dx = (r() - .5) * 20 | 0; c.drawImage(c.canvas, 0, sy, GW, sh, dx, sy, GW, sh); }
-  c.fillStyle = "rgba(5,3,10,.6)"; c.fillRect(0, 80, GW, 112);
+  c.fillStyle = "rgba(5,3,10,.6)"; c.fillRect(0, 80, GW, 146);
   ["#2be4ff", "#ff2d8a", "#ffe8ee"].forEach((col, i) => txt(c, "FLATLINE", GW / 2 + (i === 0 ? -2 : i === 1 ? 2 : 0), 88, col, 32, "center"));
   txt(c, "KILLED BY  " + G.killer, GW / 2, 130, COL.amber, 8, "center");
   txt(c, `KILLS ${String(G.kills).padStart(3, "0")}   HEAT ${G.heat}   SCORE ${String(G.score).padStart(7, "0")}`, GW / 2, 144, COL.ink, 8, "center");
   txt(c, "BEST " + String(G.best || 0).padStart(7, "0") + "   ·   +" + (G.runScrip || 0) + " SCRIP KEPT", GW / 2, 158, COL.dim, 8, "center");
-  if (G.deadT > .8) { if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + lab().confirm : "CLICK OR R") + " TO REBOOT", GW / 2, 172, COL.cyan, 8, "center");
-    txt(c, (PAD.active ? (PAD.kind === "ps" ? "○" : "B") : "ESC") + " TO RE-GEAR AT MAGPIE'S", GW / 2, 184, COL.amber, 8, "center"); }
+  if (G.deadT > .8) { drawMenu(c, G.menu, t); if (!PAD.active) txt(c, "R: QUICK REBOOT", GW / 2, 214, rgba(COL.dim, .7), 8, "center"); }
 }
 function drawIntro(c, t) {
   const k = Math.min(1, G.introT / .3); c.fillStyle = `rgba(12,7,18,${.85 * k})`; c.fillRect(0, 0, GW, GH);
@@ -143,11 +142,12 @@ function drawIntro(c, t) {
 function drawClear(c, t) {
   veil(c, .78); txt(c, "DISTRICT CLEAR", GW / 2, 78, COL.cyan, 32, "center");
   txt(c, `SCORE ${String(G.score).padStart(7, "0")}   ·   BEST ${String(G.best || 0).padStart(7, "0")}`, GW / 2, 124, COL.ink, 8, "center");
-  txt(c, `TIME ${Math.floor(G.time / 60)}:${String(Math.floor(G.time % 60)).padStart(2, "0")}   ·   KILLS ${G.kills}`, GW / 2, 138, COL.dim, 8, "center");
+  txt(c, `TIME ${Math.floor(G.time / 60)}:${String(Math.floor(G.time % 60)).padStart(2, "0")}   ·   KILLS ${G.kills}`, GW / 2, 134, COL.dim, 8, "center");
   const nx = D().next ? DIST[D().next] : null, L = lab();
   if (nx) { txt(c, `NEXT: ${nx.code} ${nx.name} · HEAT CARRIES OVER (MAX 2)`, GW / 2, 160, COL.magenta, 8, "center");
     txt(c, "+" + (G.runScrip || 0) + " SCRIP THIS RUN · " + SAVE.scrip + " BANKED", GW / 2, 146, COL.amber, 8, "center");
-    if (G.clearT > 1) { if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO VISIT MAGPIE, THEN BREACH", GW / 2, 182, COL.amber, 8, "center"); txt(c, (PAD.active ? (PAD.kind === "ps" ? "○" : "B") : "ESC") + " TO CASH OUT", GW / 2, 196, COL.dim, 8, "center"); } }
-  else { txt(c, "RUN COMPLETE · DATACRYPT ARRIVES IN THE NEXT BUILD", GW / 2, 160, COL.magenta, 8, "center"); if (G.clearT > 1 && Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO RETURN", GW / 2, 184, COL.amber, 8, "center"); }
+  }
+  else txt(c, "RUN COMPLETE · DATACRYPT ARRIVES IN THE NEXT BUILD", GW / 2, 160, COL.magenta, 8, "center");
+  if (G.clearT > 1) { drawMenu(c, G.menu, t); txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 220, rgba(COL.cyan, .7), 8, "center"); }
 }
 function drawPause(c) { veil(c, .7); txt(c, "PAUSED", GW / 2, 110, COL.ink, 16, "center"); txt(c, (PAD.active ? lab().pause + " OR " + lab().confirm : "CLICK OR P") + " TO RESUME", GW / 2, 136, COL.cyan, 8, "center"); }

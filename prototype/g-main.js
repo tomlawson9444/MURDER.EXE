@@ -27,10 +27,17 @@
     const wantStart = hit("lmb") || hit("r") || hit(" ");
     if (G.mode === "title") {
       const n = G.unlocked || 1; if (hit("arrowleft") || hit("a")) G.sel = Math.max(0, (G.sel || 0) - 1); if (hit("arrowright") || hit("d")) G.sel = Math.min(n - 1, (G.sel || 0) + 1);
-      if (hit("lmb")) openShop("title"); return; }
+      G.menu = layoutMenu([{ label: "JACK IN", act: () => start(DORDER[G.sel || 0]) }, { label: "MAGPIE'S · CHROME & IRON", col: COL.magenta, act: () => openShop("title") }], 196); runMenu(G.menu); return; }
     if (G.mode === "shop") { updateShop(rdt, shopActions); return; }
-    if (G.mode === "dead") { G.deadT += rdt; if (G.deadT > .8 && hit("escape")) { G.sel = DORDER.indexOf(G.startDistrict); openShop("title"); return; } if (G.deadT > .8 && wantStart) start(G.startDistrict); }
-    if (G.mode === "clear") { G.clearT += rdt; if (G.clearT > 1) { if (D().next && hit("lmb")) openShop("clear"); else if (hit("escape") || (!D().next && hit("lmb"))) cashOut(); } return; }
+    if (G.mode === "dead") { G.deadT += rdt; G.menu = null;
+      if (G.deadT > .8) { const regear = () => { G.sel = DORDER.indexOf(G.startDistrict); openShop("title"); };
+        if (hit("r")) { start(G.startDistrict); } else if (hit("escape")) { regear(); return; }
+        else { G.menu = layoutMenu([{ label: "REBOOT", act: () => start(G.startDistrict) }, { label: "MAGPIE'S · RE-GEAR", col: COL.magenta, act: regear }, { label: "QUIT TO TITLE", col: COL.dim, act: cashOut }], 174); runMenu(G.menu); } } }
+    if (G.mode === "clear") { G.clearT += rdt; G.menu = null;
+      if (G.clearT > 1) { if (hit("escape")) { cashOut(); return; }
+        G.menu = layoutMenu(D().next ? [{ label: "BREACH NOW", act: breach }, { label: "MAGPIE'S, THEN BREACH", col: COL.magenta, act: () => openShop("clear") }, { label: "CASH OUT", col: COL.dim, act: cashOut }]
+          : [{ label: "RETURN TO TITLE", act: cashOut }, { label: "MAGPIE'S", col: COL.magenta, act: () => { cashOut(); openShop("title"); } }], 176); runMenu(G.menu); }
+      return; }
     if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
     if (G.mode === "play") {
       if (hit("p") || hit("escape")) G.paused = !G.paused; if (G.paused) { if (hit("lmb")) G.paused = false; return; }

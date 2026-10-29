@@ -127,3 +127,22 @@ function drawShop(c, t) {
   const confirm = PAD.active ? Lb.confirm : "ENTER/CLICK", tabs = PAD.active ? (PAD.kind === "ps" ? "L1/R1" : "LB/RB") : "Q/E", go = PAD.active ? (PAD.kind === "ps" ? "OPTIONS" : "START") : "SPACE";
   txt(c, `${confirm} BUY/EQUIP · ${tabs} TAB · ${go} JACK IN`, 334, 232, rgba(COL.dim, .8), 8, "center");
 }
+
+/* Small vertical menus for the title, district-clear and death screens. Mouse, keyboard and controller. */
+function layoutMenu(items, y0, gap = 12) { items.forEach((it, i) => { it.y = y0 + i * gap; it.box = [GW / 2 - 110, it.y - 2, 220, 11]; }); return items; }
+function runMenu(items) {
+  if (G.menuMode !== G.mode) { G.menuMode = G.mode; G.menuSel = 0; G.menuMx = mouse.x; G.menuMy = mouse.y; }
+  const n = items.length; G.menuSel = Math.min(G.menuSel, n - 1);
+  if (hit("arrowup") || hit("w")) { G.menuSel = (G.menuSel - 1 + n) % n; AU.sfx("lock", 0); }
+  if (hit("arrowdown") || hit("s")) { G.menuSel = (G.menuSel + 1) % n; AU.sfx("lock", 0); }
+  const hov = items.findIndex(it => inBox(it.box, mouse.x, mouse.y));
+  if (mouse.x !== G.menuMx || mouse.y !== G.menuMy) { G.menuMx = mouse.x; G.menuMy = mouse.y; if (hov >= 0) G.menuSel = hov; }
+  if (hit("enter") || hit(" ")) items[G.menuSel].act(); else if (hit("lmb") && hov >= 0) items[hov].act();
+}
+function drawMenu(c, items, t) {
+  if (!items) return;
+  items.forEach((it, i) => { const on = i === G.menuSel && G.menuMode === G.mode;
+    if (on) { c.fillStyle = rgba(it.col || COL.cyan, .16 + .06 * Math.sin(t * .008)); c.fillRect(...it.box); }
+    txt(c, on ? "> " + it.label + " <" : it.label, GW / 2, it.y, on ? (it.col || COL.cyan) : COL.dim, 8, "center"); });
+}
+const loadoutLine = () => { const L = SAVE.loadout; return [ITEM[L.gun].name, ITEM[L.oc].name, ...(L.imp.length ? L.imp.map(i => ITEM[i].name) : ["NO IMPLANTS"])].join(" · ").toUpperCase(); };
