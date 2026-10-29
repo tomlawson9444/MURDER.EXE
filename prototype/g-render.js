@@ -114,7 +114,7 @@ function drawTitle(c, t) {
   if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO JACK IN", GW / 2, 210, COL.amber, 8, "center");
   txt(c, PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED · PRESS ANY BUTTON", GW / 2, 222, rgba(COL.dim, .8), 8, "center");
   if (G.best) txt(c, "BEST " + String(G.best).padStart(7, "0"), GW / 2, 234, COL.dim, 8, "center");
-  txt(c, (G.unlocked || 1) > 1 ? "LEFT / RIGHT TO PICK A DISTRICT" : "PROTOTYPE · CLEAR THE RAIN MARKET TO UNLOCK DISTRICT 02", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
+  txt(c, PAD.active ? "D-PAD / LEFT STICK TO PICK A DISTRICT" : "A / D OR LEFT / RIGHT TO PICK A DISTRICT", GW / 2, GH - 16, rgba(COL.amber, .8), 8, "center");
 }
 function drawDead(c, t) {
   c.save(); c.globalCompositeOperation = "multiply"; c.fillStyle = "#b03048"; c.fillRect(0, 0, GW, GH); c.restore();
