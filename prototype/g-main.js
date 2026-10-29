@@ -58,9 +58,7 @@
   let last = 0;
   function frame(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollPad(rdt); step(rdt, t); G.pressed.clear(); draw(t); requestAnimationFrame(frame); }
   setupInput(cv);
-  try { G.best = +localStorage.getItem("murder-best") || 0; } catch (e) { G.best = 0; }
-  G.unlocked = DORDER.length; // prototype: every built district is playable from the title screen
-  if (location.hash === "#rookery") G.sel = DORDER.indexOf("rookery");
+  try { G.best = +localStorage.getItem("murder-best") || 0; G.unlocked = +localStorage.getItem("murder-unlock") || 1; } catch (e) { G.best = 0; G.unlocked = 1; }
   const qs = location.hash.match(/district=(\w+)/);
   const fonts = Promise.race([Promise.all([document.fonts.load('8px "Silkscreen"'), document.fonts.load('32px "Silkscreen"'), document.fonts.load('700 44px "Chakra Petch"')]), new Promise(r => setTimeout(r, 2500))]);
   BANK.build(); fonts.then(() => { updateHelp(); buildSprites(); reset("market"); G.mode = "title"; if (location.hash.startsWith("#autostart")) start(qs ? qs[1] : "market"); requestAnimationFrame(frame); });
