@@ -1,6 +1,5 @@
 /* Wave director, Heat, Phase 2 tram, and the BLACKWING boss. */
 "use strict";
-const POOL = [["shrike", 0, 3], ["corvid", 0, 2], ["rook", 1, 3], ["carrion", 2, 2], ["bulwark", 3, 1], ["jackdaw", 2, 1]];
 
 function doors() {
   const out = []; for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (G.grid[y][x] === "s") {
@@ -8,21 +7,21 @@ function doors() {
   return out;
 }
 function pickType() {
-  const opts = POOL.filter(([k, h]) => G.heat >= h && !(k === "jackdaw" && G.en.some(e => e.alive && e.type === "jackdaw")));
+  const opts = D().pool.filter(([k, h]) => G.heat >= h && !(k === "jackdaw" && G.en.some(e => e.alive && e.type === "jackdaw")));
   const tot = opts.reduce((s, o) => s + o[2], 0); let r = Math.random() * tot; for (const o of opts) { r -= o[2]; if (r <= 0) return o[0]; } return "shrike";
 }
 function updateDirector(dt) {
-  const alive = G.en.filter(e => e.alive && e.type !== "blackwing").length;
-  G.heat = Math.min(5, Math.floor(G.kills / 15)); G.mult = 1 + G.heat * .5;
+  const alive = G.en.filter(e => e.alive && !BOSSY.has(e.type)).length;
+  G.heat = Math.min(5, G.heatBase + Math.floor(dk() / 15)); G.mult = 1 + G.heat * .5;
   if (G.heat !== G.lastHeat) { AU.setHeat(Math.min(5, G.heat + 2)); if (G.heat > (G.lastHeat || 0)) G.banner = { txt: "HEAT " + G.heat, col: COL.amber, life: 1.6 }; G.lastHeat = G.heat; }
-  if (G.kills >= 50 && !G.phase2) startPhase2();
-  if (G.kills >= 100 && !G.boss) { startBoss(); return; }
+  if (dk() >= 50 && !G.phase2) startPhase2();
+  if (dk() >= 100 && !G.boss) { startBoss(); return; }
   if (G.boss) return;
-  G.spawnT -= dt; const cap = 3 + G.heat + (G.kills > 70 ? 1 : 0);
+  G.spawnT -= dt; const cap = 3 + G.heat + (dk() > 70 ? 1 : 0);
   if (G.spawnT <= 0 && alive + G.pending.length < cap) {
     G.spawnT = Math.max(.6, 1.7 - G.heat * .2); const type = pickType();
     if (type === "corvid") { const x = rnd(40, GW - 40); G.pending.push({ type, x, y: 34, t: .8, door: null }); AU.sfx("caw", panOf(x)); }
-    else if (type === "jackdaw") { G.pending.push({ type, x: 24 * TS + 8, y: 4 * TS + 6, t: .8, door: null, perch: true }); }
+    else if (type === "jackdaw") { const ps = perchSpot(); if (ps) G.pending.push({ type, x: ps.x, y: ps.y, t: .8, door: null, perch: true }); }
     else { const ds = doors().filter(d => Math.hypot(d.x - G.p.x, d.y - G.p.y) > 90); const d = ds[Math.random() * ds.length | 0]; if (d) { G.pending.push({ type, x: d.x, y: d.y, t: .9, door: d }); AU.sfx("door", panOf(d.x)); } }
   }
   for (const s of G.pending) { s.t -= dt; if (s.t <= 0) spawnEnemy(s.type, s.x, s.y); }
@@ -30,8 +29,10 @@ function updateDirector(dt) {
 }
 
 function startPhase2() {
-  G.phase2 = true; MAPS.market.phase2.filter(o => o[0] !== "T").forEach(([ch, x, y]) => { if (Math.hypot(x * TS + 8 - G.p.x, y * TS + 8 - G.p.y) > 20) G.grid[y][x] = ch; });
-  G.dirty = true; G.tram = { state: "idle", t: 4, x: -300 }; G.banner = { txt: "TRAM LINE LIVE", col: COL.red, life: 2.2 };
+  G.phase2 = true; G.banner = { txt: D().phaseTxt, col: COL.red, life: 2.2 };
+  if (G.district === "rookery") { G.collapse = { t: 2.2 }; AU.sfx("sign"); return; }
+  MAPS.market.phase2.filter(o => o[0] !== "T").forEach(([ch, x, y]) => { if (Math.hypot(x * TS + 8 - G.p.x, y * TS + 8 - G.p.y) > 20) G.grid[y][x] = ch; });
+  G.dirty = true; G.tram = { state: "idle", t: 4, x: -300 };
 }
 function updateTram(dt) {
   const T = G.tram; if (!T) return; T.t -= dt;
@@ -44,7 +45,7 @@ function updateTram(dt) {
 }
 
 function startBoss() {
-  G.boss = true; for (const e of G.en) if (e.alive) { e.alive = false; fx(e.x, e.y - 10, 8, ["#2a2440", COL.magenta], 50, .5); }
+  G.boss = true; G.collapse && updateCollapse(99); for (const e of G.en) if (e.alive && e.type !== "nest") { e.alive = false; fx(e.x, e.y - 10, 8, ["#2a2440", COL.magenta], 50, .5); }
   G.pending = []; G.bul = []; G.mode = "intro"; G.introT = 0; AU.sfx("caw"); AU.setHeat(5);
 }
 function updateBoss(e, dt, d) {

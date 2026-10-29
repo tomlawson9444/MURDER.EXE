@@ -53,7 +53,11 @@ function pollPad(rdt) {
     if (press(BTN.A) || press(BTN.LB)) G.pressed.add(" "); if (press(BTN.X)) G.pressed.add("r");
     if (press(BTN.Y) || press(BTN.RB)) G.pressed.add("q"); if (press(BTN.START) || press(BTN.BACK)) G.pressed.add("p");
     if (G.paused && press(BTN.A)) G.pressed.add("lmb");
-  } else if (press(BTN.A) || press(BTN.START) || press(BTN.RT)) G.pressed.add("lmb");
+  } else {
+    if (press(BTN.A) || press(BTN.START) || press(BTN.RT)) G.pressed.add("lmb"); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");
+    const fl = lx < -.6 && !PAD.flick ? -1 : lx > .6 && !PAD.flick ? 1 : 0; PAD.flick = Math.abs(lx) > .6;
+    if (press(BTN.LEFT) || fl < 0) G.pressed.add("arrowleft"); if (press(BTN.RIGHT) || fl > 0) G.pressed.add("arrowright");
+  }
   PAD.prev = gp.buttons.map((x, i) => b(i));
 }
 function updateHelp() {

@@ -16,19 +16,23 @@ function playerDie(by) {
 }
 
 function killEnemy(e, how) {
-  if (!e.alive) return; e.alive = false;
+  if (!e.alive) return;
+  if (e.type === "holo") return holoPop(e, how !== "hack");
+  e.alive = false;
+  if (e.type === "nest") { G.grid[e.ty][e.tx] = "#"; G.dirty = true; fx(e.x, e.y - 10, 30, [COL.red, COL.magenta, "#2a2440"], 90, .8); AU.sfx("crateBreak", panOf(e.x)); }
+  if (how === "fall") pop(e.x, e.y - 20, "FELL", COL.amber);
   if (e.type === "carrion" && how !== "blast") { explode(e.x, e.y - 6, 34, "carrion"); }
-  const pts = Math.round((e.type === "blackwing" ? 5000 : 100) * G.mult); G.score += pts; G.kills += e.type === "corvid" || e.type === "blackwing" ? 1 : 1;
+  const pts = Math.round((e.type === D().boss ? 5000 : e.type === "nest" ? 500 : 100) * G.mult); G.score += pts; G.kills += e.type === "corvid" || e.type === "blackwing" ? 1 : 1;
   G.p.oc = Math.min(100, G.p.oc + 8); G.p.ram = Math.min(6, G.p.ram + .5);
   fx(e.x, e.y - (e.alt || 0) - 8, 16, [COL.magenta, "#2a2440", "#f0ebf6"], 70, .6); pop(e.x, e.y - 26 - (e.alt || 0), "+" + pts);
   AU.sfx("kill", panOf(e.x)); rumble(.4, .3, 90); if (Math.random() < .5) AU.sfx("caw", panOf(e.x)); G.hitstop = .035;
-  if (e.type === "blackwing") { G.mode = "clear"; G.clearT = 0; AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); try { localStorage.setItem("murder-best", G.best); } catch (er) {} }
+  if (e.type === D().boss) { for (const h of G.en) if (h.type === "holo") h.alive = false; G.bul = []; G.mode = "clear"; G.clearT = 0; if (D().next) saveUnlock(DIST[D().next].n); AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); try { localStorage.setItem("murder-best", G.best); } catch (er) {} }
 }
 
 function explode(x, y, r, src) {
   G.blasts.push({ x, y, r, life: .35 }); rumble(.9, .6, 300); G.shake = Math.max(G.shake, 5); AU.sfx("boom", panOf(x));
   fx(x, y, 34, [COL.amber, "#fff0c8", COL.red, "#2a2440"], 120, .8);
-  for (const e of G.en) if (e.alive && Math.hypot(e.x - x, e.y - y) < r && e.type !== "blackwing") killEnemy(e, "blast");
+  for (const e of G.en) if (e.alive && Math.hypot(e.x - x, e.y - y) < r && !BOSSY.has(e.type)) killEnemy(e, "blast");
   if (Math.hypot(G.p.x - x, G.p.y - y) < r) playerDie("blast");
   const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
   for (let j = ty - 1; j <= ty + 1; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === "c") breakTile(i, j); if (ch === "b" && !(i === tx && j === ty)) setTimeout(() => G.grid.at(i, j) === "b" && detonateBarrel(i, j), 120); }
@@ -56,21 +60,22 @@ function updatePlayer(dt, rdt) {
   p.moving = ml > 0 || p.dash > 0;
   if (ml > 0 && p.dash <= 0) { p.stepT = (p.stepT || 0) - dt; if (p.stepT <= 0) { AU.sfx("step", panOf(p.x)); p.stepT = .24; if (tileOf(p.x, p.y) === "w") fx(p.x, p.y, 3, ["#9aa4c8"], 30, .25); } }
   p.trail.forEach(t => t.life -= dt); p.trail = p.trail.filter(t => t.life > 0);
-  if (tileOf(p.x, p.y) === "o") playerDie("hole");
+  if (p.dash <= 0 && tileOf(p.x, p.y) === "o") playerDie("hole");
   if (p.reload > 0) { p.reload -= dt; if (p.reload <= 0) { p.ammo = 6; } }
   else if (hit("r") && p.ammo < 6) { p.reload = 1.1; AU.sfx("reload"); }
   if ((hit("lmb") || (mouse.down && p.fireCd < -0.05)) && p.reload <= 0 && p.fireCd <= 0) {
     if (p.ammo > 0) { const gx = p.x + p.face * 12, gy = p.y - BODY - 2, a = Math.atan2(mouse.y - gy, mouse.x - gx); shoot(gx, gy, a, 760, "p"); p.ammo--; p.fireCd = .11; AU.sfx("kestrel"); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = 1.1; AU.sfx("reload"); } }
   }
   if (hit("q")) hack();
-  if ((hit("rmb") || hit("f")) && p.oc >= 50) { G.oc = { locks: [], t: 0 }; p.oc -= 50; AU.sfx("ocIn"); AU.setOC(true); }
+  if ((hit("rmb") || hit("f")) && p.oc >= 50 && G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); }
+  else if ((hit("rmb") || hit("f")) && p.oc >= 50) { G.oc = { locks: [], t: 0 }; p.oc -= 50; AU.sfx("ocIn"); AU.setOC(true); }
 }
 function updateOC(rdt) {
   const o = G.oc; o.t += rdt;
   for (const e of G.en) if (e.alive && o.locks.length < 6 && !o.locks.includes(e) && Math.hypot(e.x - mouse.x, e.y - (e.alt || 0) - 10 - mouse.y) < 14) { o.locks.push(e); AU.sfx("lock", o.locks.length - 1); }
   if ((!mouse.rdown && !held("f")) || o.t > 3) {
     const p = G.p, gx = p.x + p.face * 12, gy = p.y - BODY - 2; G.tracers = [];
-    o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 }); if (e.type === "blackwing" && e.state !== "vuln") { AU.sfx("bulwark"); return; } killEnemy(e, "oc"); });
+    o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 }); if (armored(e)) { AU.sfx("bulwark"); return; } killEnemy(e, "oc"); });
     AU.sfx("ocFire", o.locks.length); rumble(.8, .8, 220); if (!o.locks.length) p.oc = Math.min(100, p.oc + 50);
     p.ammo = 6; p.reload = 0; G.oc = null; AU.setOC(false); G.shake = 3;
   }
@@ -79,7 +84,7 @@ function updateOC(rdt) {
 function hackTarget() {
   let best = null, bd = 22;
   for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0), d = Math.hypot(e.x - mouse.x, ey - mouse.y);
-    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln")) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: e.type === "blackwing" ? 18 : 10 }; } }
+    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln")) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
   if (best) return best;
   const tx = Math.floor(mouse.x / TS), ty = Math.floor(mouse.y / TS); let td = 99;
   for (let j = ty - 1; j <= ty + 1; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch !== "b" && ch !== "n") continue;
@@ -87,15 +92,19 @@ function hackTarget() {
   return best;
 }
 function hack() {
-  const p = G.p; if (p.ram < 3) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "NEED 3 RAM", COL.magenta); return; }
+  const p = G.p; if (G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); return; }
+  if (p.ram < 3) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "NEED 3 RAM", COL.magenta); return; }
   const tg = hackTarget(); if (!tg) { AU.sfx("hackFail"); pop(mouse.x, mouse.y - 10, "AIM AT A TARGET", COL.dim); return; }
   p.ram -= 3; AU.sfx("circuit"); G.zaps.push({ x0: p.x, y0: p.y - 14, x1: tg.x, y1: tg.y, life: .22 });
   if (tg.kind === "b") return detonateBarrel(tg.i, tg.j);
   if (tg.kind === "n") return dropSign(tg.i, tg.j);
+  if (tg.e.type === "augur") { tg.e.reveal = 2.5; pop(tg.x, tg.y - 24, "REVEALED", COL.magenta); return; }
+  if (tg.e.type === "holo") { const bs = tg.e.boss; killEnemy(tg.e, "hack"); if (bs) { bs.reveal = 2.5; pop(bs.x, bs.y - 44, "REAL", COL.magenta); } return; }
+  if (tg.e.type === "nest") return killEnemy(tg.e, "hack");
   // Fry the target's implants, then arc to up to 2 nearby enemies.
   const hitList = [tg.e]; let from = tg.e;
   for (let k = 0; k < 2; k++) { let nx = null, nd = 46;
-    for (const e of G.en) { if (!e.alive || hitList.includes(e) || e.type === "blackwing") continue; const d = Math.hypot(e.x - from.x, e.y - from.y); if (d < nd) { nd = d; nx = e; } }
+    for (const e of G.en) { if (!e.alive || hitList.includes(e) || BOSSY.has(e.type)) continue; const d = Math.hypot(e.x - from.x, e.y - from.y); if (d < nd) { nd = d; nx = e; } }
     if (!nx) break; G.zaps.push({ x0: from.x, y0: from.y - BODY - (from.alt || 0), x1: nx.x, y1: nx.y - BODY - (nx.alt || 0), life: .22 }); hitList.push(nx); from = nx; }
   hitList.forEach(e => { fx(e.x, e.y - BODY - (e.alt || 0), 10, [COL.magenta, "#ffffff"], 70, .4); killEnemy(e, "hack"); });
   if (hitList.length > 1) pop(tg.x, tg.y - 22, "ARC x" + hitList.length, COL.magenta);
@@ -108,13 +117,19 @@ function spawnEnemy(type, x, y) {
   if (type === "jackdaw") { e.state = "idle"; e.t = 1; }
   if (type === "bulwark") { e.dir = Math.atan2(G.p.y - y, G.p.x - x); }
   if (type === "blackwing") { e.state = "air"; e.t = 1.2; e.alt = 200; e.cycles = 0; }
+  if (type === "hexer") { e.t = 1.5; }
   G.en.push(e); return e;
 }
 function walk(e, spd, dt) { const [dx, dy] = flowDir(e); moveBody(e, dx * spd * dt, dy * spd * dt); if (dx) e.face = dx < 0 ? -1 : 1; }
 function updateEnemy(e, dt) {
   const p = G.p, d = Math.hypot(p.x - e.x, p.y - e.y), ang = Math.atan2(p.y - e.y, p.x - e.x); e.t -= dt; e.anim = (e.anim || 0) + dt;
   const see = () => los(e.x, e.y - BODY, p.x, p.y - BODY);
+  if (!FLYING.has(e.type) && tileOf(e.x, e.y) === "o") { fx(e.x, e.y - 6, 10, ["#2a2440", COL.magenta], 40, .5); return killEnemy(e, "fall"); }
   switch (e.type) {
+    case "hexer": updHexer(e, dt, d, see); break;
+    case "nest": updNest(e, dt); break;
+    case "augur": updAugur(e, dt); break;
+    case "holo": updHolo(e, dt); break;
     case "shrike":
       if (e.state === "walk") { walk(e, 58, dt); if (d < 52 && see()) { e.state = "crouch"; e.t = .4; e.la = ang; AU.sfx("crouch", panOf(e.x)); } }
       else if (e.state === "crouch") { e.la = ang; if (e.t <= 0) { e.state = "lunge"; e.t = .28; AU.sfx("lunge", panOf(e.x)); } }
@@ -175,9 +190,9 @@ function updateBullets(dt) {
       }
       if (G.tram && G.tram.state === "run" && b.y > 14 * TS - 10 && b.y < 15 * TS && b.x > G.tram.x && b.x < G.tram.x + 288) { b.life = 0; break; }
       if (b.owner === "p") {
-        for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0); const hw = e.type === "blackwing" ? 14 : 7, hh = e.type === "blackwing" ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
+        for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
-          if (e.type === "blackwing" && e.state !== "vuln") { AU.sfx("bulwark", panOf(e.x)); b.life = 0; break; }
+          if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
           killEnemy(e, "shot"); b.life = 0; break; } }
       } else {
         const dx = b.x - p.x, dy = b.y - (p.y - BODY), dd = Math.hypot(dx, dy);
