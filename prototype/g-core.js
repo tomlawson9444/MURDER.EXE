@@ -13,9 +13,12 @@ function setupInput(cv) {
   cv.addEventListener("pointerdown", e => { pos(e); e.preventDefault(); cv.focus(); if (e.button === 0) { mouse.down = true; G.pressed.add("lmb"); } if (e.button === 2) { mouse.rdown = true; G.pressed.add("rmb"); } });
   addEventListener("pointerup", e => { if (e.button === 0) mouse.down = false; if (e.button === 2) { mouse.rdown = false; } });
   cv.addEventListener("contextmenu", e => e.preventDefault());
-  addEventListener("blur", () => { keys.clear(); mouse.down = mouse.rdown = false; if (G.mode === "play") G.paused = true; });
+  addEventListener("blur", () => { keys.clear(); mouse.down = mouse.rdown = mouse.padDown = mouse.padRdown = false; if (G.mode === "play") G.paused = true; });
 }
 const held = k => keys.has(k);
+// Mouse buttons and controller triggers are tracked separately so neither can cancel the other.
+const fireHeld = () => mouse.down || mouse.padDown;
+const ocHeld = () => mouse.rdown || mouse.padRdown || held("f");
 const hit = k => G.pressed.has(k);
 
 /* Tiles */

@@ -70,7 +70,7 @@ function updatePlayer(dt, rdt) {
   if (p.dash <= 0 && tileOf(p.x, p.y) === "o") playerDie("hole");
   if (p.reload > 0) { p.reload -= dt; if (p.reload <= 0) { p.ammo = p.gun.mag; } }
   else if (hit("r") && p.ammo < p.gun.mag) { p.reload = p.gun.reload; AU.sfx("reload"); }
-  if ((hit("lmb") || (mouse.down && (p.gun.auto || p.fireCd < -0.05))) && p.reload <= 0 && p.fireCd <= 0) {
+  if ((hit("lmb") || fireHeld()) && p.reload <= 0 && p.fireCd <= 0) { // holding keeps firing at the gun's own rate
     if (p.ammo > 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2, a = Math.atan2(mouse.y - gy, mouse.x - gx), last = p.ammo === 1 && hasImp("trigger");
       for (let k = 0; k < g.pellets; k++) shoot(gx, gy, a + (g.pellets > 1 ? (k / (g.pellets - 1) - .5) * g.spread * 2 : 0) + rnd(-g.spread, g.spread) * (g.pellets > 1 ? .3 : 1), g.speed * (g.pellets > 1 ? rnd(.9, 1.1) : 1), "p", { pierce: g.pierce + (last ? 2 : 0), bounce: g.bounce, life: g.life });
       p.ammo--; p.fireCd = g.cd; AU.sfx(g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
@@ -82,7 +82,7 @@ function updatePlayer(dt, rdt) {
 function updateOC(rdt) {
   const o = G.oc; o.t += rdt;
   for (const e of G.en) if (e.alive && o.locks.length < G.p.maxLocks && !o.locks.includes(e) && Math.hypot(e.x - mouse.x, e.y - (e.alt || 0) - 10 - mouse.y) < 14) { o.locks.push(e); AU.sfx("lock", o.locks.length - 1); }
-  if ((!mouse.rdown && !held("f")) || o.t > 3) {
+  if (!ocHeld() || o.t > 3) {
     const p = G.p, gx = p.x + p.face * 12, gy = p.y - BODY - 2; G.tracers = [];
     const prog = p.ocId; if (o.locks.length >= 6) { SAVE.stats.ocFull++; checkMilestones(); }
     o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 }); if (armored(e)) { AU.sfx("bulwark"); return; }

@@ -30,14 +30,14 @@ function assistTarget(ox, oy, a) {
 
 function pollPad(rdt) {
   const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(g => g && g.connected) : []; const gp = pads[0];
-  if (!gp) { if (PAD.active) { PAD.active = false; updateHelp(); } return; }
+  if (!gp) { mouse.padDown = mouse.padRdown = false; if (PAD.active) { PAD.active = false; updateHelp(); } return; }
   const b = i => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > .35)), was = i => !!PAD.prev[i];
   const press = i => b(i) && !was(i);
   const [lx, ly, lm] = stick(gp.axes[0] || 0, gp.axes[1] || 0, .2), [rx, ry, rm] = stick(gp.axes[2] || 0, gp.axes[3] || 0, .25);
   const dx = (b(BTN.RIGHT) ? 1 : 0) - (b(BTN.LEFT) ? 1 : 0), dy = (b(BTN.DOWN) ? 1 : 0) - (b(BTN.UP) ? 1 : 0);
   const any = lm || rm || gp.buttons.some(x => x.pressed);
   if (any && !PAD.active) { PAD.active = true; PAD.kind = padKind(gp.id); G.banner = { txt: LABELS[PAD.kind].name + " CONTROLLER", col: COL.cyan, life: 1.6 }; updateHelp(); }
-  if (!PAD.active) { PAD.prev = gp.buttons.map(x => x.pressed); return; }
+  if (!PAD.active) { mouse.padDown = mouse.padRdown = false; PAD.prev = gp.buttons.map(x => x.pressed); return; }
   PAD.mx = dx || dy ? dx / (Math.hypot(dx, dy) || 1) : lx; PAD.my = dx || dy ? dy / (Math.hypot(dx, dy) || 1) : ly; PAD.mag = dx || dy ? 1 : lm;
   const p = G.p, ox = p ? p.x + p.face * 12 : GW / 2, oy = p ? p.y - BODY - 2 : GH / 2;
   if (G.mode === "shop") { /* menu: sticks navigate, no aim */ } else if (G.mode === "play" && G.oc) {
@@ -47,7 +47,7 @@ function pollPad(rdt) {
     if (rm > .15) PAD.aimed = true;
     const t = assistTarget(ox, oy, PAD.aimA); if (t) { mouse.x = t[0]; mouse.y = t[1]; } else { mouse.x = ox + Math.cos(PAD.aimA) * 90; mouse.y = oy + Math.sin(PAD.aimA) * 90; }
   }
-  mouse.down = b(BTN.RT); mouse.rdown = b(BTN.LT);
+  mouse.padDown = b(BTN.RT); mouse.padRdown = b(BTN.LT);
   if (G.mode === "play") {
     if (press(BTN.RT)) G.pressed.add("lmb"); if (press(BTN.LT)) G.pressed.add("rmb");
     if (press(BTN.A) || press(BTN.LB)) G.pressed.add(" "); if (press(BTN.X)) G.pressed.add("r");
