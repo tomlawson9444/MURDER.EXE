@@ -59,7 +59,7 @@ function updHexer(e, dt, d, see) {
   if (e.state === "walk") {
     if (d < 90) { const a = Math.atan2(e.y - p.y, e.x - p.x); moveBody(e, Math.cos(a) * 40 * dt, Math.sin(a) * 40 * dt); }
     else if (d > 150 || !see()) walk(e, 40, dt);
-    if (e.t <= 0 && d < 170 && see()) { e.state = "cast"; e.t = .8; AU.sfx("hexer", panOf(e.x)); }
+    if (e.t <= 0 && d < 170 && see()) { e.state = "cast"; e.t = .8 * tellK(); AU.sfx("hexer", panOf(e.x)); }
   } else if (e.state === "cast" && e.t <= 0) {
     if (see() && G.mode === "play") { G.hexed = 3; pop(p.x, p.y - 36, "HEXED", COL.magenta); AU.sfx("hexer"); rumble(.3, .6, 250); }
     e.state = "walk"; e.t = 4.5;
@@ -97,4 +97,4 @@ function holoPop(e, punish) {
   if (punish) { for (let i = 0; i < 10; i++) shoot(e.x, e.y - 20, i / 10 * TAU, 80, "e", { by: "augur" }); pop(e.x, e.y - 40, "FAKE", COL.magenta); }
 }
 
-function saveUnlock(n) { G.unlocked = Math.max(G.unlocked || 1, n); try { localStorage.setItem("murder-unlock", G.unlocked); } catch (e) {} }
+function saveUnlock(n) { G.unlocked = Math.max(G.unlocked || 1, n); SAVE.unlocked = G.unlocked; persist(); }

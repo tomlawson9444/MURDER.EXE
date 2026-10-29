@@ -3,7 +3,7 @@
 const GW = 480, GH = 272;
 const G = { mode: "title", pressed: new Set(), paused: false };
 const keys = new Set(), mouse = { x: 240, y: 136, down: false, rdown: false };
-const GAME_KEYS = [" ", "shift", "w", "a", "s", "d", "q", "r", "f", "p", "escape", "arrowup", "arrowdown", "arrowleft", "arrowright"];
+const GAME_KEYS = [" ", "shift", "enter", "tab", "e", "w", "a", "s", "d", "q", "r", "f", "p", "escape", "arrowup", "arrowdown", "arrowleft", "arrowright"];
 
 function setupInput(cv) {
   addEventListener("keydown", e => { const k = e.key.toLowerCase(); if (GAME_KEYS.includes(k)) e.preventDefault(); if (!keys.has(k)) G.pressed.add(k); keys.add(k); });

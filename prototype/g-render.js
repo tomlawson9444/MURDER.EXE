@@ -85,12 +85,15 @@ function drawHUD(c, t) {
   for (let i = 0; i < 20; i++) { c.fillStyle = i < Math.min(dk(), 100) / 5 ? COL.magenta : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); }
   panel(c, W - 108, 6, 102, 24, "#3a3456"); txt(c, String(G.score).padStart(7, "0"), W - 100, 9, COL.ink); txt(c, "x" + G.mult.toFixed(1), W - 12, 9, COL.cyan, 8, "right");
   for (let i = 0; i < 5; i++) { c.fillStyle = i < G.heat ? COL.amber : "#2a2640"; c.fillRect(W - 100 + i * 7, 21, 5, 3); } txt(c, "HEAT", W - 12, 19, COL.dim, 8, "right");
+  txt(c, "+" + (G.runScrip || 0) + " SCRIP", W - 8, 34, rgba(COL.amber, .85), 8, "right");
   panel(c, 6, H - 42, 156, 36, "#3a3456");
-  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU - Math.PI / 2, x = 24 + Math.cos(a) * 9, y = H - 24 + Math.sin(a) * 9; c.fillStyle = i < p.ammo ? (p.ammo === 1 && Math.floor(t / 200) % 2 ? COL.amber : COL.ink) : "#2a2640"; c.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); }
-  if (p.reload > 0) { c.strokeStyle = COL.cyan; c.beginPath(); c.arc(24, H - 24, 13, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - p.reload / 1.1)); c.stroke(); }
-  txt(c, p.reload > 0 ? "RELOADING" : "KESTREL .44", 42, H - 39, p.reload > 0 ? COL.cyan : COL.ink);
-  txt(c, "OC", 42, H - 28, COL.cyan); c.fillStyle = "#2a2640"; c.fillRect(58, H - 26, 96, 4); c.fillStyle = p.oc >= 50 ? COL.cyan : "#1a7f90"; c.fillRect(58, H - 26, 96 * p.oc / 100, 4); c.fillStyle = "#05040b"; c.fillRect(106, H - 26, 1, 4);
-  txt(c, "RAM", 42, H - 18, COL.magenta); for (let i = 0; i < 6; i++) { c.fillStyle = i < Math.floor(p.ram) ? COL.magenta : "#2a2640"; c.fillRect(64 + i * 15, H - 16, 13, 4); }
+  const mag = p.gun.mag, big = mag > 8;
+  for (let i = 0; i < mag; i++) { const a = i / mag * TAU - Math.PI / 2, rr = big ? 10 : 9, x = 24 + Math.cos(a) * rr, y = H - 24 + Math.sin(a) * rr, sz = big ? 2 : 4;
+    c.fillStyle = i < p.ammo ? (p.ammo === 1 && Math.floor(t / 200) % 2 ? COL.amber : COL.ink) : "#2a2640"; c.fillRect(Math.round(x) - sz / 2, Math.round(y) - sz / 2, sz, sz); }
+  if (p.reload > 0) { c.strokeStyle = COL.cyan; c.beginPath(); c.arc(24, H - 24, 13, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - p.reload / p.gun.reload)); c.stroke(); }
+  txt(c, p.reload > 0 ? "RELOADING" : p.gun.name, 42, H - 39, p.reload > 0 ? COL.cyan : COL.ink);
+  txt(c, "OC", 42, H - 28, COL.cyan); c.fillStyle = "#2a2640"; c.fillRect(58, H - 26, 96, 4); c.fillStyle = p.oc >= 50 ? COL.cyan : "#1a7f90"; c.fillRect(58, H - 26, 96 * p.oc / p.ocMax, 4); c.fillStyle = "#05040b"; for (let k = 50; k < p.ocMax; k += 50) c.fillRect(58 + Math.round(96 * k / p.ocMax), H - 26, 1, 4);
+  txt(c, "RAM", 42, H - 18, COL.magenta); const rs = 90 / p.ramMax; for (let i = 0; i < p.ramMax; i++) { c.fillStyle = i < Math.floor(p.ram) ? COL.magenta : "#2a2640"; c.fillRect(64 + Math.round(i * rs), H - 16, Math.round(rs) - 2, 4); }
   panel(c, W - 66, H - 38, 60, 32, "#3a3456");
   const qx = W - 60, ready = p.ram >= 3; c.strokeStyle = ready ? COL.magenta : "#3a3456"; c.strokeRect(qx + .5, H - 33.5, 21, 17); txt(c, lab().hackShort, qx + 11, H - 14, COL.dim, 8, "center");
   c.fillStyle = ready ? COL.magenta : "#3a3456"; [[11, 2], [9, 5], [7, 8], [10, 8], [9, 11], [7, 14]].forEach(([a, b]) => c.fillRect(qx + a, H - 33 + b, 3, 2));
@@ -111,9 +114,9 @@ function drawTitle(c, t) {
   const L = lab(); const rows = [[L.move, "MOVE"], [L.aim, "AIM"], [L.fire, "SHOOT"], [L.dash, "PHASE DASH (OVER LOW COVER)"], [L.oc, "OVERCLOCK · SWEEP TO LOCK"], [L.hack, "SHORT CIRCUIT"], [L.reload, "RELOAD"]];
   rows.forEach(([k, v], i) => { txt(c, k, GW / 2 - 8, 122 + i * 11, COL.cyan, 8, "right"); txt(c, v, GW / 2 + 4, 122 + i * 11, COL.ink); });
   if ((G.unlocked || 1) > 1) { const k = DIST[DORDER[G.sel || 0]]; txt(c, `<  ${k.code} ${k.name}  >`, GW / 2, 198, COL.magenta, 8, "center"); }
-  if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO JACK IN", GW / 2, 210, COL.amber, 8, "center");
+  if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO GEAR UP AT MAGPIE'S", GW / 2, 210, COL.amber, 8, "center");
   txt(c, PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED · PRESS ANY BUTTON", GW / 2, 222, rgba(COL.dim, .8), 8, "center");
-  if (G.best) txt(c, "BEST " + String(G.best).padStart(7, "0"), GW / 2, 234, COL.dim, 8, "center");
+  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP", GW / 2, 234, COL.dim, 8, "center");
   txt(c, (G.unlocked || 1) > 1 ? "LEFT / RIGHT TO PICK A DISTRICT" : "PROTOTYPE · CLEAR THE RAIN MARKET TO UNLOCK DISTRICT 02", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
 function drawDead(c, t) {
@@ -123,8 +126,9 @@ function drawDead(c, t) {
   ["#2be4ff", "#ff2d8a", "#ffe8ee"].forEach((col, i) => txt(c, "FLATLINE", GW / 2 + (i === 0 ? -2 : i === 1 ? 2 : 0), 88, col, 32, "center"));
   txt(c, "KILLED BY  " + G.killer, GW / 2, 130, COL.amber, 8, "center");
   txt(c, `KILLS ${String(G.kills).padStart(3, "0")}   HEAT ${G.heat}   SCORE ${String(G.score).padStart(7, "0")}`, GW / 2, 144, COL.ink, 8, "center");
-  txt(c, "BEST " + String(G.best || 0).padStart(7, "0"), GW / 2, 158, COL.dim, 8, "center");
-  if (G.deadT > .8 && Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + lab().confirm : "CLICK OR R") + " TO REBOOT", GW / 2, 174, COL.cyan, 8, "center");
+  txt(c, "BEST " + String(G.best || 0).padStart(7, "0") + "   ·   +" + (G.runScrip || 0) + " SCRIP KEPT", GW / 2, 158, COL.dim, 8, "center");
+  if (G.deadT > .8) { if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + lab().confirm : "CLICK OR R") + " TO REBOOT", GW / 2, 172, COL.cyan, 8, "center");
+    txt(c, (PAD.active ? (PAD.kind === "ps" ? "○" : "B") : "ESC") + " TO RE-GEAR AT MAGPIE'S", GW / 2, 184, COL.amber, 8, "center"); }
 }
 function drawIntro(c, t) {
   const k = Math.min(1, G.introT / .3); c.fillStyle = `rgba(12,7,18,${.85 * k})`; c.fillRect(0, 0, GW, GH);
@@ -142,7 +146,8 @@ function drawClear(c, t) {
   txt(c, `TIME ${Math.floor(G.time / 60)}:${String(Math.floor(G.time % 60)).padStart(2, "0")}   ·   KILLS ${G.kills}`, GW / 2, 138, COL.dim, 8, "center");
   const nx = D().next ? DIST[D().next] : null, L = lab();
   if (nx) { txt(c, `NEXT: ${nx.code} ${nx.name} · HEAT CARRIES OVER (MAX 2)`, GW / 2, 160, COL.magenta, 8, "center");
-    if (G.clearT > 1) { if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO BREACH", GW / 2, 182, COL.amber, 8, "center"); txt(c, (PAD.active ? (PAD.kind === "ps" ? "○" : "B") : "ESC") + " TO CASH OUT", GW / 2, 196, COL.dim, 8, "center"); } }
+    txt(c, "+" + (G.runScrip || 0) + " SCRIP THIS RUN · " + SAVE.scrip + " BANKED", GW / 2, 146, COL.amber, 8, "center");
+    if (G.clearT > 1) { if (Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO VISIT MAGPIE, THEN BREACH", GW / 2, 182, COL.amber, 8, "center"); txt(c, (PAD.active ? (PAD.kind === "ps" ? "○" : "B") : "ESC") + " TO CASH OUT", GW / 2, 196, COL.dim, 8, "center"); } }
   else { txt(c, "RUN COMPLETE · DATACRYPT ARRIVES IN THE NEXT BUILD", GW / 2, 160, COL.magenta, 8, "center"); if (G.clearT > 1 && Math.floor(t / 500) % 2) txt(c, (PAD.active ? "PRESS " + L.confirm : "CLICK") + " TO RETURN", GW / 2, 184, COL.amber, 8, "center"); }
 }
 function drawPause(c) { veil(c, .7); txt(c, "PAUSED", GW / 2, 110, COL.ink, 16, "center"); txt(c, (PAD.active ? lab().pause + " OR " + lab().confirm : "CLICK OR P") + " TO RESUME", GW / 2, 136, COL.cyan, 8, "center"); }

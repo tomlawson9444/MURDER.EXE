@@ -7,25 +7,30 @@
   // Load a district into the current run. Score, kills and Overclock carry across a breach.
   function enterDistrict(key) {
     G.district = key; G.grid = buildGrid(MAPS[key], false); G.base = renderMap(key, false, SP, G.grid); G.dirty = false;
-    const ps = playerStart(); if (!G.p) G.p = newPlayer(ps.x, ps.y); else Object.assign(G.p, { x: ps.x, y: ps.y, ammo: 6, reload: 0, ram: 6, trail: [], dash: 0, iframes: .5 });
+    const ps = playerStart(); if (!G.p) { G.p = newPlayer(ps.x, ps.y); applyLoadout(G.p, true); } else { Object.assign(G.p, { x: ps.x, y: ps.y, trail: [], dash: 0, iframes: .5 }); applyLoadout(G.p, false); }
     Object.assign(G, { en: [], bul: [], pending: [], parts: [], blasts: [], zaps: [], tracers: [], pings: [], dStart: G.kills, phase2: false, tram: null, wind: null, collapse: null,
       boss: false, oc: null, hexed: 0, trace: 0, anchor: null, crateHp: {}, spawnT: 1.5 });
     G.heat = G.heatBase; G.lastHeat = G.heat; G.mult = 1 + G.heat * .5;
     G.banner = { txt: D().name + " · SURVIVE TO 100", col: COL.cyan, life: 2.4 };
     spawnNests();
   }
-  function reset(key) { Object.assign(G, { p: null, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : 0 }); enterDistrict(key); }
+  function reset(key) { Object.assign(G, { p: null, runScrip: 0, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : 0 }); enterDistrict(key); }
   function music() { AU.setOC(false); AU.start(); AU.setHeat(Math.min(5, G.heat + 2)); setTimeout(() => AU.ambience(D().amb), 60); }
   function start(key) { G.startDistrict = key; reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
   function breach() { G.heatBase = Math.min(2, G.heat); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
-  function cashOut() { AU.stop(); AU.ambience("off"); G.mode = "title"; reset(DORDER[G.sel || 0]); }
+  function cashOut() { persist(); AU.stop(); AU.ambience("off"); G.mode = "title"; reset(DORDER[G.sel || 0]); }
+  const shopActions = {
+    jackIn: () => { persist(); if (G.shop.from === "clear") breach(); else start(DORDER[G.sel || 0]); },
+    back: () => { persist(); if (G.shop.from === "clear") G.mode = "clear"; else { G.mode = "title"; AU.stop(); AU.ambience("off"); } },
+  };
   function step(rdt, t) {
     const wantStart = hit("lmb") || hit("r") || hit(" ");
     if (G.mode === "title") {
       const n = G.unlocked || 1; if (hit("arrowleft") || hit("a")) G.sel = Math.max(0, (G.sel || 0) - 1); if (hit("arrowright") || hit("d")) G.sel = Math.min(n - 1, (G.sel || 0) + 1);
-      if (hit("lmb")) start(DORDER[G.sel || 0]); return; }
-    if (G.mode === "dead") { G.deadT += rdt; if (G.deadT > .8 && wantStart) start(G.startDistrict); }
-    if (G.mode === "clear") { G.clearT += rdt; if (G.clearT > 1) { if (D().next && hit("lmb")) breach(); else if (hit("escape") || (!D().next && hit("lmb"))) cashOut(); } return; }
+      if (hit("lmb")) openShop("title"); return; }
+    if (G.mode === "shop") { updateShop(rdt, shopActions); return; }
+    if (G.mode === "dead") { G.deadT += rdt; if (G.deadT > .8 && hit("escape")) { G.sel = DORDER.indexOf(G.startDistrict); openShop("title"); return; } if (G.deadT > .8 && wantStart) start(G.startDistrict); }
+    if (G.mode === "clear") { G.clearT += rdt; if (G.clearT > 1) { if (D().next && hit("lmb")) openShop("clear"); else if (hit("escape") || (!D().next && hit("lmb"))) cashOut(); } return; }
     if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
     if (G.mode === "play") {
       if (hit("p") || hit("escape")) G.paused = !G.paused; if (G.paused) { if (hit("lmb")) G.paused = false; return; }
@@ -47,6 +52,7 @@
   function draw(t) {
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
     if (G.mode === "title") return drawTitle(c, t);
+    if (G.mode === "shop") return drawShop(c, t);
     drawWorld(c, t);
     if (G.oc) drawOC(c, t);
     if (G.mode === "play" || G.mode === "intro") drawHUD(c, t);
@@ -58,7 +64,7 @@
   let last = 0;
   function frame(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollPad(rdt); step(rdt, t); G.pressed.clear(); draw(t); requestAnimationFrame(frame); }
   setupInput(cv);
-  try { G.best = +localStorage.getItem("murder-best") || 0; G.unlocked = +localStorage.getItem("murder-unlock") || 1; } catch (e) { G.best = 0; G.unlocked = 1; }
+  G.best = SAVE.best || 0; G.unlocked = SAVE.unlocked || 1;
   const qs = location.hash.match(/district=(\w+)/);
   const fonts = Promise.race([Promise.all([document.fonts.load('8px "Silkscreen"'), document.fonts.load('32px "Silkscreen"'), document.fonts.load('700 44px "Chakra Petch"')]), new Promise(r => setTimeout(r, 2500))]);
   BANK.build(); fonts.then(() => { updateHelp(); buildSprites(); reset("market"); G.mode = "title"; if (location.hash.startsWith("#autostart")) start(qs ? qs[1] : "market"); requestAnimationFrame(frame); });

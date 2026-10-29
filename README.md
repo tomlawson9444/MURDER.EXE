@@ -39,13 +39,20 @@ Then open <http://localhost:8000/prototype/>.
 | Pause | P or Esc | Menu | Options |
 | Cash out after a district clear | Esc | B | ○ |
 | Pick a district on the title screen | A / D or ← / → | D-pad or left stick | D-pad or left stick |
+| Magpie's: switch tab | Q / E or Tab | LB / RB | L1 / R1 |
+| Magpie's: move / buy or equip | W / S or ↑ / ↓, Enter or click | D-pad, A | D-pad, ✕ |
+| Magpie's: jack in / back | Space / Esc | Start / B | Options / ○ |
 
 Browsers only detect a controller after you press one of its buttons. Rumble works in Chrome and Edge.
 
 ## Prototype features
 
 - One-hit kills both ways, with a small player hitbox and near-misses ("grazes") that charge Overclock.
-- Kestrel .44 smart revolver: 6 rounds, 1.1s reload. Bullets fly until they hit something solid.
+- **MAGPIE'S · CHROME & IRON:** a back-alley fixer who is both the shop and the loadout screen. Visit her before every run, between districts, or after a death. Spend scrip on gear, then equip anything you own.
+- **Scrip:** earned from every kill (more at higher Heat), Nests, bosses, district clears and milestones. Saved between runs, even when you die. You start with 300.
+- **Gear:** 5 sidearms (Kestrel .44, Breacher Custom, Ricochet Coilgun, Hornet SMG, Railpiercer), 4 Overclock programs (DEADLINK, ARC//CHAIN, SWARMKEY, GHOST_PROTOCOL) and 8 implants, with 2 implant slots.
+- **Milestone unlocks:** most gear is locked until you hit a milestone (for example, the Railpiercer needs a Rain Market clear). Hitting one pays 100 scrip and Magpie restocks.
+- Bullets fly until they hit something solid.
 - Cover system: hard cover, low cover you can dash over and shoot across, crates that break, and barrels and signs you can hack.
 - Eight enemy types, each with its own visual and audio tell: Shrike, Rook, Jackdaw, Carrion, Corvid, Bulwark, Hexer and Nest.
 - Heat rises every 15 kills, bringing harder enemy mixes and adding layers to the music.
@@ -57,6 +64,10 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 - **THE AUGUR:** splits into five copies and only the real one casts a shadow. Shooting a fake fires a bullet ring at you; hacking any copy reveals the real one.
 - **Trace (all districts):** stay near one spot for 4 seconds and the Murder sends a Shrike or Carrion through the nearest door.
 - Darksynth soundtrack and a layered SFX bank, rendered in the browser with the Web Audio API.
+
+## Save data
+
+Progress (scrip, owned gear, loadout, milestones and best score) is saved in the browser's local storage under `murder-save-v1`. Clearing site data resets it.
 
 ## Code map (`prototype/`)
 
@@ -72,6 +83,8 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 | `g-pad.js` | Controller input, aim assist, rumble and button prompts |
 | `g-actors.js` | Player, enemies, bullets, explosions and hacking |
 | `g-director.js` | Wave director, Heat, the Phase 2 tram and BLACKWING |
+| `g-loadout.js` | Guns, Overclock programs, implants, Magpie's stock, scrip, milestones and the save file |
+| `g-shop.js` | MAGPIE'S: the fixer's stall, shop and loadout screen |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |
@@ -79,8 +92,7 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 ## Roadmap
 
 1. District 03, the Datacrypt, and District 04, Spire Zero.
-2. Loadout and unlocks: more sidearms, Overclock programs, implants and milestone challenges.
-3. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
-4. Steam page and a free demo for Steam Next Fest.
+2. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
+3. Steam page and a free demo for Steam Next Fest.
 
 The full plan is in `design/index.html`.

@@ -40,7 +40,7 @@ function pollPad(rdt) {
   if (!PAD.active) { PAD.prev = gp.buttons.map(x => x.pressed); return; }
   PAD.mx = dx || dy ? dx / (Math.hypot(dx, dy) || 1) : lx; PAD.my = dx || dy ? dy / (Math.hypot(dx, dy) || 1) : ly; PAD.mag = dx || dy ? 1 : lm;
   const p = G.p, ox = p ? p.x + p.face * 12 : GW / 2, oy = p ? p.y - BODY - 2 : GH / 2;
-  if (G.mode === "play" && G.oc) {
+  if (G.mode === "shop") { /* menu: sticks navigate, no aim */ } else if (G.mode === "play" && G.oc) {
     mouse.x = Math.max(4, Math.min(GW - 4, mouse.x + rx * 380 * rdt)); mouse.y = Math.max(4, Math.min(GH - 4, mouse.y + ry * 380 * rdt));
   } else if (p) {
     if (rm > .15) PAD.aimA = Math.atan2(ry, rx); else if (PAD.mag > .3 && !PAD.aimed) PAD.aimA = Math.atan2(PAD.my, PAD.mx);
@@ -53,6 +53,11 @@ function pollPad(rdt) {
     if (press(BTN.A) || press(BTN.LB)) G.pressed.add(" "); if (press(BTN.X)) G.pressed.add("r");
     if (press(BTN.Y) || press(BTN.RB)) G.pressed.add("q"); if (press(BTN.START) || press(BTN.BACK)) G.pressed.add("p");
     if (G.paused && press(BTN.A)) G.pressed.add("lmb");
+  } else if (G.mode === "shop") {
+    if (press(BTN.A)) G.pressed.add("enter"); if (press(BTN.START)) G.pressed.add(" "); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");
+    if (press(BTN.LB)) G.pressed.add("q"); if (press(BTN.RB)) G.pressed.add("e"); if (press(BTN.LEFT)) G.pressed.add("arrowleft"); if (press(BTN.RIGHT)) G.pressed.add("arrowright");
+    const fv = ly < -.6 && !PAD.flickV ? -1 : ly > .6 && !PAD.flickV ? 1 : 0; PAD.flickV = Math.abs(ly) > .6;
+    if (press(BTN.UP) || fv < 0) G.pressed.add("arrowup"); if (press(BTN.DOWN) || fv > 0) G.pressed.add("arrowdown");
   } else {
     if (press(BTN.A) || press(BTN.START) || press(BTN.RT)) G.pressed.add("lmb"); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");
     const fl = lx < -.6 && !PAD.flick ? -1 : lx > .6 && !PAD.flick ? 1 : 0; PAD.flick = Math.abs(lx) > .6;

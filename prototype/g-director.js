@@ -12,8 +12,8 @@ function pickType() {
 }
 function updateDirector(dt) {
   const alive = G.en.filter(e => e.alive && !BOSSY.has(e.type)).length;
-  G.heat = Math.min(5, G.heatBase + Math.floor(dk() / 15)); G.mult = 1 + G.heat * .5;
-  if (G.heat !== G.lastHeat) { AU.setHeat(Math.min(5, G.heat + 2)); if (G.heat > (G.lastHeat || 0)) G.banner = { txt: "HEAT " + G.heat, col: COL.amber, life: 1.6 }; G.lastHeat = G.heat; }
+  G.heat = Math.min(5, G.heatBase + Math.floor(dk() / 15)); G.mult = (1 + G.heat * .5) * (G.p.egoUsed ? .5 : 1);
+  if (G.heat !== G.lastHeat) { AU.setHeat(Math.min(5, G.heat + 2)); track("heat", G.heat); if (G.heat > (G.lastHeat || 0)) G.banner = { txt: "HEAT " + G.heat, col: COL.amber, life: 1.6 }; G.lastHeat = G.heat; }
   if (dk() >= 50 && !G.phase2) startPhase2();
   if (dk() >= 100 && !G.boss) { startBoss(); return; }
   if (G.boss) return;
