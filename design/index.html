@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MURDER.EXE Game Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Silkscreen&display=swap">
+<style>
+/* Layout: art-bible dossier. Full-bleed key art, then one 1100px column; HUD-style tags in a left rail.
+   Single deliberate dark theme: the game's own night city. */
+:root {
+  color-scheme: dark;
+  --void: #0a0912; --panel: #12101e; --panel2: #191628; --line: #2a2640;
+  --ink: #e9e6f5; --dim: #9a94b5;
+  --cyan: #2be4ff; --magenta: #ff2d8a; --amber: #ffb22e; --blood: #ff4545;
+  --f-display: "Chakra Petch", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-pixel: "Silkscreen", ui-monospace, "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--void); color: var(--ink); font: 400 1rem/1.6 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a { color: var(--cyan); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; margin: 0; line-height: 1.08; text-wrap: balance; }
+h2 { font-size: clamp(1.9rem, 4vw, 2.75rem); letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; }
+p { margin: 0; max-width: 66ch; }
+.tag { font-family: var(--f-pixel); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--magenta); }
+.dim { color: var(--dim); }
+canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; max-width: 100%; }
+
+/* HERO */
+.hero { position: relative; margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))) calc(-1 * max(16px, env(safe-area-inset-right, 0px))); background: #05040b; }
+#ka { display: block; width: 100%; height: clamp(440px, 50vw, 780px); }
+.hero-copy { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px max(16px, env(safe-area-inset-left, 0px)) clamp(20px, 4vw, 48px); pointer-events: none; background: linear-gradient(to top, rgba(5,4,11,.92) 35%, rgba(5,4,11,0)); }
+.hero-copy .in { max-width: 1100px; margin: 0 auto; display: grid; gap: 12px; }
+.logo-hero { width: min(620px, 92%); height: auto; filter: drop-shadow(0 4px 24px rgba(0,0,0,.6)); }
+.pitch { font-size: clamp(1rem, 1.6vw, 1.2rem); max-width: 44ch; text-shadow: 0 2px 12px #000; }
+@media (max-width: 700px) {
+  #ka { height: 420px; }
+  .hero-copy { position: static; padding-top: 20px; background: var(--void); }
+}
+.toc { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 18px; padding-block: 18px; border-bottom: 1px solid var(--line); font-family: var(--f-pixel); font-size: 0.7rem; text-transform: uppercase; letter-spacing: .06em; }
+.toc a { color: var(--dim); text-decoration: none; }
+.toc a:hover { color: var(--cyan); }
+
+/* SECTIONS */
+main { max-width: 1100px; margin: 0 auto; }
+section { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 24px; padding-block: 64px; border-bottom: 1px solid var(--line); }
+section > .side .tag { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: block; padding-top: 10px; }
+.body { display: grid; gap: 24px; min-width: 0; }
+@media (max-width: 780px) { section { grid-template-columns: 1fr; gap: 10px; padding-block: 44px; } }
+.part { padding-block: 40px 8px; max-width: 1100px; margin: 0 auto; display: grid; gap: 6px; }
+.part h2 { font-size: clamp(2.4rem, 6vw, 4rem); }
+.part h2 span { color: var(--magenta); }
+
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.grid.g4 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card h3 { font-size: 1.05rem; }
+.card p { font-size: 0.92rem; color: var(--dim); }
+.stat { font-family: var(--f-pixel); font-size: 0.66rem; color: var(--cyan); letter-spacing: .04em; }
+.foe .stat { color: var(--amber); }
+.art-card { padding: 0; overflow: hidden; }
+.art-card canvas { width: 100%; height: auto; border-bottom: 1px solid var(--line); }
+.art-card .in { padding: 14px 16px 16px; display: grid; gap: 7px; }
+
+/* tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.92rem; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-pixel); font-weight: 400; font-size: 0.68rem; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; background: var(--panel); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { color: var(--dim); width: 22%; }
+td strong { color: var(--cyan); font-weight: 600; }
+.split { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+.list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; font-size: .95rem; }
+.love li::marker { color: var(--cyan); } .hate li::marker { color: var(--blood); }
+.loop { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+.loop li { counter-increment: s; display: grid; grid-template-columns: 54px 1fr; gap: 14px; padding: 14px 0; border-top: 1px dashed var(--line); }
+.loop li::before { content: counter(s, decimal-leading-zero); font-family: var(--f-pixel); color: var(--magenta); }
+.loop b { font-family: var(--f-display); display: block; }
+.loop span { color: var(--dim); font-size: .93rem; }
+
+/* identity */
+.id-main { background: radial-gradient(120% 140% at 20% 0%, #1d0f2e, var(--void) 60%); border: 1px solid var(--line); padding: clamp(24px, 5vw, 56px); display: grid; place-items: center; }
+.id-main svg { width: min(720px, 100%); height: auto; }
+.id-row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.id-tile { aspect-ratio: 4 / 3; max-width: 100%; display: grid; place-items: center; border: 1px solid var(--line); padding: 20px; }
+.id-tile svg { width: 100%; height: auto; max-height: 100%; }
+.id-tile.mag { background: var(--magenta); --lg-ink: #0a0912; --lg-a: #0a0912; --lg-b: #ffffff; }
+.id-tile.cy { background: var(--cyan); --lg-ink: #0a0912; --lg-a: #ffffff; --lg-b: #0a0912; }
+.id-tile.dk { background: #05040b; }
+.id-tile .hudmark { font-family: var(--f-pixel); font-size: 1.4rem; color: var(--ink); letter-spacing: .04em; }
+.id-tile .hudmark span { color: var(--magenta); }
+.cap { font-size: .85rem; color: var(--dim); }
+
+/* character sheet */
+.sheet { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.frame { background: var(--panel); border: 1px solid var(--line); }
+.frame canvas { width: 100%; height: auto; }
+.frame span { display: block; padding: 8px 10px; font-family: var(--f-pixel); font-size: .64rem; color: var(--dim); text-transform: uppercase; }
+.ramps { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.ramp { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); }
+.ramp i { height: 26px; }
+.ramp b { grid-column: 1 / -1; font: 400 .64rem var(--f-pixel); color: var(--dim); padding: 6px 8px; background: var(--panel); text-transform: uppercase; }
+
+/* districts */
+.districts { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); }
+.district { background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+.district canvas { width: 100%; height: auto; }
+.district .in { padding: 14px 16px 16px; display: grid; gap: 8px; }
+.district .sw { display: flex; height: 10px; }
+.district .sw i { flex: 1; }
+
+.mv { display: grid; gap: 12px; }
+.mv-bar { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: 400 .7rem var(--f-pixel); text-transform: uppercase; letter-spacing: .05em; background: var(--panel); color: var(--dim); border: 1px solid var(--line); padding: 8px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #05040b; border-color: var(--ink); }
+#mapc { width: 100%; height: auto; aspect-ratio: 480 / 272; border: 1px solid var(--line); background: #05040b; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .82rem; color: var(--dim); }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+.legend i.cone { background: rgba(255,178,46,.35); border: 1px solid var(--amber); }
+.mapnotes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.mapnotes .card .stat { color: var(--amber); }
+.mapnotes .card.ph { border-color: var(--magenta); }
+.mapnotes .card.ph .stat { color: var(--magenta); }
+.music .mu { padding: 18px 22px; display: grid; gap: 16px; position: relative; z-index: 1; }
+.mu-row { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: center; }
+.big { font: 700 1rem var(--f-display); text-transform: uppercase; letter-spacing: .06em; background: var(--cyan); color: #05040b; border: 0; padding: 12px 22px; cursor: pointer; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+.big.alt { background: var(--panel2); color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan); }
+.big.alt[aria-pressed="true"] { background: var(--cyan); color: #05040b; }
+.mu-heat, .mu-dist { display: grid; gap: 6px; font: 400 .66rem var(--f-pixel); color: var(--dim); letter-spacing: .06em; }
+.mu-heat b { color: var(--amber); font-weight: 400; }
+.mu-heat input { width: 180px; accent-color: var(--amber); }
+.mu-dist select { background: var(--panel); color: var(--ink); border: 1px solid var(--line); padding: 7px 8px; font: 400 .85rem var(--f-body); }
+.layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.layer { border: 1px solid #2a2640; padding: 8px 10px; font: 400 .62rem var(--f-pixel); color: var(--dim); text-transform: uppercase; display: grid; gap: 6px; }
+.layer i { display: block; height: 4px; background: #2a2640; }
+.layer.on { color: var(--ink); border-color: var(--amber); }
+.layer.on i { background: var(--amber); }
+.layer.on.hit i { background: #fff0c8; }
+.board { display: grid; gap: 18px; }
+.board h4 { margin: 0 0 8px; font: 400 .7rem var(--f-pixel); color: var(--magenta); letter-spacing: .08em; text-transform: uppercase; }
+.pads { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.pad { text-align: left; background: var(--panel); border: 1px solid var(--line); color: var(--ink); padding: 11px 12px; cursor: pointer; display: grid; gap: 4px; font: 600 .92rem var(--f-body); }
+.pad small { font: 400 .78rem/1.4 var(--f-body); color: var(--dim); }
+.pad:hover { border-color: var(--cyan); }
+.pad.fire { border-color: var(--cyan); background: rgba(43,228,255,.12); }
+.prio { counter-reset: none; }
+.prio b { color: var(--ink); }
+/* game screen */
+.screen-wrap { display: grid; gap: 12px; }
+.modes { display: flex; flex-wrap: wrap; gap: 8px; }
+.modes button { font: 400 .72rem var(--f-pixel); text-transform: uppercase; letter-spacing: .06em; background: var(--panel); color: var(--dim); border: 1px solid var(--line); padding: 9px 14px; cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.modes button[aria-pressed="true"] { background: var(--cyan); color: #05040b; border-color: var(--cyan); }
+.modes button:nth-child(3)[aria-pressed="true"] { background: var(--blood); border-color: var(--blood); }
+#game { width: 100%; height: auto; aspect-ratio: 480 / 272; border: 1px solid var(--line); background: #05040b; }
+.notes { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); font-size: .9rem; }
+.notes div { border-left: 2px solid var(--cyan); padding-left: 10px; color: var(--dim); }
+.notes b { color: var(--ink); font-weight: 600; }
+
+/* UI mockups */
+.ui { --cut: 18px; background: linear-gradient(180deg, #0d0b18, #07060d); border: 1px solid #3a3456; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); position: relative; overflow: hidden; }
+.ui::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); pointer-events: none; }
+.ui-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 22px; border-bottom: 1px solid #2a2640; font: 400 .66rem var(--f-pixel); letter-spacing: .08em; color: var(--dim); }
+.ui-head b { color: var(--cyan); font-weight: 400; }
+.lo { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 0; }
+@media (max-width: 680px) { .lo { grid-template-columns: 1fr; } }
+.lo-hero { padding: 18px; border-right: 1px solid #2a2640; display: grid; gap: 10px; align-content: start; }
+.lo-hero canvas { width: 100%; height: auto; }
+.lo-hero b { font: 700 1.3rem var(--f-display); display: block; }
+.lo-hero span { font-size: .82rem; color: var(--dim); }
+.slots { display: grid; gap: 0; }
+.slot { display: grid; grid-template-columns: 96px 76px minmax(0, 1fr); align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid #1f1c30; }
+.slot:last-child { border-bottom: 0; }
+.slot .k { font: 400 .62rem var(--f-pixel); color: var(--magenta); letter-spacing: .06em; }
+.slot .ic { width: 76px; height: 34px; display: grid; place-items: center; background: #0a0814; border: 1px solid #2a2640; }
+.slot .ic canvas { width: auto; height: 26px; }
+.slot .ic svg { width: 22px; height: 22px; }
+.slot b { font-weight: 600; font-size: .95rem; }
+.slot small { display: block; color: var(--dim); font-size: .8rem; line-height: 1.4; }
+.slot.sel { background: linear-gradient(90deg, rgba(43,228,255,.12), transparent 70%); box-shadow: inset 2px 0 var(--cyan); }
+.slot.locked { opacity: .55; }
+.pips { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle; }
+.pips i { width: 8px; height: 4px; background: #2a2640; }
+.pips i.on { background: var(--cyan); }
+@media (max-width: 520px) { .slot { grid-template-columns: 76px minmax(0, 1fr); } .slot .k { grid-column: 1 / -1; } }
+.ui-foot { padding: 12px 22px; border-top: 1px solid #2a2640; font: 400 .66rem var(--f-pixel); color: var(--dim); display: flex; gap: 18px; flex-wrap: wrap; }
+.ui-foot b { color: var(--ink); font-weight: 400; background: #2a2640; padding: 1px 5px; }
+.boss-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: center; min-height: 280px; background: repeating-linear-gradient(-55deg, #160a1c 0 26px, #0c0712 26px 52px); }
+.boss-intro canvas { width: 100%; height: auto; }
+.bi-text { padding: 26px; display: grid; gap: 10px; }
+.bi-name { font-size: clamp(2.6rem, 7vw, 4.6rem); letter-spacing: .02em; text-shadow: -3px 0 var(--magenta), 3px 0 var(--cyan); }
+.chip { justify-self: start; font: 400 .66rem var(--f-pixel); background: var(--amber); color: #120c02; padding: 6px 10px; letter-spacing: .05em; }
+@media (max-width: 680px) { .boss-intro { grid-template-columns: 1fr; } }
+.capsule { display: grid; gap: 14px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+@media (max-width: 680px) { .capsule { grid-template-columns: 1fr; } }
+.capsule canvas { width: 100%; height: auto; border: 1px solid var(--line); }
+
+/* palette & type */
+.swatches { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.swc { border: 1px solid var(--line); background: var(--panel); }
+.swc i { display: block; height: 70px; }
+.swc div { padding: 10px 12px; font-size: .84rem; }
+.swc code { font-family: var(--f-pixel); font-size: .66rem; color: var(--dim); }
+.specimen { display: grid; gap: 12px; }
+.specimen > div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: baseline; border-top: 1px dashed var(--line); padding-top: 12px; }
+@media (max-width: 560px) { .specimen > div { grid-template-columns: 1fr; gap: 4px; } }
+
+.road { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.phase { border-top: 3px solid var(--cyan); background: var(--panel); padding: 16px; display: grid; gap: 8px; align-content: start; }
+.phase:nth-child(2) { border-top-color: var(--amber); } .phase:nth-child(3) { border-top-color: var(--magenta); } .phase:nth-child(4) { border-top-color: var(--blood); }
+.phase .when { font: 400 .66rem var(--f-pixel); color: var(--dim); }
+.phase ul { margin: 0; padding-left: 1.1em; font-size: .9rem; color: var(--dim); display: grid; gap: 4px; }
+.callout { border: 1px solid var(--magenta); background: rgba(255,45,138,.07); padding: 18px; display: grid; gap: 8px; }
+.sources { font-size: .85rem; color: var(--dim); display: grid; gap: 4px; }
+footer { padding-block: 40px 60px; font-size: .85rem; color: var(--dim); max-width: 1100px; margin: 0 auto; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <clipPath id="sl1"><rect x="0" y="52" width="800" height="13"/></clipPath>
+    <clipPath id="sl2"><rect x="0" y="98" width="800" height="7"/></clipPath>
+    <filter id="glo" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <symbol id="glyph" viewBox="0 0 160 160">
+    <path d="M14 96 L46 46 L88 30 L118 36 L154 64 L114 70 L94 88 L68 126 L30 128 Z" style="fill:var(--lg-ink, var(--ink))"/>
+    <path d="M114 70 L154 64" style="stroke:var(--void);stroke-width:3"/>
+    <path d="M90 46 L104 41 L109 50 L95 55 Z" style="fill:var(--lg-b, var(--magenta))" filter="url(#glo)"/>
+    <path d="M30 128 L30 148 L64 148" style="fill:none;stroke:var(--lg-a, var(--cyan));stroke-width:4"/>
+    <circle cx="68" cy="148" r="5" style="fill:var(--lg-a, var(--cyan))"/>
+    <path d="M14 96 L2 96 L2 70" style="fill:none;stroke:var(--lg-a, var(--cyan));stroke-width:4"/>
+    <path d="M20 150 L150 12" style="stroke:var(--lg-b, var(--magenta));stroke-width:6"/>
+  </symbol>
+  <symbol id="logo" viewBox="0 0 800 160">
+    <use href="#glyph" x="0" y="0" width="160" height="160"/>
+    <g style="font-family:'Chakra Petch','Arial Narrow',sans-serif;font-weight:700;font-size:118px">
+      <text x="176" y="122" textLength="440" lengthAdjust="spacingAndGlyphs" style="fill:var(--lg-ink, var(--ink))">MURDER</text>
+      <text x="186" y="122" textLength="440" lengthAdjust="spacingAndGlyphs" clip-path="url(#sl1)" style="fill:var(--lg-a, var(--cyan))">MURDER</text>
+      <text x="168" y="122" textLength="440" lengthAdjust="spacingAndGlyphs" clip-path="url(#sl2)" style="fill:var(--lg-b, var(--magenta))">MURDER</text>
+    </g>
+    <text x="628" y="122" textLength="164" lengthAdjust="spacingAndGlyphs" style="font-family:Silkscreen,monospace;font-size:46px;fill:var(--lg-b, var(--magenta))" filter="url(#glo)">.EXE</text>
+  </symbol>
+</svg>
+
+<header class="hero">
+  <canvas id="ka" aria-label="Key art: Vesper on a wet rooftop facing Spire Zero, with the CORVUS eye projected over the tower and a crow swarm circling it"></canvas>
+  <div class="hero-copy"><div class="in">
+    <span class="tag">Working title · game plan and art bible v0.2</span>
+    <svg class="logo-hero" viewBox="0 0 800 160" role="img" aria-label="MURDER.EXE"><use href="#logo"/></svg>
+    <p class="pitch">A one-bullet, one-life arena shooter set in a rain-soaked megacity, where a cult of chrome-plated hackers has uploaded itself into a crow swarm.</p>
+  </div></div>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#concept">Concept</a><a href="#identity">Identity</a><a href="#vesper">Vesper</a><a href="#murder">The Murder</a><a href="#bosses">Bosses</a><a href="#districts">Districts</a><a href="#levels">Level design</a><a href="#ingame">In-game</a><a href="#screens">UI screens</a><a href="#palette">Palette and type</a><a href="#sound">Sound</a><a href="#research">Research</a><a href="#loop">Core loop</a><a href="#arsenal">Arsenal</a><a href="#build">Build plan</a><a href="#roadmap">Roadmap</a>
+</nav>
+
+<main>
+<section id="concept">
+  <div class="side"><span class="tag">Concept</span></div>
+  <div class="body">
+    <h2>The pitch</h2>
+    <p>Neo-Kowloon, 2099. The Murder started out as an underground netrunner cult. Its members wired their nervous systems into CORVUS, a corporate surveillance AI built on crow-swarm behaviour. Now they are something in between: chrome-feathered augments, drone flocks, and a voice in every camera.</p>
+    <p>You play <b>Vesper Kade</b>, a former Halvorsen Security enforcer with a smart revolver and a cyberdeck. The Murder deleted your partner. You will take them apart one district at a time, one bullet each.</p>
+    <p class="dim">The key art above shows that promise in one frame. Vesper stands on a Rain Market rooftop facing Spire Zero, where CORVUS hangs over the tower as a projected eye. Cyan light comes from her side of the frame and magenta from theirs. That colour split runs through every asset in the game.</p>
+    <div class="grid g4">
+      <div class="card"><span class="stat">PILLAR 1</span><h3>One bullet. One life.</h3><p>We keep the one-hit rule exactly. Bosses still die to a single shot. The hard part is reaching their core.</p></div>
+      <div class="card"><span class="stat">PILLAR 2</span><h3>Overclock</h3><p>Our Showdown. Your neural implant slows time, your smartgun locks onto targets, and every shot lands in one frame.</p></div>
+      <div class="card"><span class="stat">PILLAR 3</span><h3>Hack the arena</h3><p>A cyberdeck lets you turn turrets, neon signs, drones and enemy implants against the Murder.</p></div>
+      <div class="card"><span class="stat">PILLAR 4</span><h3>More than one arena</h3><p>Four districts, each with its own hazards, enemy mix and boss. This fixes the biggest complaint about the original.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="identity">
+  <div class="side"><span class="tag">Identity</span></div>
+  <div class="body">
+    <h2>Logo and mark</h2>
+    <div class="id-main"><svg viewBox="0 0 800 160" role="img" aria-label="MURDER.EXE primary logo"><use href="#logo"/></svg></div>
+    <p>The mark is a crow's head in profile with a slash through it, which sums up the job in one shape. The circuit traces trailing off the skull show that the cult is software now. The wordmark uses a squared, industrial display face, cut by two glitch slices in the player's cyan and the Murder's magenta. ".EXE" is set in the pixel face used in the HUD.</p>
+    <div class="id-row">
+      <div><div class="id-tile mag"><svg viewBox="0 0 160 160" role="img" aria-label="Glyph on magenta"><use href="#glyph"/></svg></div><p class="cap">App icon and Steam library tile. The glyph is reversed out of magenta.</p></div>
+      <div><div class="id-tile cy"><svg viewBox="0 0 800 160" role="img" aria-label="One-colour logo on cyan"><use href="#logo"/></svg></div><p class="cap">One-colour version for merch, stickers and trailer end cards.</p></div>
+      <div><div class="id-tile dk"><span class="hudmark">MURDER<span>.EXE</span></span></div><p class="cap">HUD wordmark in Silkscreen, used on boot screens and the pause menu.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="vesper">
+  <div class="side"><span class="tag">Protagonist</span></div>
+  <div class="body">
+    <h2>Vesper Kade</h2>
+    <p>Vesper is built to read instantly at 24×32 pixels. Three things identify her from any angle: an asymmetric black bob, a cyan visor slit across the eyes, and a chrome right arm holding the Kestrel. Her long coat has a magenta lining that only shows when she runs, a nod to the cult she used to hunt alongside. Every sprite gets a cyan rim light on its right edge, so the player is always the brightest outline on screen.</p>
+    <div class="sheet" id="sheet"></div>
+    <div class="ramps" id="ramps"></div>
+    <p class="dim">Each material uses a 4-step ramp lit from the top left. Emissive parts (visor, smart-link, chest light) are the only pixels allowed to be pure cyan, and they cast a glow onto the floor around her.</p>
+  </div>
+</section>
+
+<section id="murder">
+  <div class="side"><span class="tag">The Murder</span></div>
+  <div class="body">
+    <h2>Enemy roster</h2>
+    <p class="dim">Every cultist wears a bone-white beak mask, so the whole faction reads as one family. Each enemy has one clear tell and one counter, and its tell colour is lit on the floor beneath it.</p>
+    <div class="grid g4" id="foes"></div>
+  </div>
+</section>
+
+<section id="bosses">
+  <div class="side"><span class="tag">Bosses</span></div>
+  <div class="body">
+    <h2>Four districts, four executioners</h2>
+    <div class="grid g4" id="bossCards"></div>
+    <div class="callout"><span class="tag">Fixing the difficulty spikes</span><p>Every boss gets a 3-second intro card (see the UI screens below) that shows its weak-point tell before the fight starts. Boss attacks use the same telegraph language as regular enemies: amber means an attack is coming, magenta means a hazard. Nothing hits you that the game hasn't already taught you to read.</p></div>
+  </div>
+</section>
+
+<section id="districts">
+  <div class="side"><span class="tag">Districts</span></div>
+  <div class="body">
+    <h2>Colour script</h2>
+    <p>Each district has its own palette and lighting, so a screenshot tells you where you are. The cyan, magenta and amber signal colours never change between districts, because they carry gameplay meaning.</p>
+    <div class="districts" id="districtGrid"></div>
+  </div>
+</section>
+
+<section id="levels">
+  <div class="side"><span class="tag">Level design</span></div>
+  <div class="body">
+    <h2>Arenas built for fighting</h2>
+    <p>Each district is a hand-built arena on a 16px tile grid. It fits one screen with no camera scrolling, so you never get shot from off-screen. Every map mixes hard cover, low cover you can dash over, cover that breaks, things you can hack, and lethal ground. At kill 50 the layout changes, so the fight you learned early doesn't stay solved.</p>
+    <div class="mv">
+      <div class="mv-bar">
+        <div class="seg" role="group" aria-label="District">
+          <button type="button" id="mv-market" data-map="market" aria-pressed="true">Rain Market</button>
+          <button type="button" id="mv-rookery" data-map="rookery" aria-pressed="false">Chrome Rookery</button>
+          <button type="button" id="mv-datacrypt" data-map="datacrypt" aria-pressed="false">Datacrypt</button>
+          <button type="button" id="mv-spire" data-map="spire" aria-pressed="false">Spire Zero</button>
+        </div>
+        <div class="seg" role="group" aria-label="View">
+          <button type="button" id="mv-art" data-view="art" aria-pressed="true">Art</button>
+          <button type="button" id="mv-tac" data-view="tac" aria-pressed="false">Tactical</button>
+        </div>
+        <div class="seg" role="group" aria-label="Phase">
+          <button type="button" id="mv-p1" data-phase="1" aria-pressed="true">Phase 1</button>
+          <button type="button" id="mv-p2" data-phase="2" aria-pressed="false">Phase 2 · kill 50</button>
+        </div>
+      </div>
+      <canvas id="mapc" class="px" width="480" height="272" aria-label="Arena map"></canvas>
+      <div class="legend">
+        <span><i style="background:#d8d4ee"></i>Hard cover</span><span><i style="background:var(--cyan)"></i>Low cover, dash over</span><span><i style="background:var(--amber)"></i>Destructible</span><span><i style="background:var(--magenta)"></i>Hackable · spawn</span><span><i style="background:var(--blood)"></i>Hazard</span><span><i class="cone"></i>Sniper / turret sightline</span>
+      </div>
+    </div>
+    <div class="mapnotes" id="mapnotes"></div>
+    <h3>Cover types</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>Type</th><th>Examples</th><th>What it does</th><th>How it changes</th></tr></thead>
+      <tbody>
+        <tr><td>Hard cover</td><td>Walls, cars, the noodle stall, server racks, columns, water tanks</td><td>Blocks every bullet. Enemies path around it.</td><td>Never breaks, but Phase 2 can remove it (collapses) or add it (debris).</td></tr>
+        <tr><td>Low cover</td><td>Jersey barriers, sandbags, planters</td><td>Blocks bullets. <strong>Phase dash carries you over it</strong>; only Shrikes can vault it.</td><td>Permanent. These are the routes you use to escape.</td></tr>
+        <tr><td>Destructible</td><td>Crates</td><td>Blocks 2 hits, then breaks into debris you can't hide behind.</td><td>The arena opens up the longer a run lasts.</td></tr>
+        <tr><td>Hackable</td><td>Battery barrels, shield emitters, hanging signs, turrets</td><td>Short Circuit sets off barrels (2-tile blast). Emitters raise a hard-light wall for 4s. Signs drop. Turrets switch sides.</td><td>One use each per wave. Lights flash when they're ready again.</td></tr>
+        <tr><td>Vision blockers</td><td>Steam vents</td><td>Hide you and your shots from snipers. Bullets still pass through.</td><td>Vent every 6 seconds.</td></tr>
+        <tr><td>Lethal ground</td><td>Holes, the tram lane, live cable trenches</td><td>Kill anything that touches them, enemies included. Bait chargers into them.</td><td>Grows in Phase 2 on the Rookery and Spire Zero.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Rules every arena follows</h3>
+    <div class="grid">
+      <div class="card"><span class="stat">NO DEAD ENDS</span><h3>Two exits from every cover spot</h3><p>Every hiding spot has two ways out, so you can't be pinned in a corner. Each map has exactly one deliberate trap, like the Rain Market car park, and it holds the best cover.</p></div>
+      <div class="card"><span class="stat">NO SAFE SPOTS</span><h3>Every spot is watched by something</h3><p>Each cover position is exposed to a sniper perch, a turret or a spawn door. The tactical view draws those sightlines so we can check every spot.</p></div>
+      <div class="card"><span class="stat">ANTI-CAMPING</span><h3>Hiding builds Trace</h3><p>Stay behind the same cover for 4 seconds and the Murder traces you. A Hexer pings your position and the next spawn sends a Carrion or Shrike to flush you out.</p></div>
+      <div class="card"><span class="stat">ENEMIES USE COVER</span><h3>Cover works both ways</h3><p>Rooks stop behind low barriers to fire. Jackdaws only shoot from perches. A Bulwark is mobile cover for whatever walks behind it.</p></div>
+      <div class="card"><span class="stat">METRICS</span><h3>Built to the dash</h3><p>A phase dash covers 3 tiles. Gaps between cover are at least 2 tiles, so you can always dash through. Lanes 1 tile wide are deliberate melee zones.</p></div>
+      <div class="card"><span class="stat">READABILITY</span><h3>Cover reads at a glance</h3><p>Hard cover has tall front faces. Low cover is half that height with amber stripes. Anything hackable glows. You should know what stops a bullet without having to learn it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="ingame">
+  <div class="side"><span class="tag">In-game</span></div>
+  <div class="body">
+    <h2>Target screenshot</h2>
+    <p>This is the target for a real gameplay frame in the Rain Market, at the game's native 480×270 resolution. Switch between the three states the screen spends most of its time in.</p>
+    <div class="screen-wrap">
+      <div class="modes" role="group" aria-label="Screen state">
+        <button type="button" id="m-combat" data-mode="combat" aria-pressed="true">Combat</button>
+        <button type="button" id="m-oc" data-mode="oc" aria-pressed="false">Overclock</button>
+        <button type="button" id="m-flat" data-mode="flat" aria-pressed="false">Flatline</button>
+      </div>
+      <canvas id="game" class="px" width="480" height="272" aria-label="Gameplay mockup at 480 by 270"></canvas>
+    </div>
+    <div class="notes">
+      <div><b>Combat.</b> A Jackdaw's amber laser tracks Vesper while a Rook fires a magenta burst. Vesper's cyan rounds are the brightest thing on screen.</div>
+      <div><b>Overclock.</b> The world drains to grey-blue and only Vesper stays in colour. Six locks are numbered in the order they will fire.</div>
+      <div><b>Flatline.</b> The frame datamoshes, and the death screen tells you exactly what killed you and how close your milestone is.</div>
+      <div><b>HUD.</b> Everything sits in the outer 24px. The last round in the cylinder flashes amber.</div>
+    </div>
+  </div>
+</section>
+
+<section id="screens">
+  <div class="side"><span class="tag">UI screens</span></div>
+  <div class="body">
+    <h2>Loadout and boss intro</h2>
+    <div class="ui">
+      <div class="ui-head"><span><b>LOADOUT</b> // JACK IN</span><span>RUN 0147 · DAILY SEED 2610-29</span></div>
+      <div class="lo">
+        <div class="lo-hero"><canvas id="loVesper" class="px" width="48" height="52"></canvas><div><b>Vesper Kade</b><span>Ex-Halvorsen enforcer · 3 districts cleared</span></div></div>
+        <div class="slots">
+          <div class="slot sel"><span class="k">SIDEARM</span><span class="ic"><canvas class="px" data-icon="kestrel"></canvas></span><div><b>Kestrel .44 Smartgun</b><small>6 rounds · 1.4s reload · faster locks <span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></small></div></div>
+          <div class="slot"><span class="k">OVERCLOCK</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#2be4ff" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/><circle cx="12" cy="12" r="1.5" fill="#2be4ff"/></svg></span><div><b>DEADLINK.sys</b><small>2 charges · 6 locks · full reload</small></div></div>
+          <div class="slot"><span class="k">QUICKHACK Q</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#ff2d8a" stroke-width="2"><path d="M13 2 5 14h6l-1 8 8-12h-6z"/></svg></span><div><b>Short Circuit</b><small>3 RAM · detonate, overload, drop signs</small></div></div>
+          <div class="slot"><span class="k">QUICKHACK E</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#ff2d8a" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><path d="M4 20 20 4"/></svg></span><div><b>Blindspot</b><small>2 RAM · kill sniper lasers and turrets for 3s</small></div></div>
+          <div class="slot"><span class="k">IMPLANTS 2/3</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#2be4ff" stroke-width="2"><rect x="6" y="6" width="12" height="12"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg></span><div><b>Graze Coil · Prism Optics</b><small>Near-misses charge Overclock ×2 · sniper lasers show 0.5s early</small></div></div>
+          <div class="slot locked"><span class="k">LOCKED</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9a94b5" stroke-width="2"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><div><b>Redline Cache</b><small>Milestone: hack 3 Carrions into each other in one run (2/3)</small></div></div>
+        </div>
+      </div>
+      <div class="ui-foot"><span><b>SPACE</b> Jack in</span><span><b>TAB</b> Swap slot</span><span><b>R</b> Random build</span></div>
+    </div>
+    <div class="ui boss-intro">
+      <canvas id="bossIntro" class="px" width="120" height="90" aria-label="BLACKWING boss sprite"></canvas>
+      <div class="bi-text">
+        <span class="tag">District 01 · Rain Market · Kill 100</span>
+        <h3 class="bi-name">BLACKWING</h3>
+        <p class="dim">The Murder's enforcer, in a stolen jump-jet suit. He dives from above and lands hard.</p>
+        <span class="chip">WEAK POINT · THRUSTERS · 0.8s AFTER LANDING</span>
+      </div>
+    </div>
+    <h3>Steam capsule</h3>
+    <div class="capsule">
+      <canvas id="capsule" width="920" height="430" aria-label="Steam main capsule mockup"></canvas>
+      <p class="dim">The main capsule at 460×215, shown at 2×. The logo sits on the dark left third so it stays readable at thumbnail size. Vesper's silhouette and the CORVUS eye remain recognisable even at the 231×87 small capsule size.</p>
+    </div>
+  </div>
+</section>
+
+<section id="palette">
+  <div class="side"><span class="tag">Palette and type</span></div>
+  <div class="body">
+    <h2>Look and feel</h2>
+    <p>The look is dark, wet and readable. The world is almost black. Light is a gameplay signal, never decoration: cyan belongs to you, magenta to the Murder, amber is a warning, and red means death.</p>
+    <div class="swatches" id="swatches"></div>
+    <div class="specimen">
+      <div><span class="tag">Display</span><span style="font-family:var(--f-display);font-size:2rem;font-weight:700">BREACH THE SPIRE</span></div>
+      <div><span class="tag">Body</span><span>Vesper's smart revolver locks onto six targets in a single frame of slowed time.</span></div>
+      <div><span class="tag">HUD</span><span style="font-family:var(--f-pixel)">HEAT 3 · x4.0 · 087/100</span></div>
+    </div>
+    <div class="grid g4">
+      <div class="card"><span class="stat">RESOLUTION</span><h3>480 × 270 pixel art</h3><p>This integer-scales cleanly to 1080p (×4) and 4K (×8). Characters are 24×32 px, with a dark outline on everything that can hurt you.</p></div>
+      <div class="card"><span class="stat">LIGHTING</span><h3>Multiply ambient, additive neon</h3><p>The scene is darkened with a multiply pass, then every light source is added on top. Puddles reflect the lights above them.</p></div>
+      <div class="card"><span class="stat">VFX</span><h3>Glitch as feedback</h3><p>Hits trigger a 2-frame freeze and an RGB split. Death datamoshes the whole frame. Rain slows to dots during Overclock.</p></div>
+      <div class="card"><span class="stat">AUDIO</span><h3>Industrial darksynth</h3><p>The music is built from stems that add layers as Heat rises. Every gunshot has a crow caw mixed into it. Overclock puts the whole mix through a low-pass filter.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="sound">
+  <div class="side"><span class="tag">Sound</span></div>
+  <div class="body">
+    <h2>Audio direction</h2>
+    <p>In a one-hit game, sound is a survival tool. You should be able to hear every threat before it can kill you, even when it's off your eyeline. Everything below plays live in your browser (headphones help). These are rough sketches that set the target for the final designed and recorded assets.</p>
+    <div class="grid g4">
+      <div class="card"><span class="stat">PILLAR 1</span><h3>Hear it before it hits</h3><p>Every attack has its own wind-up sound, timed to the same lead as its visual tell. A sniper charge is audible from anywhere in the arena.</p></div>
+      <div class="card"><span class="stat">PILLAR 2</span><h3>Silence is a weapon</h3><p>Overclock drops the whole mix through a low-pass filter. All you hear is your heartbeat and the lock-on ticks, then six shots in one crack.</p></div>
+      <div class="card"><span class="stat">PILLAR 3</span><h3>The city breathes</h3><p>Rain, neon hum, trams and distant sirens never stop. Each district has its own bed, so you can tell where you are with your eyes closed.</p></div>
+      <div class="card"><span class="stat">PILLAR 4</span><h3>Music follows Heat</h3><p>The soundtrack is built from stems. Each Heat level adds a layer, from a lone pad at Heat 0 to the full crow-choir alarm at Heat 5.</p></div>
+    </div>
+
+    <h3>Adaptive music and ambience</h3>
+    <div class="ui music">
+      <div class="ui-head"><span><b>AUDIO</b> // HEAT MIXER</span><span id="mu-status">STOPPED · 132 BPM · D MINOR</span></div>
+      <div class="mu">
+        <div class="mu-row">
+          <button type="button" id="mu-play" class="big">Play</button>
+          <button type="button" id="mu-oc" class="big alt" aria-pressed="false">Overclock</button>
+          <label class="mu-heat" for="mu-heat"><span>HEAT <b id="mu-heat-v">1</b></span><input type="range" id="mu-heat" min="0" max="5" step="1" value="1"></label>
+          <label class="mu-dist" for="mu-dist"><span>AMBIENCE</span><select id="mu-dist"><option value="market">Rain Market</option><option value="rookery">Chrome Rookery</option><option value="datacrypt">Datacrypt</option><option value="spire">Spire Zero</option><option value="off">Off</option></select></label>
+        </div>
+        <div class="layers" id="mu-layers"></div>
+      </div>
+    </div>
+
+    <h3>Sound board</h3>
+    <p class="dim">Tap any sound. Each caption says what the sound tells the player.</p>
+    <div class="board" id="board"></div>
+
+    <h3>Enemy audio tells</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>Enemy</th><th>Tell sound</th><th>Lead time</th><th>Mix rule</th></tr></thead>
+      <tbody>
+        <tr><td>Corvid Drone</td><td>A rising caw, then a falling whistle as it dives</td><td>0.5s</td><td>Panned to its position. Flocks are capped at 3 voices.</td></tr>
+        <tr><td>Shrike</td><td>A monoblade hum that pitches up during the crouch</td><td>0.4s</td><td>Always audible within 6 tiles.</td></tr>
+        <tr><td>Rook</td><td>A magenta glint chime before each 3-round burst</td><td>0.3s</td><td>The burst ducks the music by 3 dB.</td></tr>
+        <tr><td>Jackdaw</td><td>A charging whine that rises to a lock tone</td><td>1.2s</td><td><strong>Never culled.</strong> It is the most important sound in the game.</td></tr>
+        <tr><td>Carrion</td><td>Battery beeps that speed up</td><td>1.5s</td><td>Beep rate tells you the time to detonation.</td></tr>
+        <tr><td>Bulwark</td><td>Hard-light hum, and a metallic ping when shot from the front</td><td>Constant</td><td>The ping tells you to flank.</td></tr>
+        <tr><td>Hexer</td><td>Data glitch stutters as it casts</td><td>0.8s</td><td>The glitch also bit-crushes your HUD sounds during the debuff.</td></tr>
+        <tr><td>Nest</td><td>A wet mechanical churn, then a burst of caws</td><td>1.0s</td><td>Tells you a spawn wave is coming.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>District ambience</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>District</th><th>Bed</th><th>One-shots</th><th>Music colour</th></tr></thead>
+      <tbody>
+        <tr><td>Rain Market</td><td>Steady rain on tarps, neon hum, stall crowd murmur</td><td>Tram horn, sign creaks, sizzling woks, steam bursts</td><td>Warm detuned pads, gated synth bass</td></tr>
+        <tr><td>Chrome Rookery</td><td>High wind, rain on metal roofs, rattling railings</td><td>Distant sirens, drone rotor fly-bys, aircraft beacons</td><td>Wider, colder, more reverb, airy leads</td></tr>
+        <tr><td>Datacrypt</td><td>Server fans, coolant hiss, transformer drone (no rain)</td><td>Drive clicks, alarm chirps, turret servos</td><td>Dry and tight, glitchy percussion, bit-crushed arps</td></tr>
+        <tr><td>Spire Zero</td><td>Storm wind, heavy rain, the eye's low drone</td><td>Thunder, roof cracks, CORVUS voice fragments</td><td>Full orchestral darksynth, crow choir</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Mix priority</h3>
+    <ol class="list prio">
+      <li><b>Lethal tells:</b> sniper charge, Carrion beeps, Shrike crouch. These never get culled or ducked.</li>
+      <li><b>Your gun and dash:</b> loud, dry and centred. Your sounds are the anchor of the mix.</li>
+      <li><b>Enemy fire and impacts:</b> panned to position, limited to 12 voices at once.</li>
+      <li><b>Hackables and hazards:</b> sign creaks, barrel hum, tram warning bell.</li>
+      <li><b>Music:</b> 132 BPM darksynth. The bass and pads pump against the kick. Ducks 4 dB under lethal tells, and goes through a low-pass filter during Overclock.</li>
+      <li><b>Ambience:</b> the lowest layer, always there, and the first to drop when the mix gets busy.</li>
+    </ol>
+
+    <h3>Production plan</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>Item</th><th>Plan</th></tr></thead>
+      <tbody>
+        <tr><td>Middleware</td><td><strong>FMOD Studio</strong> (free indie licence) with the Godot FMOD GDExtension. It handles Heat stems, parameter-driven ducking and voice limits without code.</td></tr>
+        <tr><td>Music</td><td>5 district tracks built as 6 stems each, 4 boss themes, menu and death stings. About 35 minutes of music. Brief a composer with this sketch as a reference.</td></tr>
+        <tr><td>SFX</td><td>About 180 sounds: 40 player, 70 enemy, 45 world, 25 UI. Each gets 3–5 variations so nothing repeats exactly.</td></tr>
+        <tr><td>Sources</td><td>Our own foley (revolver mechanics, coat movement, rain on tarps), the free yearly GDC game audio bundles from Sonniss, and synthesis for the tech sounds.</td></tr>
+        <tr><td>Crow voices</td><td>Record real corvid calls (or license them), then layer them with granular synthesis and bit-crushing. That gives the Murder a signature voice that's half bird, half modem.</td></tr>
+        <tr><td>Timeline</td><td>Placeholder synth sounds during the feel prototype (weeks 1–3). Final sounds for one district in the vertical slice. The full pass during the content months.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<div class="part"><span class="tag">Part two</span><h2>The game <span>design</span></h2></div>
+<section id="research">
+  <div class="side"><span class="tag">Research</span></div>
+  <div class="body">
+    <h2>What Kill the Crows actually is</h2>
+    <p>Kill the Crows is a top-down Wild West arena shooter by 5minlab, a KRAFTON studio. It launched on Steam in August 2023 at £4.29, came to Switch in 2024, and sits around 94–95% positive on Steam. You play Isabella, a gunslinger hunting a cult whose members have turned into crow-like creatures. Its whole identity comes from a few tight rules.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Mechanic</th><th>How it works in Kill the Crows</th></tr></thead>
+      <tbody>
+        <tr><td>One-hit rule</td><td>Every enemy dies to one bullet, <strong>bosses included</strong>. So does the player. Every encounter is a duel.</td></tr>
+        <tr><td>Showdown</td><td>Hold right click to slow time, sweep the cursor over enemies to mark them, then fire at all of them at once. It also reloads the whole cylinder. The Crow Eye Showdown has 2 charges, costs 7, and marks up to 6 targets.</td></tr>
+        <tr><td>Dodge roll</td><td>Gives a few invincibility frames, and rolling past a shielded Defender lets you hit its back.</td></tr>
+        <tr><td>Run structure</td><td>One arena with endless waves. A boss shows up every 100 kills. Runs are short, and score attack is the long-term hook.</td></tr>
+        <tr><td>Enemies</td><td>Axe-wielding melee rushers, gunslingers, snipers, exploding Bombers, and shielded brutes.</td></tr>
+        <tr><td>Loadout</td><td>You pick a revolver, passives and a Showdown type. Some revolvers have a secondary, like an underbarrel shotgun. Passives often come with a cost: Shot Glass adds Showdown charges but slowly drains the meter.</td></tr>
+        <tr><td>Progression</td><td>You unlock gear by hitting milestones, not by spending currency. One example is "kill 15 enemies using the Bomber in one run".</td></tr>
+        <tr><td>Later additions</td><td>The Switch version added "Curse" difficulty modifiers.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="split">
+      <div class="card"><h3>What players love</h3>
+        <ul class="list love"><li>Tight, responsive controls and fast deaths</li><li>Showdown feels like a power fantasy every time</li><li>Crunchy pixel art and sound design</li><li>Unlocks come from skill milestones, not grinding</li><li>Cheap, and quick to pick up for one more run</li></ul></div>
+      <div class="card"><h3>What players complain about</h3>
+        <ul class="list hate"><li>Only one arena, so it gets repetitive</li><li>Some boss fights are sudden difficulty spikes</li><li>Challenges only refresh when you die, which pushes you to throw runs</li><li>Not much content in total</li></ul></div>
+    </div>
+    <p class="dim">Our plan keeps everything in the left column and treats the right column as the design brief.</p>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="side"><span class="tag">Core loop</span></div>
+  <div class="body">
+    <h2>One run, start to finish</h2>
+    <ol class="loop">
+      <li><div><b>Jack in</b><span>Choose a loadout: sidearm, Overclock program, two quickhacks and up to three implants. Runs start in District 1, or in any district you have already cleared.</span></div></li>
+      <li><div><b>Survive the flock</b><span>Endless waves come from a "threat budget" director. The longer you survive, the more Heat builds up, which adds elites and hazards and raises your score multiplier.</span></div></li>
+      <li><div><b>Graze and charge</b><span>Kills and near-misses (bullets that pass within a few pixels) fill the Overclock meter. Kills and hack combos also refill RAM for your quickhacks.</span></div></li>
+      <li><div><b>Boss at 100 kills</b><span>The district boss arrives. It dies to one hit, but you have to strip its shields, find the real one among decoys, or wait for its core to open.</span></div></li>
+      <li><div><b>Breach</b><span>Beating the boss lets you choose: cash out and bank your score, or breach into the next district with your Heat carried over for a higher multiplier.</span></div></li>
+      <li><div><b>Flatline and unlock</b><span>Milestones unlock new gear between runs, such as "hack 3 Carrions into each other in one run". There is no currency grind. Challenges refresh at the start of each run, not on death, so nobody has to throw a run.</span></div></li>
+    </ol>
+  </div>
+</section>
+
+<section id="arsenal">
+  <div class="side"><span class="tag">Cybertech</span></div>
+  <div class="body">
+    <h2>Arsenal</h2>
+    <p class="dim">The game uses four gear slots. Every item needs to give the player a decision to make, not just a bigger number.</p>
+
+    <h3>Sidearms</h3>
+    <div class="grid">
+      <div class="card"><span class="stat">STARTER · 6 RDS · 1.4s RELOAD</span><h3>Kestrel .44 Smartgun</h3><p>The Isabella revolver equivalent. It is accurate and reliable, and its smart-link makes Overclock locks snap on faster.</p></div>
+      <div class="card"><span class="stat">1 RD · PIERCES 3 · CHARGE</span><h3>Railpiercer</h3><p>Hold to charge, release to fire a rail slug that goes through three enemies in a line. It is slow but rewards setting up lines of enemies.</p></div>
+      <div class="card"><span class="stat">4 RDS · 2 BOUNCES</span><h3>Ricochet Coilgun</h3><p>Rounds bounce off walls twice. You can hit the back of a shielded Bulwark without having to flank it.</p></div>
+      <div class="card"><span class="stat">5 RDS + 1 SCATTER</span><h3>Breacher Custom</h3><p>A revolver with an underbarrel scatter charge for close range. It is a nod to the Royal Gunsmith's Custom.</p></div>
+    </div>
+
+    <h3>Overclock programs (Showdown)</h3>
+    <div class="grid">
+      <div class="card"><span class="stat">2 CHARGES · 6 LOCKS · FULL RELOAD</span><h3>DEADLINK.sys</h3><p>The classic version. Slow time, sweep over up to 6 targets, release, and every round fires in one frame.</p></div>
+      <div class="card"><span class="stat">2 CHARGES · 3 LOCKS · CHAINS ×2</span><h3>ARC//CHAIN</h3><p>Fewer locks, but each kill sends lightning to the two nearest enemies. It is strongest against packed swarms.</p></div>
+      <div class="card"><span class="stat">1 CHARGE · 5 LOCKS · MELEE</span><h3>GHOST_PROTOCOL</h3><p>You blink to each marked target and cut it down with a monowire, ending where the last target stood. It is risky because of where you end up.</p></div>
+      <div class="card"><span class="stat">1 CHARGE · 4 LOCKS · HIJACK</span><h3>SWARMKEY</h3><p>Marked enemies are hacked and shoot their nearest ally instead. This chains well with Carrions.</p></div>
+    </div>
+
+    <h3>Quickhacks (RAM bar, two slots)</h3>
+    <div class="grid">
+      <div class="card"><span class="stat">3 RAM</span><h3>Short Circuit</h3><p>Overloads a target's electronics. Use it to detonate a Carrion early, pop a turret, or drop a live neon sign on the enemies below it.</p></div>
+      <div class="card"><span class="stat">2 RAM</span><h3>Blindspot</h3><p>Turns off a sniper's targeting laser and every camera turret in a radius for 3 seconds.</p></div>
+      <div class="card"><span class="stat">4 RAM</span><h3>Turncoat</h3><p>Hijacks a drone or turret for 5 seconds. It also counts toward multi-kill milestones.</p></div>
+      <div class="card"><span class="stat">3 RAM</span><h3>Phase Ghost</h3><p>Leaves a holographic decoy where you are standing. Enemies spend 2 seconds attacking it.</p></div>
+    </div>
+
+    <h3>Implants (passives, max 3, many with a downside)</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>Implant</th><th>Upside</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Reflex Splice</td><td>Phase dash cooldown −30%</td><td>Dash distance −15%</td></tr>
+        <tr><td>Graze Coil</td><td>Near-misses fill Overclock twice as fast</td><td>Hitbox grows by 1px</td></tr>
+        <tr><td>Backup Ego</td><td>Revive once per run</td><td>Score multiplier halved for the rest of the run</td></tr>
+        <tr><td>Trigger Daemon</td><td>The last round in each mag pierces</td><td>None (unlocked by milestone)</td></tr>
+        <tr><td>Prism Optics</td><td>Sniper lasers show 0.5s earlier</td><td>The screen picks up chromatic glitches when Heat is high</td></tr>
+        <tr><td>Overdrive Heart</td><td>Every 10 kills in a streak adds +5% move speed</td><td>The streak resets if you stand still for 2s</td></tr>
+        <tr><td>Redline Cache</td><td>+1 Overclock charge</td><td>The meter drains slowly (our Shot Glass)</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="side"><span class="tag">Build plan</span></div>
+  <div class="body">
+    <h2>How we build it</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Decision</th><th>Recommendation</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Engine</td><td><strong>Godot 4</strong> (GDScript)</td><td>It is free with no royalties, has an excellent pixel-perfect 2D pipeline, 2D lights with normal maps, and exports to Windows, Mac, Linux and Steam Deck. Steam integration is available through GodotSteam.</td></tr>
+        <tr><td>Fast prototype</td><td>Browser build (Phaser or plain canvas)</td><td>Lets us test the feel of one-hit kills, dashing and Overclock in days, before committing to production.</td></tr>
+        <tr><td>Art tools</td><td>Aseprite + Laigter</td><td>Aseprite is the standard for pixel sprites and animation. Laigter generates normal maps for neon lighting.</td></tr>
+        <tr><td>Audio</td><td>FMOD (free indie tier) or Godot's built-in buses</td><td>Needed for the layered Heat music and Overclock low-pass effect.</td></tr>
+        <tr><td>Data</td><td>Godot Resources (.tres)</td><td>Every weapon, implant, hack and enemy is a data file, so balancing never needs code changes.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Core systems</h3>
+    <div class="grid">
+      <div class="card"><span class="stat">PLAYER</span><h3>Controller</h3><p>8-way movement, mouse or twin-stick aim, a phase dash with 6 i-frames, coyote-time buffered inputs, and a 1px hurtbox at the sprite's centre.</p></div>
+      <div class="card"><span class="stat">COMBAT</span><h3>Bullet pool</h3><p>Pooled projectiles, raycast graze detection, hitstop, and a time-scale manager that Overclock and hit freezes share.</p></div>
+      <div class="card"><span class="stat">AI</span><h3>Enemy state machines</h3><p>Each enemy runs Idle, Approach, Telegraph, Attack and Recover. The Telegraph state is required and never shorter than 0.35s.</p></div>
+      <div class="card"><span class="stat">DIRECTOR</span><h3>Wave director</h3><p>Spends a threat budget that grows with Heat, caps elites per wave, and never spawns an enemy inside the player's view cone.</p></div>
+      <div class="card"><span class="stat">META</span><h3>Milestones and saves</h3><p>Data-driven challenge list, unlock tree, local save, Steam achievements, and a daily-seed leaderboard.</p></div>
+      <div class="card"><span class="stat">HACKING</span><h3>Hackable interface</h3><p>One "Hackable" component handles turrets, signs, drones and Carrions, so adding a new hack target is a single component.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="roadmap">
+  <div class="side"><span class="tag">Roadmap</span></div>
+  <div class="body">
+    <h2>Roadmap</h2>
+    <p class="dim">Timings assume one or two people working part-time.</p>
+    <div class="road">
+      <div class="phase"><span class="when">WEEKS 1–3</span><h3>Feel prototype</h3><ul><li>Movement, aim, dash, one-hit rule</li><li>Kestrel revolver and DEADLINK Overclock</li><li>3 enemies: Corvid, Shrike, Rook</li><li>Grey-box arena</li><li>Goal: is it fun to die?</li></ul></div>
+      <div class="phase"><span class="when">WEEKS 4–12</span><h3>Vertical slice</h3><ul><li>Rain Market art, lighting and rain</li><li>All 8 enemies, the BLACKWING boss</li><li>2 quickhacks, 6 implants, 3 guns</li><li>HUD, audio pass, milestones</li><li>Goal: a trailer-ready 5 minutes</li></ul></div>
+      <div class="phase"><span class="when">MONTHS 4–8</span><h3>Content</h3><ul><li>The other 3 districts and bosses</li><li>Remaining Overclock programs</li><li>Story mode, Endless, Daily Seed</li><li>"Corrupted" modifiers (our Curse)</li><li>Steam page and wishlist push</li></ul></div>
+      <div class="phase"><span class="when">MONTHS 9–10</span><h3>Demo → launch</h3><ul><li>Free demo for Steam Next Fest</li><li>Balance from playtest telemetry</li><li>Steam Deck verification, controller polish</li><li>Launch at a low price point, as KtC did</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="next">
+  <div class="side"><span class="tag">Next</span></div>
+  <div class="body">
+    <h2>Before we start</h2>
+    <div class="callout"><span class="tag">Keep it ours</span><p>We borrow the design ideas: one-hit duels, a mark-and-execute slow-motion ability, and milestone unlocks. Game mechanics aren't protected. Names, art and story have to be original, though. That means no copying Kill the Crows assets, and no names taken from other cyberpunk properties (that's why we use our own terms: Overclock, Phase Dash, quickhacks and implants).</p></div>
+    <p>The first step to agree on is a playable feel prototype in the browser: Vesper, the Kestrel, phase dash, DEADLINK Overclock and three enemy types in one grey-box arena. That will tell us whether the core is fun before any art is made.</p>
+    <div class="sources">
+      <span class="tag">Sources</span>
+      <a href="https://press.krafton.com/Kill-The-Crows-Launches-on-Steam-Today">KRAFTON press release: Kill The Crows launches on Steam</a>
+      <a href="https://store.steampowered.com/app/2441270/Kill_The_Crows">Steam store page (app 2441270)</a>
+      <a href="https://kill-the-crows.fandom.com/wiki/Showdowns">Kill the Crows wiki: Showdowns</a>
+      <a href="https://kill-the-crows.fandom.com/wiki/Passives">Kill the Crows wiki: Passives</a>
+      <a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3024774557">Steam guide: The complete guide to Kill The Crows (1.5 update)</a>
+      <a href="https://punishedbacklog.com/kill-the-crows-review/">Punished Backlog review</a>
+      <a href="https://vaporlens.app/app/2441270/kill_the_crows">Vaporlens review summary</a>
+      <a href="https://www.godisageek.com/2024/10/kill-the-crows-now-available-for-nintendo-switch/">GodisaGeek: Switch release and Curse system</a>
+      <a href="https://www.taptap.io/post/6182557">TapTap critical review</a>
+    </div>
+  </div>
+</section>
+</main>
+<footer>MURDER.EXE is a working title. The concept, names and art on this page are original and early-stage. All art is generated in the page from code, as a target for what the real assets should look like.</footer>
+<script src="engine.js"></script>
+<script src="defs.js"></script>
+<script src="scenes.js"></script>
+<script src="keyart.js"></script>
+<script src="maptiles.js"></script>
+<script src="maps.js"></script>
+<script src="game.js"></script>
+<script src="main.js"></script>
+<script src="audio.js"></script>
+<script src="audio-ui.js"></script>

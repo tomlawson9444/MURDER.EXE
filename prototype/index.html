@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MURDER.EXE Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Silkscreen&display=swap">
+<style>
+/* Layout: a single centred game screen with one help line. Deliberately single dark theme. */
+:root { color-scheme: dark; --void: #05040b; --ink: #e9e6f5; --dim: #9a94b5; --cyan: #2be4ff; --f-pixel: "Silkscreen", ui-monospace, "Courier New", monospace; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--void); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; }
+#game { image-rendering: pixelated; image-rendering: crisp-edges; display: block; max-width: 100%; cursor: none; outline: none; box-shadow: 0 0 0 1px #2a2640, 0 20px 60px rgba(0,0,0,.6); }
+.help { font: 400 10px var(--f-pixel); color: var(--dim); letter-spacing: .06em; text-transform: uppercase; text-align: center; }
+.help b { color: var(--cyan); font-weight: 400; }
+.touch { display: none; font: 400 11px var(--f-pixel); color: #ffb22e; text-align: center; }
+@media (hover: none) and (pointer: coarse) { .touch { display: block; } }
+</style>
+<canvas id="game" width="480" height="272" tabindex="0" aria-label="MURDER.EXE game"></canvas>
+<p class="help"><b>WASD</b> move · <b>click</b> shoot · <b>space</b> dash · <b>hold right-click</b> Overclock · <b>Q</b> hack · <b>R</b> reload · <b>P</b> pause</p>
+<p class="touch">Play with a mouse and keyboard, or connect a controller.</p>
+<script src="engine.js"></script>
+<script src="defs.js"></script>
+<script src="scenes.js"></script>
+<script src="keyart.js"></script>
+<script src="maptiles.js"></script>
+<script src="maps.js"></script>
+<script src="audio.js"></script>
+<script src="sfx-bank.js"></script>
+<script src="g-core.js"></script>
+<script src="g-pad.js"></script>
+<script src="g-actors.js"></script>
+<script src="g-director.js"></script>
+<script src="g-render.js"></script>
+<script src="g-main.js"></script>

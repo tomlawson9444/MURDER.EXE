@@ -1,0 +1,62 @@
+/* MURDER.EXE prototype: shared state, input, collision, line of sight, pathfinding. */
+"use strict";
+const GW = 480, GH = 272;
+const G = { mode: "title", pressed: new Set(), paused: false };
+const keys = new Set(), mouse = { x: 240, y: 136, down: false, rdown: false };
+const GAME_KEYS = [" ", "shift", "w", "a", "s", "d", "q", "r", "f", "p", "escape", "arrowup", "arrowdown", "arrowleft", "arrowright"];
+
+function setupInput(cv) {
+  addEventListener("keydown", e => { const k = e.key.toLowerCase(); if (GAME_KEYS.includes(k)) e.preventDefault(); if (!keys.has(k)) G.pressed.add(k); keys.add(k); });
+  addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+  const pos = e => { const r = cv.getBoundingClientRect(); mouse.x = (e.clientX - r.left) / r.width * GW; mouse.y = (e.clientY - r.top) / r.height * GH; };
+  cv.addEventListener("pointermove", pos);
+  cv.addEventListener("pointerdown", e => { pos(e); e.preventDefault(); cv.focus(); if (e.button === 0) { mouse.down = true; G.pressed.add("lmb"); } if (e.button === 2) { mouse.rdown = true; G.pressed.add("rmb"); } });
+  addEventListener("pointerup", e => { if (e.button === 0) mouse.down = false; if (e.button === 2) { mouse.rdown = false; } });
+  cv.addEventListener("contextmenu", e => e.preventDefault());
+  addEventListener("blur", () => { keys.clear(); mouse.down = mouse.rdown = false; if (G.mode === "play") G.paused = true; });
+}
+const held = k => keys.has(k);
+const hit = k => G.pressed.has(k);
+
+/* Tiles */
+const WALK_BLOCK = new Set("#kmpqSuWvZDAcbdthsN".split(""));
+const SHOT_BLOCK = new Set("#kmpquWvZDAcbdhsN".split(""));
+const tileOf = (px, py) => G.grid.at(Math.floor(px / TS), Math.floor(py / TS));
+const walkBlocked = (px, py, overLow) => { const ch = tileOf(px, py); if (ch === null) return true; if (overLow && ch === "h") return false; return WALK_BLOCK.has(ch); };
+function boxBlocked(x, y, r, overLow) { const ry = r * .6; return walkBlocked(x - r, y - ry, overLow) || walkBlocked(x + r, y - ry, overLow) || walkBlocked(x - r, y + ry, overLow) || walkBlocked(x + r, y + ry, overLow); }
+function moveBody(e, dx, dy, overLow) {
+  let hitWall = false;
+  if (dx) { if (!boxBlocked(e.x + dx, e.y, e.r, overLow)) e.x += dx; else hitWall = true; }
+  if (dy) { if (!boxBlocked(e.x, e.y + dy, e.r, overLow)) e.y += dy; else hitWall = true; }
+  return hitWall;
+}
+function los(x0, y0, x1, y1, skipLow = 20) {
+  const d = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(d / 4);
+  for (let i = 1; i < n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, ch = tileOf(x, y);
+    if (ch === null) return false; if (SHOT_BLOCK.has(ch) && !(ch === "h" && (t * d < skipLow || (1 - t) * d < skipLow))) return false; }
+  return true;
+}
+
+/* Flow field from the player's tile, rebuilt a few times per second */
+function buildFlow() {
+  const W = MW, H = MH, dist = new Int16Array(W * H).fill(-1), q = [];
+  const px = Math.floor(G.p.x / TS), py = Math.floor(G.p.y / TS); if (px < 0 || py < 0 || px >= W || py >= H) return;
+  dist[py * W + px] = 0; q.push(px, py);
+  const ok = (x, y) => { const ch = G.grid.at(x, y); return ch !== null && !WALK_BLOCK.has(ch) && ch !== "o"; };
+  for (let h = 0; h < q.length; h += 2) { const x = q[h], y = q[h + 1], d = dist[y * W + x];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (ok(nx, ny) && dist[ny * W + nx] < 0) { dist[ny * W + nx] = d + 1; q.push(nx, ny); } } }
+  G.flow = dist;
+}
+function flowDir(e) {
+  const tx = Math.floor(e.x / TS), ty = Math.floor(e.y / TS), F = G.flow; if (!F) return [0, 0];
+  const cur = F[ty * MW + tx]; let best = null, bd = cur < 0 ? 9999 : cur;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    const nx = tx + dx, ny = ty + dy; if (nx < 0 || ny < 0 || nx >= MW || ny >= MH) continue; const d = F[ny * MW + nx]; if (d < 0) continue;
+    if (dx && dy && (F[ty * MW + nx] < 0 || F[ny * MW + tx] < 0)) continue;
+    if (d < bd) { bd = d; best = [nx, ny]; } }
+  if (!best) { const a = Math.atan2(G.p.y - e.y, G.p.x - e.x); return [Math.cos(a), Math.sin(a)]; }
+  const gx = best[0] * TS + 8 - e.x, gy = best[1] * TS + 8 - e.y, l = Math.hypot(gx, gy) || 1; return [gx / l, gy / l];
+}
+const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const panOf = x => (x / GW) * 2 - 1;
+const rnd = (a, b) => a + Math.random() * (b - a);
