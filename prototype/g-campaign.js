@@ -268,7 +268,9 @@ function updArchivist(e, dt) {
     const dx = p.x - e.x, dy = p.y - e.y, dd = Math.hypot(dx, dy) || 1; if (dd > 110) { const nx = Math.min(MW * TS - 40, Math.max(40, e.x + dx / dd * 16 * dt)), ny = Math.min(MH * TS - 40, Math.max(70, e.y + dy / dd * 16 * dt)); // drifts in so it's in reach when exposed
       if ([[0, -10], [-12, -10], [12, -10], [0, 0]].every(([ox, oy]) => !SHOT_BLOCK.has(tileOf(nx + ox, ny + oy - e.alt)))) { e.x = nx; e.y = ny; } } // never over a wall, where shots can't reach it
     if (!echoes) { e.state = "exposed"; e.t = 5; AU.sfx("ocSnap"); pop(e.x, e.y - 56, "EXPOSED", COL.cyan); } }
-  else if (e.state === "exposed") { if (e.t <= 0) { e.state = "summon"; e.t = .8; } }
+  else if (e.state === "exposed") { const gx = p.x + p.face * 12, gy = p.y - BODY - 2; e.blind = los(gx, gy, e.x, e.y - 10 - (e.alt || 0), 1e9) ? 0 : (e.blind || 0) + dt;
+    if (e.blind > .7 && !e.warned) { e.warned = true; G.banner = { txt: "NO CLEAR SHOT · STEP OUT OF COVER", col: COL.amber, life: 1.8 }; AU.sfx("lock", 0); }
+    if (e.t <= 0) { e.state = "summon"; e.t = .8; e.warned = false; e.blind = 0; } }
 }
 function hurtArchivist(e) {
   e.hp--; e.hurt = .3; e.state = "summon"; e.t = 1.4; G.shake = 5; AU.sfx("land", panOf(e.x)); rumble(.8, .6, 250);
@@ -488,7 +490,8 @@ function updChoir(e, dt, d) {
 // One status label per singer: a new one replaces the old so DOWN and BACK UP never stack.
 function choirPop(e, t, col) { for (let i = G.texts.length - 1; i >= 0; i--) { const q = G.texts[i]; if (Math.abs(q.x - e.x) < 14 && Math.abs(q.y - (e.y - 40)) < 24) G.texts.splice(i, 1); } pop(e.x, e.y - 40, t, col); }
 function hurtChoir(e) {
-  if (e.state === "down") return; const fast = G.choirRounds === 1; e.state = "down"; e.t = fast ? 3 : 3.6; fx(e.x, e.y - 16, 20, [COL.magenta, "#2a2440", "#ffffff"], 80, .6); choirPop(e, "DOWN", COL.cyan); AU.sfx("kill", panOf(e.x));
+  if (e.state === "down") return; const fast = G.choirRounds === 1; e.state = "down"; e.t = fast ? 3 : 3.6; e.downT = e.t;
+  if (!G.camp.choirTip) { G.camp.choirTip = true; G.banner = { txt: "DROP THE OTHER TWO BEFORE IT GETS BACK UP", col: COL.cyan, life: 2.6 }; } fx(e.x, e.y - 16, 20, [COL.magenta, "#2a2440", "#ffffff"], 80, .6); choirPop(e, "DOWN", COL.cyan); AU.sfx("kill", panOf(e.x));
   const all = G.en.filter(x => x.alive && x.type === "choir"); if (!all.every(x => x.state === "down")) return;
   G.choirRounds--; G.shake = 6; rumble(1, .8, 300);
   if (G.choirRounds <= 0) { all.forEach(x => { x.hp = 1; }); all.forEach(x => killEnemy(x, "shot")); return; }
@@ -504,8 +507,9 @@ DEFS.corvina = { w: 48, h: 48, dither: 1, parts: [
   E("bone", 24, 9, 5, 6), Pl("hair", [[18, 6], [21, 1], [24, 0], [27, 1], [30, 6], [29, 14], [27, 8], [21, 8], [19, 14]]), Px("redE", [[22, 9], [26, 9]]),
   Px("redE", [[16, 1], [20, -1], [24, -2], [28, -1], [32, 1]]) ] };
 NAMES.corvina = "MOTHER CORVINA"; FLYING.add("corvina"); BOSSY.add("corvina");
-function spawnCorvina() { const s2 = bossSpot(); const e = spawnEnemy("corvina", s2.x, s2.y); Object.assign(e, { hp: 3, state: "sing", t: 3, gun: 1, feather: 2, adds: 5, spin: 0 }); return e; }
-const corvinaPhase = e => 4 - e.hp;
+function spawnCorvina() { const s2 = bossSpot(); const e = spawnEnemy("corvina", s2.x, s2.y); Object.assign(e, { hp: 6, hpMax: 6, state: "sing", t: 3, gun: 1, feather: 2, adds: 5, spin: 0 }); return e; }
+// Six hits, two per phase. The last phase opens up for less time and calls more of the flock.
+const corvinaPhase = e => 1 + Math.floor((6 - e.hp) / 2);
 function updCorvina(e, dt, d) {
   const p = G.p, ph = corvinaPhase(e); e.face = p.x < e.x ? -1 : 1; e.alt = 4 + Math.sin((e.anim || 0) * 2) * 2; e.hurt = Math.max(0, (e.hurt || 0) - dt);
   if (e.state === "sing") {
@@ -513,16 +517,18 @@ function updCorvina(e, dt, d) {
     e.gun -= dt; if (e.gun <= 0) { if (ph < 3) { const off = Math.random() * TAU; for (let k = 0; k < 14; k++) if (k % 7 !== 0) shoot(e.x, e.y - 24, off + k / 14 * TAU, 70, "e", { by: "corvina" }); e.gun = 1.7; }
       else { for (let k = 0; k < 2; k++) shoot(e.x, e.y - 24, e.spin + k * Math.PI, 80, "e", { by: "corvina" }); e.spin += .33; e.gun = .16; } AU.sfx("shotE", panOf(e.x)); }
     if (ph >= 2) { e.feather -= dt; if (e.feather <= 0) { for (let k = 0; k < 4; k++) shoot(e.x, e.y - 30, -Math.PI / 2 + (k - 1.5) * .5, 60, "e", { by: "corvina", seek: 1.3, life: 4 }); e.feather = 2.6; AU.sfx("rail", panOf(e.x)); } }
-    e.adds -= dt; if (e.adds <= 0) { for (let k = 0; k < 2; k++) spawnEnemy("corvid", e.x + rnd(-40, 40), e.y - 40); e.adds = 7; AU.sfx("caw"); }
+    e.adds -= dt; if (e.adds <= 0) { for (let k = 0; k < (ph === 3 ? 3 : 2); k++) spawnEnemy("corvid", e.x + rnd(-40, 40), e.y - 40); e.adds = ph === 3 ? 5 : 7; AU.sfx("caw"); }
     if (e.t <= 0) { e.state = "scream"; e.t = .9; AU.sfx("charge", panOf(e.x)); } }
   else if (e.state === "scream") { if (e.t <= 0) { for (let k = 0; k < 24; k++) shoot(e.x, e.y - 24, k / 24 * TAU, 95, "e", { by: "corvina" }); G.shake = 5; AU.sfx("caw");
       if (ph === 3) { const q = floorSpots(90).sort(() => Math.random() - .5)[0]; if (q) { fx(e.x, e.y - 20, 20, [COL.red, "#2a2440"], 80, .5); e.x = q.x; e.y = q.y; } }
-      e.state = "exposed"; e.t = 2.4; } }
+      e.state = "exposed"; e.t = ph === 3 ? 1.8 : 2.4; } }
   else if (e.state === "exposed") { if (e.t <= 0) { e.state = "sing"; e.t = rnd(4, 5.5) - ph * .5; } }
 }
 function hurtCorvina(e) {
-  e.hp--; e.hurt = .3; e.state = "sing"; e.t = 3; G.shake = 7; AU.sfx("land", panOf(e.x)); rumble(1, .8, 350); fx(e.x, e.y - 24, 30, [COL.red, "#ffffff", "#2a2440"], 100, .7); pop(e.x, e.y - 56, e.hp + " LEFT", COL.red);
+  const was = corvinaPhase(e); e.hp--; e.hurt = .3; e.state = "sing"; e.t = 3; G.shake = 7; AU.sfx("land", panOf(e.x)); rumble(1, .8, 350); fx(e.x, e.y - 24, 30, [COL.red, "#ffffff", "#2a2440"], 100, .7); pop(e.x, e.y - 56, e.hp + " LEFT", COL.red);
   const ph = corvinaPhase(e);
+  if (e.hp === 1) { G.banner = { txt: "ONE MORE · SHE'S COMING APART", col: COL.red, life: 2.4 }; radio("corvina", "I GAVE THEM A FAMILY. WHAT DID YOU GIVE THEM?"); G.rules = Object.assign({}, G.rules, { rewrite: 5 }); for (let k = 0; k < 4; k++) spawnEnemy("corvid", e.x + rnd(-50, 50), e.y - 40); }
+  if (ph === was) return; // phase changes every second hit
   if (ph === 2) { G.banner = { txt: "PHASE 2 · THE FLOOR IS REWRITING", col: COL.red, life: 2.4 }; G.rules = Object.assign({}, G.rules, { rewrite: 7 }); G.rwT = 1; radio("corvus", "WE WILL REWRITE THE GROUND UNDER YOU."); }
   if (ph === 3) { G.banner = { txt: "PHASE 3 · CORVUS TAKES THE WHEEL", col: COL.red, life: 2.4 }; radio("corvus", "SHE IS TIRED. WE ARE NOT."); }
 }
@@ -894,7 +900,9 @@ function campDrawObjects(c, t) {
     if (live) txt(c, q.contested ? "CONTESTED" : Math.hypot(G.p.x - x, G.p.y - y) < 18 ? gg.verb : gg.noun, x, top - 12, rgba(q.contested ? COL.red : col, .8 + .2 * Math.sin(t * .01)), 8, "center"); });
   drawAllies(c, t);
   for (const e of G.en) { if (!e.alive) continue;
-    if (e.type === "choir" && e.state === "down") { const s2 = sprOf("choir", e.face); c.save(); c.globalAlpha = .6; c.drawImage(tinted(s2, "#05040b"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2)); c.restore(); txt(c, Math.ceil(e.t) + "", e.x, e.y - 44, COL.cyan, 8, "center"); }
+    if (e.type === "choir" && e.state === "down") { const s2 = sprOf("choir", e.face); c.save(); c.globalAlpha = .6; c.drawImage(tinted(s2, "#05040b"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2)); c.restore();
+      const f = Math.max(0, e.t / (e.downT || 3.6)), rc = f < .33 ? COL.red : COL.cyan; c.strokeStyle = rgba(rc, .85); c.lineWidth = 2; c.beginPath(); c.arc(e.x, e.y - 46, 6, -Math.PI / 2, -Math.PI / 2 + f * TAU); c.stroke(); c.lineWidth = 1; txt(c, Math.ceil(e.t) + "", e.x, e.y - 50, rc, 8, "center"); }
+    if (e.type === "echo") txt(c, "ECHO", e.x, e.y - 40, rgba(COL.cyan, .75), 8, "center");
     if (e.type === "corvina" && e.state === "scream") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24 - e.alt, 30, COL.red, .5 + .4 * Math.sin(t * .06)); c.restore(); }
     if (e.type === "corvina" && e.state === "exposed") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24 - e.alt, 16, "#ffffff", .5); c.restore(); txt(c, "EXPOSED", e.x, e.y - 62, COL.cyan, 8, "center"); }
     if (e.type === "corvina" && e.hurt > 0) { const s2 = sprOf("corvina", e.face); c.save(); c.globalAlpha = e.hurt * 2; c.drawImage(tinted(s2, "#ffffff"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2 - e.alt)); c.restore(); }
@@ -928,8 +936,12 @@ NPC_LOOKS.magpieBody = { coat: "cloak", coatCol: "midnight", lining: "magenta", 
 /* ---- HUD ---- */
 function campHudCenter(c, t) {
   const C = G.camp, g = G.rules.goal, W = GW, x = W / 2 - 54; let label = "", k = 0, col = COL.ink;
-  if (G.boss && D().boss === "choir") { const up = G.en.filter(e => e.alive && e.type === "choir" && e.state !== "down").length; label = `CHOIR · ${up}/3 UP`; col = COL.magenta; k = G.choirRounds / 2; }
-  else if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / 3 : 1; }
+  if (G.boss && D().boss === "choir") { const ch = G.en.filter(e => e.alive && e.type === "choir"), down = ch.filter(e => e.state === "down"); col = COL.magenta; k = G.choirRounds / 2;
+    // Once one is down, the clock that matters is the first one to get back up.
+    if (down.length && down.length < ch.length) { const left = Math.min(...down.map(e => e.t)); label = `${down.length}/3 DOWN · ${left.toFixed(1)}S`; col = left < 1.2 ? COL.red : COL.cyan; } else label = `CHOIR · ${ch.length - down.length}/3 UP`; }
+  else if (G.boss && D().boss === "archivist") { const b = G.en.find(e => e.alive && e.type === "archivist"), ech = G.en.filter(e => e.alive && e.type === "echo").length; k = b ? b.hp / 3 : 1;
+    if (b && b.state === "exposed") { label = `EXPOSED · ${Math.max(0, b.t).toFixed(1)}S`; col = COL.cyan; } else { label = ech ? `ECHOES LEFT · ${ech}` : "THE ARCHIVIST"; col = COL.magenta; } }
+  else if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / (b.hpMax || 3) : 1; }
   else if (g.type === "climb") { label = G.exit ? `FLOOR ${C.floor}/${g.floors} · LIFT` : `FLOOR ${C.floor}/${g.floors} · ${Math.min(dk(), g.kills)}/${g.kills}`; k = ((C.floor - 1) + Math.min(1, dk() / g.kills)) / g.floors; col = G.exit ? COL.cyan : COL.ink; }
   else if (g.type === "kills") { label = `${String(Math.min(dk(), g.n)).padStart(2, "0")}/${g.n} KILLS`; k = dk() / g.n; }
   else if (g.type === "survive") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `SURVIVE ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; k = C.t / g.secs; }

@@ -96,6 +96,10 @@ const ITEMS = [
 // Scrip for finishing each act, paid once.
 const ACT_SCRIP = { 1: 1000, 2: 1500, 3: 2000, 4: 2500, 5: 4000 };
 const IMP_SLOTS = 3;
+// Economy tuning: gear (not styles, not act rewards) costs 30% more than its listed price, rounded to 50,
+// so a story run pays for roughly all the gear and leaves the wardrobe to save up for.
+const GEAR_PRICE_K = 1.3;
+ITEMS.forEach(i => { if (i.price && !i.relic && i.cat !== "style") i.price = Math.round(i.price * GEAR_PRICE_K / 50) * 50; });
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const CATS = [["gun", "SIDEARMS"], ["oc", "OVERCLOCK"], ["imp", "IMPLANTS"]];
 
@@ -120,7 +124,7 @@ const available = i => !i.relic && (!i.req || i.req(SAVE.stats));
 const hasImp = id => !!(G.p && G.p.imps && G.p.imps.includes(id));
 
 function earn(n) { n = Math.round(n); G.runScrip = (G.runScrip || 0) + n; SAVE.scrip += n; }
-function scripFor(e) { const base = e.type === D().boss ? 300 : e.type === "nest" ? 40 : 8; return base * (1 + G.heat * .2); }
+function scripFor(e) { const base = e.type === D().boss ? 300 : e.type === "nest" ? 40 : 6; return base * (1 + G.heat * .2); }
 function track(ev, a) {
   if (G.range) return; // nothing in the firing range counts towards milestones
   const s = SAVE.stats;
