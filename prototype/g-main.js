@@ -100,7 +100,7 @@
     if (G.mode === "talk") return drawTalk(c, t);
     if (G.mode === "camp") return drawCamp(c, t);
     if (G.mode === "chap") return drawChap(c, t);
-    drawWorld(c, t);
+    drawWorld(c, t); drawFog(c, t);
     if (G.oc) drawOC(c, t);
     if (G.mode === "play" || G.mode === "intro") drawHUD(c, t);
     if (G.mode === "dead") drawDead(c, t);

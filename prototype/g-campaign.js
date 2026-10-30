@@ -17,13 +17,21 @@ DIST.kiln = { n: 4, name: "THE KILN", code: "C-04", amb: "datacrypt", next: null
 // Story districts are built by the map generator from a fixed style and seed, so every player gets the same chapter maps.
 const STORY_STYLES = {
   canals: { family: "canals", mood: "neon", hue: 192, weather: "heavy", floor: "tiles", backdrop: "docks", hole: "water", name: "GUTTERLINE CANALS", signs: ["NOODLE", "PAWN", "CAW//24H", "LOANS", "SOBA", "CORVUS"] },
+  docks: { family: "docks", mood: "ice", hue: 205, weather: "smog", floor: "plate", backdrop: "docks", hole: "water", name: "SALTGATE DOCKS", signs: ["SALTGATE", "BERTH 7", "CUSTOMS", "NO ENTRY", "HALVORSEN", "CORVUS"] },
+  serverhalls: { family: "serverhalls", mood: "ultraviolet", hue: 268, weather: "clear", floor: "grid", backdrop: "serverWall", hole: "data", name: "DATACRYPT", signs: ["COLD STORE", "RACK 00", "HALVORSEN", "NO SIGNAL", "DATA", "CORVUS"] },
   foundries: { family: "foundries", mood: "sodium", hue: 22, weather: "embers", floor: "rust", backdrop: "factory", hole: "molten", name: "THE KILN", signs: ["KILN", "SHIFT 3", "HOT", "NO ENTRY", "HALVORSEN", "CORVUS"] },
 };
 function storyStyle(m) {
   const P = STORY_STYLES[m.fam || "canals"];
   return Object.assign({}, PG.FAMILIES[P.family], P, { id: P.family + m.seed, seed: m.seed, accents: PG.MOODS[P.mood].acc, target: [13, 16], puddles: P.weather !== "embers", phaseExtra: "h", arch: [m.arch] });
 }
-const HAZARDS = { canals: ["THE CANAL", "water"], kiln: ["THE SLAG", "molten"] };
+const HAZARDS = { canals: ["THE CANAL", "water"], kiln: ["THE SLAG", "molten"], docks: ["THE HARBOUR", "water"], datacrypt: ["THE DATA", "data"] };
+DIST.docks = { n: 5, name: "SALTGATE DOCKS", code: "C-05", amb: "rookery", next: null,
+  pool: [["shrike", 0, 3], ["rook", 0, 3], ["corvid", 0, 2], ["carrion", 1, 2], ["jackdaw", 1, 1], ["bulwark", 2, 2]],
+  boss: "widow", bossName: "WIDOW CRANE", bossLine: "WEAK POINT · THE CAB WHILE IT'S OPEN AFTER A DROP", bossTip: "A SHADOW ON THE FLOOR MEANS A CONTAINER IS COMING.", phaseTxt: "" };
+DIST.datacrypt = { n: 6, name: "DATACRYPT", code: "C-06", amb: "datacrypt", next: null,
+  pool: [["shrike", 0, 3], ["rook", 0, 2], ["hexer", 0, 2], ["carrion", 1, 3], ["corvid", 1, 2], ["bulwark", 2, 1]],
+  boss: "archivist", bossName: "THE ARCHIVIST", bossLine: "WEAK POINT · ONLY WHILE NO ECHOES ARE LEFT", bossTip: "THE ECHOES ARE YOU. BREAK THEM ALL, THEN SHOOT.", phaseTxt: "" };
 
 /* ---- THE FERRYMAN ---- */
 DEFS.ferryman = { w: 48, h: 48, dither: 1, parts: [
@@ -72,8 +80,9 @@ function updFerry(e, dt, d) {
   }
 }
 // Story bosses take three hits. Each hit sends adds through the doors and stirs up the district hazard.
-function hurtBoss(e) { if (e.type === "cinder") return hurtCinder(e); return hurtFerry(e); }
-const STORY_BOSSES = { ferryman: () => spawnFerryman(), cinder: () => spawnCinder() };
+function hurtBoss(e) { if (e.type === "cinder") return hurtCinder(e); if (e.type === "widow") return hurtWidow(e); if (e.type === "archivist") return hurtArchivist(e); return hurtFerry(e); }
+const STORY_BOSSES = { ferryman: () => spawnFerryman(), cinder: () => spawnCinder(), widow: () => spawnWidow(), archivist: () => spawnArchivist() };
+function bossSpot() { buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0; return floorSpots(120).filter(reach).sort(() => Math.random() - .5)[0] || { x: GW / 2, y: 90 }; }
 // A hit while he reels the chain in costs him one of three hits. He calls the water up each time.
 function hurtFerry(e) {
   e.hp--; e.hurt = .3; e.state = "walk"; e.t = 1.6; e.gun = 1.2; G.shake = 5; AU.sfx("land", panOf(e.x)); rumble(.8, .6, 250);
@@ -148,6 +157,101 @@ function hurtCinder(e) {
   for (let i = 0; i < 2; i++) randomVent();
 }
 
+/* ---- Fog on the docks: you see a small circle around you, and enemy eyes through the murk ---- */
+let FOGC = null;
+function drawFog(c, t) {
+  if (!G.fog || !G.p) return; if (!FOGC) FOGC = mk(GW, GH); const f = FOGC.getContext("2d"), p = G.p;
+  f.globalCompositeOperation = "source-over"; f.clearRect(0, 0, GW, GH); f.fillStyle = `rgba(120,138,160,${G.fog})`; f.fillRect(0, 0, GW, GH);
+  for (let i = 0; i < 5; i++) { f.fillStyle = "rgba(190,205,225,.07)"; f.fillRect(0, (t * .012 + i * 61) % (GH + 40) - 20, GW, 16); }
+  f.globalCompositeOperation = "destination-out"; const g = f.createRadialGradient(p.x, p.y - 10, 34, p.x, p.y - 10, 125); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)"); f.fillStyle = g; f.fillRect(0, 0, GW, GH);
+  c.drawImage(FOGC, 0, 0);
+  c.save(); c.globalCompositeOperation = "lighter"; for (const e of G.en) { if (!e.alive || Math.hypot(e.x - p.x, e.y - p.y) < 90) continue; const tell = ["crouch", "tell", "aim", "charge", "armed"].includes(e.state); glow(c, e.x, e.y - 20 - (e.alt || 0), tell ? 9 : 5, tell ? COL.red : COL.magenta, tell ? .8 : .45); } c.restore();
+}
+
+/* ---- WIDOW CRANE: drops shipping containers where you stand ---- */
+DEFS.widow = { w: 48, h: 48, dither: 1, parts: [
+  R("armor", 6, 30, 4, 16), R("armor", 38, 30, 4, 16), L("armor", 8, 30, 18, 20), L("armor", 40, 30, 30, 20), R("boot", 4, 44, 8, 4), R("boot", 36, 44, 8, 4),
+  R("hazard", 12, 16, 24, 14), R("hazard", 12, 16, 24, 2), Px("gun", [[14, 21], [17, 21], [20, 21], [23, 21], [26, 21], [29, 21], [32, 21]]),
+  R("gun", 17, 19, 14, 8), R("cyanE", 19, 21, 10, 3), Px("redE", [[20, 24], [27, 24]]),
+  R("chrome", 22, 2, 4, 15), R("chrome", 22, 2, 24, 3), R("chrome", 44, 5, 1, 12), Pl("chrome", [[42, 17], [47, 17], [44.5, 21]]),
+  R("armor", 4, 6, 18, 2),
+] };
+NAMES.widow = "WIDOW CRANE"; FLYING.add("widow"); BOSSY.add("widow");
+function spawnWidow() { const s2 = bossSpot(); const e = spawnEnemy("widow", s2.x, s2.y); Object.assign(e, { hp: 3, state: "walk", t: 2, gun: 1.5 }); return e; }
+// A 2x2 drop site lined up with a tile, over plain floor, that won't seal anyone in.
+function dropSite(px, py) {
+  const tx = Math.floor(px / TS), ty = Math.floor(py / TS), tiles = [[tx, ty], [tx + 1, ty], [tx, ty + 1], [tx + 1, ty + 1]];
+  if (!tiles.every(([x, y]) => G.grid.at(x, y) === "." && y > 2 && y < MH - 2)) return null;
+  if (doors().some(d => Math.hypot(d.x - (tx + 1) * TS, d.y - (ty + 1) * TS) < 36)) return null;
+  return stillReachable(tiles) ? tiles : null;
+}
+function queueDrops(n) {
+  const p = G.p, sites = [], tryAt = (x, y) => { const s2 = dropSite(x, y); if (s2 && !sites.some(o => Math.abs(o[0][0] - s2[0][0]) < 3 && Math.abs(o[0][1] - s2[0][1]) < 3)) sites.push(s2); };
+  tryAt(p.x - 8, p.y - 8); for (let k = 0; k < 30 && sites.length < n; k++) tryAt(p.x + rnd(-110, 110), p.y + rnd(-70, 70));
+  G.drops = (G.drops || []).concat(sites.map(tiles => ({ tiles, state: "warn", t: 1.4 }))); if (sites.length) AU.sfx("charge");
+}
+function updateDrops(dt) {
+  if (!G.drops) return; const p = G.p, inside = (o, tiles) => tiles.some(([x, y]) => Math.floor(o.x / TS) === x && Math.floor(o.y / TS) === y);
+  for (const d of G.drops) { d.t -= dt;
+    if (d.state === "warn" && d.t <= 0) { d.state = "down"; d.t = 9; d.tiles.forEach(([x, y]) => G.grid[y][x] = "C"); G.dirty = true; G.shake = 6; AU.sfx("land"); rumble(.8, .6, 250);
+      fx((d.tiles[0][0] + 1) * TS, (d.tiles[0][1] + 1) * TS, 24, ["#9aa4c8", "#2a3048", COL.amber], 100, .6);
+      for (const e of G.en) if (e.alive && !FLYING.has(e.type) && inside(e, d.tiles)) killEnemy(e, "blast");
+      if (inside(p, d.tiles)) { playerDie("widow"); if (G.mode === "play") { const q = floorSpots(0).sort((u, v) => Math.hypot(u.x - p.x, u.y - p.y) - Math.hypot(v.x - p.x, v.y - p.y))[0]; if (q) { p.x = q.x; p.y = q.y; } } } }
+    else if (d.state === "down" && d.t <= 0) { d.state = "gone"; d.tiles.forEach(([x, y]) => { if (G.grid[y][x] === "C") G.grid[y][x] = "."; }); G.dirty = true; fx((d.tiles[0][0] + 1) * TS, (d.tiles[0][1] + 1) * TS, 12, ["#9aa4c8", "#2a3048"], 50, .5); } }
+  G.drops = G.drops.filter(d => d.state !== "gone");
+}
+function updWidow(e, dt, d) {
+  const p = G.p; e.face = p.x < e.x ? -1 : 1; e.hurt = Math.max(0, (e.hurt || 0) - dt);
+  if (e.state === "walk") { walk(e, 22, dt); e.face = p.x < e.x ? -1 : 1; e.gun -= dt;
+    if (e.gun <= 0) { const a = Math.atan2(p.y - BODY - (e.y - 26), p.x - e.x); for (let k = -1; k <= 1; k++) shoot(e.x, e.y - 26, a + k * .12, 120, "e", { by: "widow" }); AU.sfx("shotE", panOf(e.x)); e.gun = 1.8; }
+    if (d < 16) playerDie("widow");
+    if (e.t <= 0) { e.state = "drop"; e.t = 1.6; queueDrops(2 + (3 - e.hp)); } }
+  else if (e.state === "drop") { if (e.t <= 0) { e.state = "cab"; e.t = 2.2; AU.sfx("vent", panOf(e.x)); } }
+  else if (e.state === "cab") { if (e.t <= 0) { e.state = "walk"; e.t = rnd(2.6, 3.6); e.gun = 1; } }
+}
+function hurtWidow(e) {
+  e.hp--; e.hurt = .3; e.state = "walk"; e.t = 1.4; e.gun = 1.2; G.shake = 5; AU.sfx("land", panOf(e.x)); rumble(.8, .6, 250);
+  fx(e.x, e.y - 24, 24, [COL.amber, "#ffffff", COL.cyan], 90, .6); pop(e.x, e.y - 54, e.hp + " LEFT", COL.amber);
+  doors().filter(dd => Math.hypot(dd.x - G.p.x, dd.y - G.p.y) > 90).slice(0, 2).forEach(dd => { G.pending.push({ type: Math.random() < .5 ? "rook" : "shrike", x: dd.x, y: dd.y, t: .9, door: dd }); AU.sfx("door", panOf(dd.x)); });
+}
+
+/* ---- THE ARCHIVIST: hides behind echoes that replay your own recent movement ---- */
+DEFS.archivist = { w: 48, h: 48, dither: 1, parts: [
+  Pl("robe", [[16, 12], [32, 12], [40, 44], [24, 40], [8, 44]]), L("cyanE", 24, 14, 24, 40), L("magE", 18, 24, 30, 24), L("cyanE", 15, 32, 33, 32),
+  S_(Pl("robe", [[16, 14], [9, 26], [6, 32], [11, 32], [18, 20]])), S_(Pl("robe", [[32, 14], [39, 26], [42, 32], [37, 32], [30, 20]])),
+  R("bone", 2, 22, 6, 8), R("bone", 40, 22, 6, 8), Px("cyanE", [[3, 24], [4, 26], [5, 28], [41, 24], [43, 26], [42, 28]]),
+  E("robe", 24, 8, 6, 7), Pl("chrome", [[19, 6], [29, 6], [27, 12], [21, 12]]), Px("cyanE", [[21, 8], [22, 8], [26, 8], [27, 8]]),
+] };
+NAMES.archivist = "THE ARCHIVIST"; NAMES.echo = "YOUR OWN ECHO"; FLYING.add("archivist"); BOSSY.add("archivist"); FLYING.add("echo");
+// Echoes are your own sprite, washed cyan and see-through.
+function echoSprites() { if (SP.echo) return; const v = SP.vesper, t2 = mk(v.w, v.h), x = t2.getContext("2d");
+  x.globalAlpha = .75; x.drawImage(v.cv, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(127,211,255,.55)"; x.fillRect(0, 0, v.w, v.h);
+  const base = { cv: t2, gc: v.gc, G: v.G, w: v.w, h: v.h }; SP.echo = base; SPF.echo = flipSpr(base); }
+function spawnArchivist() { echoSprites(); const s2 = bossSpot(); const e = spawnEnemy("archivist", s2.x, s2.y); Object.assign(e, { hp: 3, state: "summon", t: 1, ring: 2.5 }); return e; }
+// An echo walks a few seconds of the path you really took this chapter, and fires at you as it goes.
+function spawnEcho() {
+  const R2 = G.camp.rec || [], len = 50; let path;
+  if (R2.length > len + 5) { const i0 = Math.floor(Math.random() * (R2.length - len)); path = R2.slice(i0, i0 + len); } else { const s2 = floorSpots(80)[0] || { x: GW / 2, y: GH / 2 }; path = [s2]; }
+  const e = spawnEnemy("echo", path[0].x, path[0].y); Object.assign(e, { path, pi: 0, gun: rnd(1, 2) }); fx(e.x, e.y - 14, 12, [COL.cyan, "#ffffff"], 60, .5); return e;
+}
+function updEcho(e, dt) {
+  const p = G.p; e.pi = (e.pi + dt * 10) % e.path.length; const q = e.path[Math.floor(e.pi)]; if (q) { e.face = q.x < e.x ? -1 : q.x > e.x ? 1 : e.face; e.x = q.x; e.y = q.y; }
+  e.gun -= dt; if (e.gun <= 0) { shoot(e.x + e.face * 10, e.y - BODY - 2, Math.atan2(p.y - BODY - (e.y - BODY - 2), p.x - e.x - e.face * 10), 115, "e", { by: "echo" }); AU.sfx("shotE", panOf(e.x)); e.gun = rnd(1.4, 2.2); }
+  if (!G.en.some(a => a.alive && a.type === "archivist")) e.alive = false;
+}
+function updArchivist(e, dt) {
+  const p = G.p; e.face = p.x < e.x ? -1 : 1; e.alt = 6 + Math.sin((e.anim || 0) * 2) * 2; e.hurt = Math.max(0, (e.hurt || 0) - dt);
+  const echoes = G.en.filter(x => x.alive && x.type === "echo").length;
+  if (e.state === "summon") { if (e.t <= 0) { for (let i = 0; i < 2 + (3 - e.hp); i++) spawnEcho(); e.state = "shielded"; AU.sfx("hexer"); } }
+  else if (e.state === "shielded") { e.ring -= dt; if (e.ring <= 0) { for (let i = 0; i < 10; i++) shoot(e.x, e.y - 24, i / 10 * TAU + (e.anim || 0), 70, "e", { by: "archivist" }); AU.sfx("shotE", panOf(e.x)); e.ring = 3.2; }
+    if (!echoes) { e.state = "exposed"; e.t = 3; AU.sfx("ocSnap"); pop(e.x, e.y - 56, "EXPOSED", COL.cyan); } }
+  else if (e.state === "exposed") { if (e.t <= 0) { e.state = "summon"; e.t = .8; } }
+}
+function hurtArchivist(e) {
+  e.hp--; e.hurt = .3; e.state = "summon"; e.t = 1.4; G.shake = 5; AU.sfx("land", panOf(e.x)); rumble(.8, .6, 250);
+  fx(e.x, e.y - 24, 24, [COL.cyan, "#ffffff", COL.magenta], 90, .6); pop(e.x, e.y - 54, e.hp + " LEFT", COL.cyan);
+}
+
 /* ---- Rising water ---- */
 function floodCandidates() {
   const g = G.grid, out = [], near = (px, py) => (G.gates || []).some(q => Math.hypot(q.x - px, q.y - py) < 28) || (G.shard && Math.hypot(G.shard.x - px, G.shard.y - py) < 20);
@@ -182,13 +286,37 @@ function updateFlood(dt) {
 }
 
 /* ---- Objectives ---- */
-function placeStall() {
-  const S = floorSpots(50).filter(s => { const tx = Math.floor(s.x / TS), ty = Math.floor(s.y / TS); for (let j = ty - 1; j <= ty; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === null || WALK_BLOCK.has(ch) || ch === "o") return false; } return true; })
-    .sort((a, b) => Math.hypot(a.x - GW / 2, a.y - GH / 2 - 10) - Math.hypot(b.x - GW / 2, b.y - GH / 2 - 10))[0] || { x: GW / 2, y: GH / 2 };
-  G.stall = { x: S.x, y: S.y, hp: G.rules.goal.hp, max: G.rules.goal.hp, hurtT: 0 };
+// Guarded objects: Magpie's stall (one), server racks (several) or a cargo crane that moves along a path.
+function guardSpots(n, minGap) {
+  const ok = s2 => { const tx = Math.floor(s2.x / TS), ty = Math.floor(s2.y / TS); for (let j = ty - 1; j <= ty; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === null || WALK_BLOCK.has(ch) || ch === "o") return false; } return true; };
+  const S = floorSpots(50).filter(ok).sort((a, b) => Math.hypot(a.x - GW / 2, a.y - GH / 2 - 10) - Math.hypot(b.x - GW / 2, b.y - GH / 2 - 10)), out = [];
+  for (const q of S) { if (out.every(o => Math.hypot(o.x - q.x, o.y - q.y) > minGap)) out.push(q); if (out.length === n) break; }
+  return out.length ? out : [{ x: GW / 2, y: GH / 2 }];
 }
-function hurtStall(n) { const S = G.stall; if (!S || G.camp.won) return; S.hp = Math.max(0, S.hp - n); S.hurtT = .25; fx(S.x + rnd(-12, 12), S.y - 12, 5, [COL.magenta, "#c08d1a", "#ffffff"], 50, .4); AU.sfx("crate", panOf(S.x)); if (S.hp <= 0) campFail("STALL DESTROYED"); }
-const stallHit = b => G.stall && Math.abs(b.x - G.stall.x) < 15 && b.y > G.stall.y - 26 && b.y < G.stall.y + 1;
+// The cargo crane's route: the longest walkable path from the west side of the yard to the east side.
+function cargoPath() {
+  buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0, sp = floorSpots(0).filter(reach);
+  const a = sp.reduce((m, q) => q.x < m.x ? q : m, sp[0]), b = sp.reduce((m, q) => q.x > m.x ? q : m, sp[0]);
+  const W = MW, prev = new Int32Array(W * MH).fill(-1), q = [], sx = Math.floor(a.x / TS), sy = Math.floor(a.y / TS), ex = Math.floor(b.x / TS), ey = Math.floor(b.y / TS);
+  const ok = (x, y) => { const ch = G.grid.at(x, y); return ch !== null && !WALK_BLOCK.has(ch) && ch !== "o"; };
+  prev[sy * W + sx] = sy * W + sx; q.push(sx, sy);
+  for (let h = 0; h < q.length; h += 2) { const x = q[h], y = q[h + 1]; if (x === ex && y === ey) break;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (ok(nx, ny) && prev[ny * W + nx] < 0) { prev[ny * W + nx] = y * W + x; q.push(nx, ny); } } }
+  const path = []; let k = ey * W + ex; if (prev[k] < 0) return [a, b];
+  while (k !== sy * W + sx) { path.unshift({ x: (k % W) * TS + 8, y: Math.floor(k / W) * TS + 12 }); k = prev[k]; }
+  path.unshift({ x: a.x, y: a.y }); return path;
+}
+function placeStalls() {
+  const g = G.rules.goal, kind = g.type === "escort" ? "cargo" : g.kind || "stall", n = g.n || 1;
+  if (kind === "cargo") { const path = cargoPath(); G.stalls = [{ kind, x: path[0].x, y: path[0].y, path, idx: 0, hp: g.hp, max: g.hp, hurtT: 0, prog: 0 }]; return; }
+  G.stalls = guardSpots(n, 90).map(q => ({ kind, x: q.x, y: q.y, hp: g.hp, max: g.hp, hurtT: 0 }));
+}
+const STALL_FAIL = { stall: "STALL DESTROYED", cargo: "CARGO DESTROYED", rack: "A RACK WENT DARK" };
+function hurtStall(S, n) { if (!S || G.camp.won) return; S.hp = Math.max(0, S.hp - n); S.hurtT = .25; fx(S.x + rnd(-12, 12), S.y - 12, 5, [COL.magenta, "#c08d1a", "#ffffff"], 50, .4); AU.sfx("crate", panOf(S.x)); if (S.hp <= 0) campFail(STALL_FAIL[S.kind]); }
+const stallHit = b => (G.stalls || []).find(S => Math.abs(b.x - S.x) < 15 && b.y > S.y - 26 && b.y < S.y + 1);
+function blastStalls(x, y, r) { (G.stalls || []).forEach(S => { if (Math.hypot(S.x - x, S.y - 8 - y) < r + 10) hurtStall(S, 30); }); }
+const stallPct = () => G.stalls ? Math.min(...G.stalls.map(S => S.hp / S.max)) * 100 : 100;
+
 // Objective terminals: floodgates, beacons, relays or furnaces, set by the chapter's goal.
 const gateGoal = () => Object.assign({ noun: "FLOODGATE", verb: "OPENING", done: "OPEN", secs: 3.2 }, G.rules.goal);
 const gateActive = q => !q.done && (!gateGoal().seq || q === G.gates.find(g => !g.done));
@@ -209,7 +337,7 @@ function placeShard() { const s = floorSpots(110).filter(q => tileOf(q.x, q.y) !
 function trig(on) {
   const C = G.camp; if (on === "start") return C.t >= .6; if (on === "p2") return G.phase2; if (on === "boss") return G.boss && G.mode === "play";
   const [k, v] = on.split(":"), n = +v;
-  if (k === "t") return C.t >= n; if (k === "k") return dk() >= n; if (k === "stall") return G.stall && G.stall.hp / G.stall.max * 100 <= n;
+  if (k === "t") return C.t >= n; if (k === "k") return dk() >= n; if (k === "stall") return G.stalls && stallPct() <= n; if (k === "cargo") return G.stalls && G.stalls[0].prog * 100 >= n;
   if (k === "gate") return G.gates && G.gates.filter(g => g.done).length >= n; if (k === "hp") return G.en.some(e => e.alive && e.hp && BOSSY.has(e.type) && e.hp <= n);
   return false;
 }
@@ -221,11 +349,11 @@ function startChapter(n, retry) {
   if (!retry) undoChapterFx(n);
   G.camp = { n, ch, t: 0, fired: new Set(), won: false, winT: 0, kills0: 0 }; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; G.runSeed = null; G.queuedSeed = null;
   const hz = HAZARDS[ch.district] || [null, null];
-  G.radioQ = []; G.stall = null; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
+  G.radioQ = []; G.stalls = null; G.drops = null; G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
   AU.init(); BANK.attach(); RUN.reset(ch.district);
   G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; G.lastHeat = G.heat;
   G.p.shield = SAVE.camp.diff === "story" ? 2 : 0;
-  const g = G.rules.goal; if (g.type === "stall") placeStall(); if (g.type === "gates") placeGates(g.n);
+  const g = G.rules.goal; if (g.type === "stall" || g.type === "guard" || g.type === "escort") placeStalls(); if (g.type === "gates") placeGates(g.n);
   G.floodT = G.rules.flood || 0; G.ventT = G.rules.vents || 0;
   const title = `CHAPTER ${String(n).padStart(2, "0")} · ${ch.title}`, go = () => { G.mode = "play"; G.paused = false; G.banner = { txt: ch.goal, col: COL.cyan, life: 2.6 }; RUN.music(); buildFlow(); };
   AU.stop(); AU.ambience(D().amb);
@@ -240,18 +368,24 @@ function campTick(dt) {
   if (ch.shard && !C.shardOut && SAVE.camp.shards[C.n] && trig(ch.shard.on)) C.shardOut = true; // already found on an earlier run
   if (G.shard && Math.hypot(G.shard.x - G.p.x, G.shard.y - G.p.y) < 12) { SAVE.camp.shards[C.n] = true; C.gotShard = true; G.shard = null; persist(); AU.sfx("milestone"); G.banner = { txt: "DATASHARD RECOVERED · CHECK THE ARCHIVE", col: COL.magenta, life: 2.4 }; }
   const p = G.p; if (tileOf(p.x, p.y) !== "o" && !onVent(p.x, p.y)) p.safe = { x: p.x, y: p.y };
+  C.recT = (C.recT || 0) - dt; if (C.recT <= 0) { C.recT = .1; (C.rec || (C.rec = [])).push({ x: p.x, y: p.y }); if (C.rec.length > 900) C.rec.shift(); }
+  updateDrops(dt);
   if (R.vents) { G.ventT -= dt; if (G.ventT <= 0) { G.ventT = R.vents * rnd(.8, 1.2); randomVent(); } } updateVents(dt);
   if (R.flood) { G.floodT -= dt; if (G.floodT <= 0) { G.floodT = R.flood; floodStage(false); } updateFlood(dt); }
-  if (G.stall) { const S = G.stall; S.hurtT = Math.max(0, S.hurtT - dt);
-    for (const e of G.en) { if (!e.alive || BOSSY.has(e.type)) continue; const d = Math.hypot(e.x - S.x, e.y - S.y);
-      if (e.type === "corvid") { if (e.state === "dive" && !e.dv) { e.dv = true; if (Math.random() < .35) e.la = Math.atan2(S.y - 10 - e.y, S.x - e.x); } if (e.state !== "dive") e.dv = false; if (e.state === "dive" && d < 14) { hurtStall(12); killEnemy(e, "blast"); } }
-      else if (d < 16) hurtStall(14 * dt); } }
+  for (const S of G.stalls || []) { S.hurtT = Math.max(0, S.hurtT - dt); let contested = false;
+    for (const e of G.en) { if (!e.alive || BOSSY.has(e.type)) continue; const d = Math.hypot(e.x - S.x, e.y - S.y); if (d < 36) contested = true;
+      if (e.type === "corvid") { if (e.state === "dive" && !e.dv) { e.dv = true; if (Math.random() < .35) e.la = Math.atan2(S.y - 10 - e.y, S.x - e.x); } if (e.state !== "dive") e.dv = false; if (e.state === "dive" && d < 14) { hurtStall(S, 12); killEnemy(e, "blast"); } }
+      else if (d < 16) hurtStall(S, 14 * dt); }
+    // The cargo crane only rolls while you're beside it and nothing is on top of it.
+    if (S.path) { S.moving = !contested && Math.hypot(p.x - S.x, p.y - S.y) < 56 && S.idx < S.path.length - 1;
+      if (S.moving) { const tg = S.path[S.idx + 1], dx = tg.x - S.x, dy = tg.y - S.y, l = Math.hypot(dx, dy), st = 15 * dt; if (l <= st) { S.x = tg.x; S.y = tg.y; S.idx++; } else { S.x += dx / l * st; S.y += dy / l * st; } }
+      S.prog = S.idx / (S.path.length - 1); S.contested = contested; } }
   if (G.gates) G.gates.forEach(q => { if (gateActive(q) && Math.hypot(q.x - p.x, q.y - p.y) < 18) gateProgress(q, dt / gateGoal().secs); });
-  const win = (g.type === "kills" && dk() >= g.n) || ((g.type === "survive" || g.type === "stall") && C.t >= g.secs) || (g.type === "gates" && G.gates.every(q => q.done));
+  const win = (g.type === "kills" && dk() >= g.n) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
   if (win) campWin();
 }
 function campWin() {
-  const C = G.camp; if (!C || C.won) return; C.won = true; C.winT = 1.6; G.god = true; G.flood = null; G.vents = null;
+  const C = G.camp; if (!C || C.won) return; C.won = true; C.winT = 1.6; if (G.stalls) SAVE.camp.stallHp = Math.round(stallPct()); G.god = true; G.flood = null; G.vents = null;
   for (const e of G.en) if (e.alive && e.type !== "nest") { e.alive = false; fx(e.x, e.y - 10, 8, ["#2a2440", COL.magenta], 50, .5); }
   G.pending = []; G.bul = []; G.banner = { txt: "OBJECTIVE COMPLETE", col: COL.cyan, life: 1.6 }; AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best;
 }
@@ -294,6 +428,8 @@ function drawMolten(c, t) {
 }
 function campDrawFloor(c, t) {
   if (G.hazard === "water") drawWater(c, t); if (G.hazard === "molten") drawMolten(c, t);
+  for (const d of G.drops || []) if (d.state === "warn") { const on = Math.floor(t / 90) % 2, x = d.tiles[0][0] * TS, y = d.tiles[0][1] * TS, k = 1 - d.t / 1.4;
+    c.fillStyle = `rgba(0,0,0,${.25 + .4 * k})`; c.fillRect(x + 6 - 6 * k, y + 6 - 6 * k, 20 + 12 * k, 20 + 12 * k); c.strokeStyle = on ? COL.amber : rgba(COL.amber, .5); c.strokeRect(x + .5, y + .5, 31, 31); }
   for (const v of G.vents || []) { const on = Math.floor(t / 100) % 2;
     v.tiles.forEach(([x, y]) => { if (v.state === "warn") { c.fillStyle = rgba("#ff6a2a", on ? .45 : .18); c.fillRect(x * TS, y * TS, TS, TS); }
       else { c.fillStyle = `rgba(255,${150 + Math.round(60 * Math.sin(t * .02 + x * 3 + y))},40,.7)`; c.fillRect(x * TS, y * TS, TS, TS); c.save(); c.globalCompositeOperation = "lighter"; glow(c, x * TS + 8, y * TS + 8, 14, "#ff6a2a", .35); c.restore(); } }); }
@@ -305,18 +441,31 @@ function campDrawFloor(c, t) {
     c.fillStyle = COL.magenta; poly(c, [[x, y - 5], [x + 3, y], [x, y + 5], [x - 3, y]]); c.fill(); c.fillStyle = "#ffffff"; c.fillRect(Math.round(x), Math.round(y - 3), 1, 6); }
 }
 function campDrawObjects(c, t) {
-  if (G.stall) { const S = G.stall, x = Math.round(S.x), y = Math.round(S.y), sh = S.hurtT > 0 ? Math.round(rnd(-1, 1)) : 0;
-    const mg = portrait("magpieBody"); if (mg) drawSpr(c, mg, x + 4 + sh, y - mg.h - 6);
-    c.fillStyle = "#1a1424"; c.fillRect(x - 15 + sh, y - 12, 30, 12); c.fillStyle = "#3a2a46"; c.fillRect(x - 15 + sh, y - 13, 30, 2);
-    for (let i = 0; i < 4; i++) { c.fillStyle = ["#8f5340", "#625d7d", "#c08d1a", "#3b374f"][i]; c.fillRect(x - 12 + i * 7 + sh, y - 18, 5, 5); }
-    c.fillStyle = "#302c41"; c.fillRect(x - 15 + sh, y - 30, 1, 18); c.fillRect(x + 14 + sh, y - 30, 1, 18);
-    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? "#16121f" : COL.magenta; c.fillRect(x - 16 + i * 4 + sh, y - 32, 4, 4); }
-    c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 28, 16, COL.magenta, .25); c.restore();
+  for (const S of G.stalls || []) { const x = Math.round(S.x), y = Math.round(S.y), sh = S.hurtT > 0 ? Math.round(rnd(-1, 1)) : 0;
+    if (S.kind === "stall") {
+      const mg = portrait("magpieBody"); if (mg) drawSpr(c, mg, x + 4 + sh, y - mg.h - 6);
+      c.fillStyle = "#1a1424"; c.fillRect(x - 15 + sh, y - 12, 30, 12); c.fillStyle = "#3a2a46"; c.fillRect(x - 15 + sh, y - 13, 30, 2);
+      for (let i = 0; i < 4; i++) { c.fillStyle = ["#8f5340", "#625d7d", "#c08d1a", "#3b374f"][i]; c.fillRect(x - 12 + i * 7 + sh, y - 18, 5, 5); }
+      c.fillStyle = "#302c41"; c.fillRect(x - 15 + sh, y - 30, 1, 18); c.fillRect(x + 14 + sh, y - 30, 1, 18);
+      for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? "#16121f" : COL.magenta; c.fillRect(x - 16 + i * 4 + sh, y - 32, 4, 4); }
+      c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 28, 16, COL.magenta, .25); c.restore();
+    } else { // server rack, on its own or riding the cargo crane
+      if (S.kind === "cargo") { c.fillStyle = "#3b374f"; c.fillRect(x - 14, y - 2, 28, 3); c.fillStyle = "#9090ad"; c.fillRect(x, 6, 1, y - 30); c.fillRect(x - 3, y - 31, 7, 2); }
+      c.fillStyle = "#14121f"; c.fillRect(x - 9 + sh, y - 28, 18, 26); c.fillStyle = "#2b2840"; c.fillRect(x - 9 + sh, y - 28, 18, 2);
+      for (let i = 0; i < 5; i++) { c.fillStyle = (Math.floor(t / 200) + i) % 3 ? "#2be4ff" : "#1a5a6a"; c.fillRect(x - 6 + sh, y - 24 + i * 4, 3, 1); c.fillStyle = "#2a2640"; c.fillRect(x - 1 + sh, y - 24 + i * 4, 7, 2); }
+      c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 14, 14, COL.cyan, .2); c.restore();
+      if (S.kind === "cargo" && !S.moving && S.prog < 1) txt(c, S.contested ? "BLOCKED" : "STAY CLOSE", x, y - 46, rgba(S.contested ? COL.red : COL.cyan, .7 + .3 * Math.sin(t * .01)), 8, "center");
+    }
     c.fillStyle = "#2a2640"; c.fillRect(x - 15, y - 38, 30, 2); c.fillStyle = S.hp / S.max < .3 && Math.floor(t / 120) % 2 ? "#ffffff" : COL.magenta; c.fillRect(x - 15, y - 38, Math.round(30 * S.hp / S.max), 2); }
   if (G.gates) G.gates.forEach(q => { const x = Math.round(q.x), y = Math.round(q.y), live = gateActive(q), col = q.done ? "#9dff4a" : live ? COL.cyan : "#3a3456", gg = gateGoal();
     c.fillStyle = "#16121f"; c.fillRect(x - 5, y - 18, 10, 18); c.fillStyle = "#302c41"; c.fillRect(x - 5, y - 18, 10, 1); c.fillStyle = col; c.fillRect(x - 3, y - 15, 6, 4);
     c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 13, 10, col, .5); c.restore();
     if (live) txt(c, Math.hypot(G.p.x - x, G.p.y - y) < 18 ? gg.verb : gg.noun, x, y - 30, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); });
+  for (const e of G.en) { if (!e.alive || (e.type !== "widow" && e.type !== "archivist")) continue; const s2 = sprOf(e.type, e.face);
+    if (e.type === "widow" && e.state === "cab") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 26, 14, COL.cyan, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "CAB OPEN", e.x, e.y - 58, rgba(COL.cyan, .9), 8, "center"); }
+    if (e.type === "archivist") { if (e.state === "exposed") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24 - e.alt, 18, COL.cyan, .8); c.restore(); txt(c, "EXPOSED", e.x, e.y - 60, COL.cyan, 8, "center"); }
+      else { c.strokeStyle = rgba(COL.magenta, .5 + .3 * Math.sin(t * .02)); c.beginPath(); c.arc(e.x, e.y - 22 - e.alt, 22, 0, TAU); c.stroke(); } }
+    if (e.hurt > 0) { c.save(); c.globalAlpha = e.hurt * 2; c.drawImage(tinted(s2, "#ffffff"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2 - (e.alt || 0))); c.restore(); } }
   for (const e of G.en) { if (!e.alive || e.type !== "cinder") continue;
     if (e.state === "pour") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24, 22, "#ff6a2a", .5 + .3 * Math.sin(t * .05)); c.restore(); }
     if (e.state === "vent") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24, 14, COL.amber, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "VENTING", e.x, e.y - 58, rgba(COL.amber, .9), 8, "center"); }
@@ -337,7 +486,8 @@ function campHudCenter(c, t) {
   if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / 3 : 1; }
   else if (g.type === "kills") { label = `${String(Math.min(dk(), g.n)).padStart(2, "0")}/${g.n} KILLS`; k = dk() / g.n; }
   else if (g.type === "survive") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `SURVIVE ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; k = C.t / g.secs; }
-  else if (g.type === "stall") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `STALL ${Math.ceil(G.stall.hp / G.stall.max * 100)}% · ${s}S`; k = C.t / g.secs; col = G.stall.hp / G.stall.max < .3 ? COL.red : COL.ink; }
+  else if (g.type === "stall" || g.type === "guard") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `${g.type === "stall" ? "STALL" : "RACKS"} ${Math.ceil(stallPct())}% · ${s}S`; k = C.t / g.secs; col = stallPct() < 30 ? COL.red : COL.ink; }
+  else if (g.type === "escort") { const S = G.stalls[0]; label = `CARGO ${Math.floor(S.prog * 100)}% · HP ${Math.ceil(S.hp / S.max * 100)}`; k = S.prog; col = S.hp / S.max < .3 ? COL.red : COL.ink; }
   else if (g.type === "gates") { const n = G.gates.filter(q => q.done).length; label = `${gateGoal().noun}S ${n}/${G.gates.length}`; k = n / G.gates.length; }
   else if (g.type === "boss") { label = `${String(Math.min(dk(), G.rules.boss)).padStart(2, "0")}/${G.rules.boss} · DRAW OUT`; k = dk() / G.rules.boss; }
   panel(c, x, 6, 108, 24, "#3a3456"); txt(c, label, W / 2, 9, col, 8, "center");
@@ -363,7 +513,7 @@ function updateCamp(rdt) {
   if (G.campView === "archive") {
     const all = allChapters(), n = all.length; if (hit("escape") || hit("lmb") && mouse.y > 240) { G.campView = "list"; G.menuMode = null; return; }
     if (hit("arrowup") || hit("w")) G.archSel = (G.archSel + n - 1) % n; if (hit("arrowdown") || hit("s")) G.archSel = (G.archSel + 1) % n;
-    all.forEach((ch, i) => { if (hit("lmb") && inBox([20, 48 + i * 13, 150, 12], mouse.x, mouse.y)) G.archSel = i; });
+    all.forEach((ch, i) => { if (hit("lmb") && inBox([20, 50 + i * 11, 150, 11], mouse.x, mouse.y)) G.archSel = i; });
     if (hit("enter") || hit(" ")) { G.campView = "list"; G.menuMode = null; } return;
   }
   if (hit("escape")) { G.mode = "title"; G.menuMode = null; return; }
@@ -402,7 +552,7 @@ function drawCamp(c, t) {
 }
 function drawArchive(c, t) {
   const S = SAVE.camp, all = allChapters(); txt(c, "THE NIGHT OF FEATHERS, AS WITNESSES SAW IT", GW / 2, 42, COL.dim, 8, "center");
-  all.forEach((n, i) => { const got = S.shards[n], on = i === G.archSel, y = 54 + i * 13; if (on) { c.fillStyle = rgba(COL.magenta, .14); c.fillRect(20, y - 2, 150, 12); }
+  all.forEach((n, i) => { const got = S.shards[n], on = i === G.archSel, y = 52 + i * 11; if (on) { c.fillStyle = rgba(COL.magenta, .14); c.fillRect(20, y - 2, 150, 11); }
     txt(c, got ? CHAPTERS[n].shard.title.split(" · ")[0] : "LOG " + String(n).padStart(2, "0"), 28, y, got ? (on ? COL.magenta : COL.ink) : "#3a3456"); txt(c, got ? "" : "MISSING", 164, y, "#3a3456", 8, "right"); });
   const n = all[G.archSel], sh = CHAPTERS[n].shard; panel(c, 180, 52, 284, 170, COL.magenta);
   if (S.shards[n]) { txt(c, sh.title, 190, 60, COL.magenta); wrapText(c, fillName(sh.text).toUpperCase(), 264).forEach((l, i) => txt(c, l, 190, 76 + i * 11, COL.ink)); }

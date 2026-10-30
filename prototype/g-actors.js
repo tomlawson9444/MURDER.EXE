@@ -40,7 +40,7 @@ function explode(x, y, r, src, safe) {
   fx(x, y, 34, [COL.amber, "#fff0c8", COL.red, "#2a2440"], 120, .8);
   for (const e of G.en) if (e.alive && Math.hypot(e.x - x, e.y - y) < r && !BOSSY.has(e.type)) killEnemy(e, "blast");
   if (!safe && Math.hypot(G.p.x - x, G.p.y - y) < r) playerDie("blast");
-  if (G.stall && Math.hypot(G.stall.x - x, G.stall.y - 8 - y) < r + 10) hurtStall(30);
+  blastStalls(x, y, r);
   if (outer) { track("blast", G.blastCount); G.blastCount = null; }
   const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
   for (let j = ty - 1; j <= ty + 1; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === "c") breakTile(i, j); if (ch === "b" && !(i === tx && j === ty)) setTimeout(() => G.grid.at(i, j) === "b" && detonateBarrel(i, j), 120); }
@@ -101,7 +101,7 @@ function updateOC(rdt) {
 function hackTarget() {
   let best = null, bd = 22;
   for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0), d = Math.hypot(e.x - mouse.x, ey - mouse.y);
-    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !((e.type === "ferryman" || e.type === "cinder") && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
+    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !(["ferryman", "cinder", "widow", "archivist"].includes(e.type) && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
   if (best) return best;
   for (const g of G.gates || []) { const d = Math.hypot(g.x - mouse.x, g.y - 13 - mouse.y); if (!g.done && d < 18) return { kind: "gate", g, x: g.x, y: g.y - 13, r: 9 }; }
   const tx = Math.floor(mouse.x / TS), ty = Math.floor(mouse.y / TS); let td = 99;
@@ -191,6 +191,9 @@ function updateEnemy(e, dt) {
     case "blackwing": updateBoss(e, dt, d); break;
     case "ferryman": updFerry(e, dt, d); break;
     case "cinder": updCinder(e, dt, d); break;
+    case "widow": updWidow(e, dt, d); break;
+    case "archivist": updArchivist(e, dt); break;
+    case "echo": updEcho(e, dt); break;
   }
 }
 
@@ -221,14 +224,14 @@ function updateBullets(dt) {
       }
       if (G.tram && G.tram.state === "run" && b.y > G.tram.row * TS - 10 && b.y < (G.tram.row + 1) * TS && b.x > G.tram.x && b.x < G.tram.x + 288) { b.life = 0; break; }
       if (b.owner === "p") {
-        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman" || e.type === "cinder", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
+        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman" || e.type === "cinder" || e.type === "widow" || e.type === "archivist", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
           if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
           if (e.hp > 1) { hurtBoss(e); b.life = 0; break; }
           killEnemy(e, "shot"); if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;
       } else {
-        if (stallHit(b)) { hurtStall(8); b.life = 0; break; }
+        const sh = stallHit(b); if (sh) { hurtStall(sh, 8); b.life = 0; break; }
         const dx = b.x - p.x, dy = b.y - (p.y - BODY), dd = Math.hypot(dx, dy);
         if (dd < p.hitR) { playerDie(b.by); b.life = 0; break; }
         if (dd < 11 && !b.grazed && G.mode === "play") { b.grazed = true; p.oc = Math.min(p.ocMax, p.oc + (hasImp("graze") ? 10 : 5)); track("graze"); AU.sfx("graze"); pop(p.x, p.y - 32, "GRAZE", COL.cyan); }

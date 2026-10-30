@@ -17,10 +17,13 @@ const SPEAKERS = {
   augur: { name: "THE AUGUR", col: COL.magenta },
   dex: { name: "DEX MORROW", col: "#c9b6ff", trust: "dex" },
   cinder: { name: "CINDER", col: "#ff8a3a" },
+  widow: { name: "WIDOW CRANE", col: "#9ad8ff" },
+  archivist: { name: "THE ARCHIVIST", col: COL.cyan, glitch: true },
   sys: { name: "SYSTEM", col: COL.dim },
 };
 
-const ACTS = [{ n: 1, name: "WET FEATHERS", chapters: [1, 2, 3, 4, 5, 6] }, { n: 2, name: "THE ROOST", chapters: [7, 8, 9, 10, 11, 12] }];
+const ACTS = [{ n: 1, name: "WET FEATHERS", chapters: [1, 2, 3, 4, 5, 6] }, { n: 2, name: "THE ROOST", chapters: [7, 8, 9, 10, 11, 12] },
+  { n: 3, name: "COLD STORAGE", chapters: [13, 14, 15, 16, 17, 18] }];
 
 const CHAPTERS = {
   1: { act: 1, title: "WET FEATHERS", district: "market", map: { key: "market" }, goal: "SURVIVE THE AMBUSH",
@@ -414,5 +417,188 @@ const CHAPTERS = {
       ["corvus", "YOU FOUND THE BODIES. NOW FIND THE MINDS. COME TO THE DOCKS, {FIRST}."],
       ["sys", "END OF ACT 2 · THE ROOST."],
     ] },
+  /* ===== ACT 3 · COLD STORAGE ===== */
+  13: { act: 3, title: "CONTAINER MAZE", district: "docks", map: { fam: "docks", seed: 1313, arch: "CONTAINER YARD" }, goal: "FIGHT THROUGH THE FOG",
+    rules: { goal: { type: "kills", n: 35 }, p2: null, boss: null, heatBase: 1, fog: .78 },
+    brief: [
+      ["sys", "Saltgate Docks. Fog rolls off the harbour so thick the cranes vanish halfway up."],
+      ["magpie", "The Kiln manifest points here. Container 7-7-Black. Whatever the Murder are shipping, it's in this yard."],
+      ["vane", "Halvorsen has a recovery team on the docks. Captain Holt. Stay out of their way."],
+      { c: [
+        { s: "cold", t: "I'll stay out of their way if they stay out of mine.", then: [["vane", "That's all I ask."]] },
+        { s: "ask", t: "Recovering what, exactly?", fx: { vane: -1 }, then: [["vane", "Company property."]] },
+        { s: "hard", t: "Call them off, or they're targets too.", fx: { vane: -1 }, then: [["vane", "...You wouldn't."]] },
+        { s: "origin", o: "corpo", t: "Holt trained me. He's slow on his left.", fx: { vane: 1 }, then: [["vane", "Then keep to his left."]] },
+      ] },
+      ["sys", "You can barely see ten metres. Watch for eyes in the fog and listen for the tells."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Fog's too thick for optics. Watch for glowing eyes and listen for the caws." },
+      { on: "t:15", who: "vane", t: "Holt's team is sweeping the east berths. Don't get in their line of fire." },
+      { on: "k:15", who: "corvus", t: "WE SEE YOU. DO YOU SEE US?" },
+      { on: "k:25", if: s => s.flags.freed, who: "wren", t: "The yard's thinning out. The black container is on the north side." },
+      { on: "k:25", if: s => !s.flags.freed, who: "magpie", t: "The yard's thinning out. The black container is on the north side." },
+    ],
+    shard: { on: "k:12", title: "LOG 13 · CAPTAIN HOLT", text: "Recovery order, Saltgate. Retrieve racks 1 to 40 intact. Contents: Halvorsen intellectual property. Do not let the asset named {LAST} open them." },
+    outro: [
+      ["sys", "Container 7-7-Black. Inside: server racks, humming and cold. Forty of them."],
+      ["magpie", "Racks? They're smuggling hard drives?"],
+      ["corvus", "NOT DRIVES. PEOPLE. WHAT IS LEFT OF THEM."],
+      { c: [
+        { s: "ask", t: "Who's in there?", fx: { res: 1 }, then: [["corvus", "EVERYONE WHO SAID YES. EVERYONE WHO SAID NO."]] },
+        { s: "cold", t: "Then they're coming with me.", then: [["magpie", "Of course they are."]] },
+        { s: "hard", t: "...Dex?", fx: { dex: 1 }, then: [["corvus", "NOT YET."]] },
+      ] },
+    ] },
+
+  14: { act: 3, title: "BLACK CARGO", district: "docks", map: { fam: "docks", seed: 1414, arch: "PLAZA" }, goal: "ESCORT THE CARGO CRANE",
+    rules: { goal: { type: "escort", hp: 100 }, p2: null, boss: null, heatBase: 1, timeHeat: 30, fog: .45 },
+    brief: [
+      ["magpie", "I hacked the yard crane. It'll haul the racks to the Datacrypt barge, but only while you're right beside it."],
+      ["vane", "Those racks are Halvorsen property, Kade. Holt's team will collect them."],
+      { c: [
+        { s: "cold", t: "They're going to the Datacrypt. Somewhere safe.", fx: { vane: -1 }, then: [["vane", "Safe. From whom?"]] },
+        { s: "hard", t: "Holt can take it up with me.", fx: { vane: -2, flag: "defiedHolt" }, then: [["vane", "He will."]] },
+        { s: "ask", t: "What does Halvorsen want with forty minds?", fx: { res: 1 }, then: [["vane", "Insurance."]] },
+      ], timer: 12, silent: { t: "(Say nothing.)", then: [["vane", "Good. Silence suits you."]] } },
+      ["magpie", "Stay close to the crane. If you wander off, or anything climbs on it, it stops."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Walk beside the crane. Enemies near it stop it, and stray shots hurt the racks." },
+      { on: "cargo:50", who: "magpie", t: "Halfway to the barge!" },
+      { on: "stall:50", who: "magpie", t: "The racks are taking hits! Keep them off it!" },
+      { on: "t:40", who: "corvus", t: "CARRY US, {FIRST}. CARRY US HOME." },
+      { on: "cargo:85", if: s => s.flags.freed, who: "wren", t: "I can see the barge lights!" },
+    ],
+    shard: { on: "t:30", title: "LOG 14 · RACK 19", text: "Rack 19 occupant: Ilse Morrow, age 12. Uploaded at her brother's request, after the treatments failed." },
+    outro: [
+      ["sys", "The barge takes the racks. Overhead, something long and white uncoils from the crane gantry."],
+      ["magpie", "That's not a crane. That's the Widow."],
+      ["widow", "You stole my cargo, little bird. I deliver what I carry. Always."],
+    ] },
+
+  15: { act: 3, title: "WIDOW CRANE", district: "docks", map: { fam: "docks", seed: 1515, arch: "CONTAINER YARD" }, goal: "BRING DOWN THE WIDOW",
+    rules: { goal: { type: "boss" }, p2: null, boss: 12, heatBase: 1 },
+    brief: [
+      ["widow", "Every container in this yard is mine, {LAST}. Every one of them can fall on you."],
+      { c: [
+        { s: "sharp", t: "I'll stand under the cheap ones.", then: [["widow", "They're all cheap. You're not."]] },
+        { s: "hard", t: "Come down here and say that.", then: [["widow", "I never come down."]] },
+        { s: "ask", t: "Who are you working for?", fx: { flag: "widowDouble" }, then: [["widow", "Mother pays in wings. Halvorsen pays in chrome. I take both."]] },
+        { s: "origin", o: "merc", t: "I know your rig. The cab bolts are rusted through.", then: [["widow", "Then aim well."]] },
+      ] },
+      ["sys", "A shadow on the floor means a container is coming down. Her cab opens after every drop. That's your window."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Thin them out. She'll come down for you herself." },
+      { on: "boss", who: "magpie", t: "Shadows mean containers. Shoot the cab when it opens." },
+      { on: "hp:2", who: "vane", t: "Kade, Holt's team is on the gantry. Let them take her alive." },
+      { on: "hp:1", who: "corvus", t: "THE WEB IS FRAYING." },
+    ],
+    shard: { on: "k:6", title: "LOG 15 · WIDOW'S CONTRACTS", text: "Halvorsen pays 80,000 for every rack delivered to the Spire. The Murder pay 80,000 for every rack delivered to the Nest. I deliver to whoever pays first." },
+    outro: [
+      ["widow", "...Halvorsen pays... better than Mother..."],
+      { if: s => s.flags.widowDouble, then: [["magpie", "So Halvorsen and the Murder were paying the same courier. Cosy."]] },
+      ["vane", "The Widow worked for us. That is not public information. Kade, the Datacrypt. Bring me the racks. All of them."],
+      { c: [
+        { s: "cold", t: "I'll bring you the truth. That's all.", then: [["vane", "Truth doesn't pay."]] },
+        { s: "hard", t: "Halvorsen paid for this whole mess.", fx: { vane: -1 }, then: [["vane", "Halvorsen pays for everything, Kade. Including you."]] },
+        { s: "ask", t: "Why do you need forty minds, Saskia?", fx: { flag: "vaneSlip" }, then: [["vane", "To finish what we started."]] },
+      ] },
+    ] },
+
+  16: { act: 3, title: "COLD STORAGE", district: "datacrypt", map: { fam: "serverhalls", seed: 1616, arch: "SERVER AISLES" }, goal: "KEEP 4 RACKS ONLINE",
+    rules: { goal: { type: "guard", kind: "rack", n: 4, hp: 60, secs: 80 }, p2: null, boss: null, heatBase: 1, timeHeat: 25,
+      pool: [["carrion", 0, 4], ["shrike", 0, 3], ["rook", 0, 2], ["hexer", 1, 2], ["corvid", 1, 2]] },
+    brief: [
+      ["sys", "The Datacrypt. Halvorsen's cold archive under the river. Every mind the Murder took is stored here, on ice."],
+      ["vane", "My team is on the way. Keep the racks running until they arrive."],
+      ["magpie", "Your team, Director? Or the Murder? Because something is coming through the doors."],
+      { c: [
+        { s: "cold", t: "Hold the racks. Then we talk.", then: [["vane", "Then we talk."]] },
+        { s: "ask", t: "What happens to them after Halvorsen collects?", fx: { vane: -1 }, then: [["vane", "They get to be useful."]] },
+        { s: "hard", t: "If your team touches a rack, they're targets.", fx: { vane: -1, flag: "threatVane" }, then: [["vane", "...You've changed, Kade."]] },
+        { s: "origin", o: "netrunner", t: "I'm locking the racks to my deck. Nobody moves them without me.", fx: { magpie: 1, flag: "lockedRacks" }, then: [["magpie", "Ha. Now that's leverage."]] },
+      ] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Four racks. Carrions go straight for them. Don't let a single rack go dark." },
+      { on: "stall:60", who: "magpie", t: "Rack integrity dropping!" },
+      { on: "t:40", who: "corvus", t: "WE ARE COLD. WE ARE SO COLD." },
+      { on: "t:55", who: "vane", t: "Hold. Twenty-five seconds." },
+    ],
+    shard: { on: "t:30", title: "LOG 16 · CRYO TECH", text: "Every rack runs warm on its first night. After that the minds stop dreaming and start listening. They all listen to the same voice." },
+    outro: [
+      ["sys", "Halvorsen troops in white armour pour in. Behind them walks Director Vane."],
+      ["vane", "Good work. Step away from the racks."],
+      { c: [
+        { s: "hard", t: "No.", fx: { vane: -2, flag: "defiedVane" }, then: [["vane", "...Noted."]] },
+        { s: "cold", t: "When I know what's in them.", fx: { vane: -1 }, then: [["vane", "You won't like it."]] },
+        { s: "ask", t: "What will you do with them?", then: [["vane", "Sell them back to the flock if we have to. Or burn them. Whichever is cheaper."]] },
+      ], timer: 12, silent: { t: "(Step aside.)", fx: { vane: 1, flag: "gaveRacks" }, then: [["sys", "You step aside. Vane's troops begin loading the racks."]] } },
+    ] },
+
+  17: { act: 3, title: "DEEP INDEX", district: "datacrypt", map: { fam: "serverhalls", seed: 1717, arch: "COLD VAULT" }, goal: "READ 5 INDEX NODES IN ORDER",
+    rules: { goal: { type: "gates", n: 5, noun: "NODE", verb: "READING", done: "READ", secs: 2.2, seq: true }, p2: null, boss: null, heatBase: 1, timeHeat: 30,
+      pool: [["hexer", 0, 4], ["shrike", 0, 3], ["rook", 0, 2], ["carrion", 1, 2], ["corvid", 1, 2]] },
+    brief: [
+      ["magpie", "While Vane plays landlord, we read the index. Five archive nodes. Read them in order and we'll know whose minds are in here."],
+      ["corvus", "READ US, {FIRST}. READ YOURSELF."],
+      { c: [
+        { s: "ask", t: "Search for Dex Morrow.", fx: { dex: 1, flag: "searchDex" }, then: [["magpie", "Adding him."]] },
+        { s: "cold", t: "Search for anything on CORVUS.", fx: { res: 1 }, then: [["magpie", "That's... everything. Fine."]] },
+        { s: "hard", t: "Search for Saskia Vane.", fx: { vane: -1, flag: "searchVane" }, then: [["magpie", "Ooh. Spicy."]] },
+      ] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Nodes light up in order. Hexers will lock your hacks, so shoot them first." },
+      { on: "gate:2", who: "corvus", t: "YOU ARE GETTING WARMER." },
+      { on: "gate:4", who: "corvus", t: "ALMOST THERE. ALMOST HOME." },
+    ],
+    shard: { on: "k:10", title: "LOG 17 · ARCHIVE INDEX", text: "Rack 19: Ilse Morrow. Rack 20: Dex Morrow (partial). Template rack 00: {NAME}. Status: active since the Night of Feathers." },
+    outro: [
+      ["magpie", "Found Dex. He uploaded his little sister, Ilse. She was sick. The flock promised to keep her alive."],
+      ["dex", "...You read my file. Of course you did."],
+      { c: [
+        { s: "cold", t: "I'm keeping it. Someone should remember her.", fx: { dex: 1, flag: "keptFile" }, then: [["dex", "...Thanks, partner."]] },
+        { s: "hard", t: "You joined a cult, Dex.", fx: { dex: -1 }, then: [["dex", "I joined a family that wouldn't let her die."]] },
+        { s: "ask", t: "Is Ilse still... in there?", fx: { dex: 2 }, then: [["dex", "Rack 19. She hums when it rains."]] },
+      ], timer: 12, silent: { t: "(Say nothing.)", then: [["dex", "...Yeah. I wouldn't have the words either."]] } },
+      ["magpie", "And {FIRST}... template rack 00. It has your name on it."],
+    ] },
+
+  18: { act: 3, title: "THE ARCHIVIST", district: "datacrypt", map: { fam: "serverhalls", seed: 1818, arch: "CORE HALL" }, goal: "DELETE THE ARCHIVIST",
+    rules: { goal: { type: "boss" }, p2: null, boss: 14, heatBase: 1 },
+    brief: [
+      ["archivist", "I keep everything, {LAST}. Every step you take is filed. Let me show you your own handwriting."],
+      { c: [
+        { s: "sharp", t: "Bet it's messy.", then: [["archivist", "Illegible. Like all the best minds."]] },
+        { s: "hard", t: "File this.", then: [["archivist", "Already filed."]] },
+        { s: "ask", t: "What is rack 00?", fx: { res: 1 }, then: [["archivist", "The first mind. The seed. The template. You."]] },
+        { s: "origin", o: "ghost", t: "You can't file what you never saw.", then: [["archivist", "I saw everything. Even you."]] },
+      ] },
+      ["sys", "It hides behind echoes of you that replay your own movements. Break every echo, then shoot it while it's exposed."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Stay moving. Everything you do in here is being recorded." },
+      { on: "boss", who: "magpie", t: "Kill the echoes. When the last one breaks, it's exposed." },
+      { on: "hp:2", who: "corvus", t: "YOU ARE FIGHTING YOURSELF. HOW FAMILIAR." },
+      { on: "hp:1", if: s => s.trust.dex >= 2, who: "dex", t: "Hit it, partner! It's wide open!" },
+    ],
+    shard: { on: "k:6", title: "LOG 18 · THE TEMPLATE", text: "Night of Feathers, 22:58. Neural template taken from the enforcer on duty, without consent. Authorised: S. Vane. Purpose: give the swarm a human mind to grow around." },
+    outro: [
+      ["archivist", "...File closed. You are the seed, {LAST}. CORVUS grew around your mind like ivy on a wall."],
+      ["sys", "The night of the upload, Halvorsen copied your mind to seed CORVUS. That's why your quickhacks work on the swarm. That's why it knows your name."],
+      ["corvus", "WE ARE YOU. WE ALWAYS WERE. COME INSIDE, {FIRST}. WE WILL NOT EAT YOU."],
+      ["vane", "Kade. Whatever it told you..."],
+      { c: [
+        { s: "hard", t: "You copied my mind. You built a god out of me.", fx: { vane: -2, flag: "knowsVane" }, then: [["vane", "I built a weapon. You were simply the best raw material."]] },
+        { s: "cold", t: "We're done, Director.", fx: { vane: -1, flag: "quitVane" }, then: [["vane", "We're done when I say we're done."]] },
+        { s: "ask", t: "Why me?", then: [["vane", "Because you never hesitated. CORVUS needed that."]] },
+      ] },
+      ["magpie", "{FIRST}... we need to talk. About something I did. Meet me in the Stacks."],
+      ["sys", "END OF ACT 3 · COLD STORAGE."],
+    ] },
 };
+
 
