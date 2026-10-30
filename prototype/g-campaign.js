@@ -298,9 +298,27 @@ function wrenDown() { SAVE.camp.flags.wrenDead = true; persist(); radio("magpie"
 
 /* ---- Hold a zone, and extract to a van ---- */
 function placeZone() { const q = guardSpots(1, 0, true)[0]; G.zone = { x: q.x, y: q.y, r: 30, prog: 0 }; }
+// Magpie's van: dark purple, magenta stripe, a magpie on the side door.
+DEFS.van = { w: 50, h: 28, parts: [
+  R("coat", 2, 6, 40, 16), Pl("coat", [[40, 6], [44, 9], [48, 14], [48, 22], [40, 22]]), R("armor", 3, 3, 33, 4), R("chrome", 3, 3, 33, 1),
+  Pl("gun", [[40, 8], [44, 10], [46, 14], [40, 14]]), R("gun", 30, 8, 8, 6), R("cyanE", 31, 9, 6, 1), R("cyanE", 41, 10, 2, 1),
+  R("magE", 2, 16, 46, 1), R("coatIn", 2, 18, 46, 3), L("armor", 18, 7, 18, 21), L("armor", 29, 7, 29, 21),
+  Px("bone", [[22, 10], [23, 10], [24, 11], [21, 11], [22, 12], [25, 12], [23, 13]]), Px("cyanE", [[24, 10]]),
+  R("chrome", 44, 20, 5, 2), R("ambE", 47, 15, 2, 3), R("redE", 1, 8, 2, 4),
+  E("boot", 11, 23, 4.5, 4.5), E("boot", 38, 23, 4.5, 4.5), E("chrome", 11, 23, 1.6, 1.6), E("chrome", 38, 23, 1.6, 1.6),
+] };
+// The van pulls up on open ground (room for its body) and drives in from the nearest side of the map.
 function placeExit() { buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0;
-  const q = floorSpots(0).filter(reach).sort((a, b) => Math.hypot(b.x - G.p.x, b.y - G.p.y) - Math.hypot(a.x - G.p.x, a.y - G.p.y))[0] || { x: GW / 2, y: GH / 2 };
-  G.exit = { x: q.x, y: q.y }; G.banner = { txt: "THE VAN IS HERE · GET TO IT", col: COL.cyan, life: 2.6 }; AU.sfx("milestone"); }
+  const roomy = q => { const tx = Math.floor(q.x / TS), ty = Math.floor(q.y / TS); for (let j = ty - 1; j <= ty; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === null || WALK_BLOCK.has(ch) || ch === "o") return false; } return q.y > 70; };
+  const all = floorSpots(0).filter(reach), far = (a, b) => Math.hypot(b.x - G.p.x, b.y - G.p.y) - Math.hypot(a.x - G.p.x, a.y - G.p.y);
+  const q = all.filter(roomy).sort(far)[0] || all.sort(far)[0] || { x: GW / 2, y: GH / 2 };
+  if (!SP.van) { SP.van = sprite(DEFS.van, { rimR: COL.magenta, rimL: "#7f74c9" }); SPF.van = flipSpr(SP.van); }
+  const fromLeft = q.x < GW / 2; G.exit = { x: q.x, y: q.y, vx: fromLeft ? -60 : GW + 60, face: fromLeft ? 1 : -1, arriveT: 1.4, open: false };
+  G.banner = { txt: "MAGPIE'S VAN IS PULLING IN", col: COL.cyan, life: 2 }; AU.sfx("tramRun"); }
+function updateVan(dt) {
+  const V = G.exit; if (!V || V.open) return; V.arriveT -= dt; const k = Math.max(0, V.arriveT / 1.4), e = k * k; V.dx = (V.vx - V.x) * e;
+  if (V.arriveT <= 0) { V.open = true; V.dx = 0; G.banner = { txt: "THE VAN IS HERE · GET IN", col: COL.cyan, life: 2.2 }; AU.sfx("milestone"); fx(V.x, V.y - 4, 16, ["#9aa4c8", "#2a2440"], 50, .5); }
+}
 
 /* ---- SCARECROW: plants drone nests on the walls and calls the flock ---- */
 NAMES.scarecrow = "SCARECROW"; FLYING.add("scarecrow"); BOSSY.add("scarecrow");
@@ -543,8 +561,8 @@ function campTick(dt) {
   if (G.zone) { const Z = G.zone, inside = Math.hypot(p.x - Z.x, p.y - Z.y) < Z.r; Z.contested = inside && G.en.some(e => e.alive && !FLYING.has(e.type) && Math.hypot(e.x - Z.x, e.y - Z.y) < Z.r); Z.inside = inside;
     if (inside && !Z.contested) Z.prog = Math.min(1, Z.prog + dt / g.secs);
     if (R.wrenAt != null && SAVE.camp.flags.leftThem && !C.wrenOut && Z.prog >= R.wrenAt) { C.wrenOut = true; spawnWrenc(); } }
-  if (g.type === "extract" && !G.exit && C.t >= g.secs) placeExit();
-  const win = (g.type === "kills" && dk() >= g.n) || (g.type === "hold" && G.zone.prog >= 1) || (g.type === "extract" && G.exit && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 18) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
+  if (g.type === "extract" && !G.exit && C.t >= g.secs) placeExit(); updateVan(dt);
+  const win = (g.type === "kills" && dk() >= g.n) || (g.type === "hold" && G.zone.prog >= 1) || (g.type === "extract" && G.exit && G.exit.open && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 24) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
   if (win) campWin();
 }
 function campWin() {
@@ -595,7 +613,12 @@ function campDrawFloor(c, t) {
   if (G.zone) { const Z = G.zone, col = Z.contested ? COL.red : Z.inside ? COL.cyan : COL.amber; c.save(); c.translate(Z.x, Z.y); c.scale(1, .62); c.strokeStyle = rgba(col, .5); c.beginPath(); c.arc(0, 0, Z.r, 0, TAU); c.stroke();
     c.fillStyle = rgba(col, .08); c.fill(); c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, Z.r, -Math.PI / 2, -Math.PI / 2 + TAU * Z.prog); c.stroke(); c.restore();
     txt(c, Z.contested ? "CONTESTED" : Z.inside ? "HOLDING" : "HOLD HERE", Z.x, Z.y - 32, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); }
-  if (G.exit) { const on = .6 + .4 * Math.sin(t * .01); c.save(); c.globalCompositeOperation = "lighter"; glow(c, G.exit.x, G.exit.y - 8, 22, COL.cyan, .5 * on); c.restore(); c.strokeStyle = rgba(COL.cyan, on); c.strokeRect(G.exit.x - 12.5, G.exit.y - 14.5, 25, 16); txt(c, "VAN", G.exit.x, G.exit.y - 28, COL.cyan, 8, "center"); }
+  if (G.exit && SP.van) { const V = G.exit, s2 = V.face < 0 ? SPF.van : SP.van, x = Math.round(V.x + (V.dx || 0)), y = Math.round(V.y), idle = V.open && Math.floor(t / 90) % 2 ? 1 : 0;
+    // headlight beams, shadow, then the van; the side door glows once it has stopped
+    c.save(); c.globalCompositeOperation = "lighter"; const hx = x + V.face * 24; c.fillStyle = "rgba(255,210,120,.10)"; c.beginPath(); c.moveTo(hx, y - 10); c.lineTo(hx + V.face * 70, y - 28); c.lineTo(hx + V.face * 70, y + 6); c.fill(); glow(c, hx, y - 9, 10, COL.amber, .6); c.restore();
+    c.fillStyle = "rgba(0,0,0,.45)"; c.beginPath(); c.ellipse(x, y + 1, 24, 4, 0, 0, TAU); c.fill();
+    drawSpr(c, s2, x - s2.w / 2, y - s2.h + 3 - idle);
+    if (V.open) { const on = .5 + .5 * Math.sin(t * .01); c.save(); c.globalCompositeOperation = "lighter"; glow(c, x - V.face * 1, y - 12, 16, COL.cyan, .5 * on); c.restore(); txt(c, "GET IN", x, y - 40, rgba(COL.cyan, .7 + .3 * on), 8, "center"); } }
   for (const d of G.drops || []) if (d.state === "warn") { const on = Math.floor(t / 90) % 2, x = d.tiles[0][0] * TS, y = d.tiles[0][1] * TS, k = 1 - d.t / 1.4;
     c.fillStyle = `rgba(0,0,0,${.25 + .4 * k})`; c.fillRect(x + 6 - 6 * k, y + 6 - 6 * k, 20 + 12 * k, 20 + 12 * k); c.strokeStyle = on ? COL.amber : rgba(COL.amber, .5); c.strokeRect(x + .5, y + .5, 31, 31); }
   for (const v of G.vents || []) { const on = Math.floor(t / 100) % 2;
