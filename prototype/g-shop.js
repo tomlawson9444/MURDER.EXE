@@ -27,7 +27,7 @@ const LINES = {
 };
 const say = k => { const l = LINES[k]; G.shop.line = l[Math.random() * l.length | 0]; G.shop.lineT = 0; };
 let SHOPBG = null;
-function shopSprites() { if (SP.magpie) return; ["magpie", "coil", "breacher", "hornet"].forEach(k => SP[k] = sprite(DEFS[k], k === "magpie" ? { rimR: COL.magenta, rimL: COL.cyan } : { rimR: COL.cyan })); SP.kestrel = SP.kestrel || sprite(DEFS.kestrel, { rimR: COL.cyan }); SP.rail = SP.rail || sprite(DEFS.rail, { rimR: COL.cyan }); ["harpoon", "bellows", "repeater", "wasp", "requiem"].forEach(k => SP[k] = SP[k] || sprite(DEFS[k], { rimR: COL.amber })); }
+function shopSprites() { if (SP.magpie) return; ["magpie", "coil", "breacher", "hornet"].forEach(k => SP[k] = sprite(DEFS[k], k === "magpie" ? { rimR: COL.magenta, rimL: COL.cyan } : { rimR: COL.cyan })); SP.kestrel = SP.kestrel || sprite(DEFS.kestrel, { rimR: COL.cyan }); SP.rail = SP.rail || sprite(DEFS.rail, { rimR: COL.cyan }); ["harpoon", "bellows", "repeater", "wasp", "requiem"].forEach(k => SP[k] = SP[k] || sprite(DEFS[k], { rimR: COL.amber })); ["duster", "fanhammer", "tripletap", "needler", "cryo", "magnum", "arccaster", "splitter", "pinball", "longbow", "pipe", "wisp"].forEach(k => SP[k] = SP[k] || sprite(DEFS[k], { rimR: COL.cyan })); }
 function buildShopBG() {
   const C = mk(GW, GH), c = C.getContext("2d"), r = rngF(77); c.imageSmoothingEnabled = false;
   c.fillStyle = "#0b0912"; c.fillRect(0, 0, GW, GH);
@@ -51,7 +51,9 @@ function openShop(from) {
   const L = SAVE.loadout; G.mode = "shop"; G.shop = { tab: 0, sel: 0, from, line: "", lineT: 0, mx: mouse.x, my: mouse.y, flash: 0 };
   G.shop.sel = Math.max(0, shopList().findIndex(i => i.id === L.gun)); const f = SAVE.camp && SAVE.camp.flags || {}; say(f.forgaveMagpie ? "warm" : f.cutMagpie ? "cold" : from === "clear" ? "between" : "greet");
 }
-const shopList = () => ITEMS.filter(i => i.cat === CATS[G.shop.tab][0] && (!i.relic || owns(i.id))); // act rewards only show up here once you have them
+// Act rewards only show up here once you have them. Styles are grouped by look slot, everything else cheapest first.
+const shopList = () => { const cat = CATS[G.shop.tab][0], l = ITEMS.filter(i => i.cat === cat && (!i.relic || owns(i.id)));
+  const slotIx = i => LOOK_SLOTS.findIndex(sl => sl.key === i.slot); return l.map((i, k) => [i, k]).sort((a, b) => cat === "style" ? slotIx(a[0]) - slotIx(b[0]) || a[1] - b[1] : (a[0].relic ? 1 : 0) - (b[0].relic ? 1 : 0) || a[0].price - b[0].price || a[1] - b[1]).map(x => x[0]); };
 const equipped = id => { const L = SAVE.loadout, it3 = ITEM[id]; if (it3 && it3.cat === "style") return SAVE.char.look[it3.slot] === it3.value; return L.gun === id || L.oc === id || L.imp.includes(id); };
 function shopStatus(i) { if (equipped(i.id)) return ["EQUIPPED", COL.cyan]; if (owns(i.id)) return [i.relic ? "ACT REWARD" : "OWNED", i.relic ? COL.amber : COL.dim]; if (!available(i)) return ["LOCKED", COL.magenta]; return [priceOf(i) + " SC", SAVE.scrip >= i.price ? COL.amber : COL.red]; }
 function shopConfirm() {
@@ -61,14 +63,14 @@ function shopConfirm() {
   if (owns(i.id)) {
     if (i.cat === "gun") L.gun = i.id; else if (i.cat === "oc") L.oc = i.id;
     else if (L.imp.includes(i.id)) { L.imp = L.imp.filter(x => x !== i.id); say("unequip"); AU.sfx("lock", 0); persist(); return; }
-    else { if (L.imp.length >= 2) L.imp.shift(); L.imp.push(i.id); }
+    else { if (L.imp.length >= IMP_SLOTS) L.imp.shift(); L.imp.push(i.id); }
     say("equip"); AU.sfx("lock", 3); persist(); return;
   }
   if (!available(i)) { say("locked"); AU.sfx("hackFail"); return; }
   if (SAVE.scrip < priceOf(i)) { say("poor"); AU.sfx("hackFail"); G.shop.flash = .4; return; }
   const cost = priceOf(i); SAVE.scrip -= cost; SAVE.owned.push(i.id); say("buy"); AU.sfx("milestone"); AU.sfx("reload"); G.shop.pop = { txt: "-" + cost, life: 1 };
   if (i.cat === "style") { SAVE.char.look[i.slot] = i.value; applyLook(); }
-  else if (i.cat === "gun") L.gun = i.id; else if (i.cat === "oc") L.oc = i.id; else { if (L.imp.length >= 2) L.imp.shift(); L.imp.push(i.id); }
+  else if (i.cat === "gun") L.gun = i.id; else if (i.cat === "oc") L.oc = i.id; else { if (L.imp.length >= IMP_SLOTS) L.imp.shift(); L.imp.push(i.id); }
   persist();
 }
 const ROW_Y = 42, ROW_H = 17, LIST_X = 198, TAB_W = 69, VIS = 8; // 8 rows visible; longer lists scroll
@@ -81,6 +83,7 @@ function updateShop(rdt, actions) {
   if (hit("q") || hit("arrowleft")) tab(-1); if (hit("e") || hit("arrowright") || hit("tab")) tab(1);
   if (hit("arrowup") || hit("w")) { S.sel = (S.sel - 1 + n) % n; AU.sfx("lock", 0); } if (hit("arrowdown") || hit("s")) { S.sel = (S.sel + 1) % n; AU.sfx("lock", 0); }
   if (hit("enter")) shopConfirm();
+  if (G.wheel) { S.sel = Math.max(0, Math.min(n - 1, S.sel + Math.sign(G.wheel) * 3)); G.wheel = 0; }
   if (Math.hypot(mouse.x - S.mx, mouse.y - S.my) > .5) { S.mx = mouse.x; S.my = mouse.y; const row = Math.floor((mouse.y - ROW_Y) / ROW_H); if (mouse.x > LIST_X && mouse.y >= ROW_Y && row >= 0 && row < VIS && S.scroll + row < n) S.sel = S.scroll + row; }
   if (hit("lmb")) {
     const x = mouse.x, y = mouse.y, row = Math.floor((y - ROW_Y) / ROW_H), idx = (S.scroll || 0) + row;

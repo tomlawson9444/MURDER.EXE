@@ -21,6 +21,10 @@ function playerDie(by) {
   G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best; persist();
 }
 
+// Freeze every non-boss enemy within r of (x, y) for secs (Cryo Pistol, Cryo Core, BLACKOUT).
+function stunAround(x, y, r, secs) { for (const e of G.en) if (e.alive && !BOSSY.has(e.type) && Math.hypot(e.x - x, e.y - y) < r) { e.stun = Math.max(e.stun || 0, secs); fx(e.x, e.y - 12, 6, ["#9ff3ff", "#ffffff"], 40, .4); } }
+// Rounds that fly out in a ring from a kill (Requiem feathers, MIRRORSHARD shards).
+function ringShots(x, y, n, col) { const off = Math.random() * TAU; for (let k = 0; k < n; k++) shoot(x, y - 4, off + k / n * TAU, 380, "p", { life: .45, col }); fx(x, y, 12, [col, "#2a2440"], 80, .4); }
 function killEnemy(e, how) {
   if (!e.alive) return;
   if (e.type === "holo") return holoPop(e, how !== "hack");
@@ -31,8 +35,10 @@ function killEnemy(e, how) {
   const pts = Math.round((e.type === D().boss ? 5000 : e.type === "nest" ? 500 : 100) * G.mult); G.score += pts; G.kills += e.type === "corvid" || e.type === "blackwing" ? 1 : 1;
   if (hasImp("aegis") && !G.p.aegis && ++G.p.aegisK >= 20) { G.p.aegis = true; pop(G.p.x, G.p.y - 34, "AEGIS READY", COL.amber); AU.sfx("lock", 4); }
   if (how === "oc" && G.p.ocId === "crown") G.p.ocRefund = (G.p.ocRefund || 0) + 6;
-  G.p.oc = Math.min(G.p.ocMax, G.p.oc + 8); G.p.ram = Math.min(G.p.ramMax, G.p.ram + .5); G.p.streak = (G.p.streak || 0) + 1;
-  earn(scripFor(e)); track("kill", e.type); if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
+  G.p.oc = Math.min(G.p.ocMax, G.p.oc + (hasImp("overcharger") ? 13 : 8));
+  if (how === "hack" && hasImp("cryocore")) stunAround(e.x, e.y, 54, 2);
+  if (hasImp("berserk") && (G.p.streak + 1) % 8 === 0) { G.p.berserk = 4; pop(G.p.x, G.p.y - 34, "BERSERK", COL.red); AU.sfx("charge"); } G.p.ram = Math.min(G.p.ramMax, G.p.ram + .5); G.p.streak = (G.p.streak || 0) + 1;
+  earn(scripFor(e) * (hasImp("bounty") ? 1.4 : 1) * (G.scripMul || 1)); track("kill", e.type); if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
   fx(e.x, e.y - (e.alt || 0) - 8, 16, [COL.magenta, "#2a2440", "#f0ebf6"], 70, .6); pop(e.x, e.y - 26 - (e.alt || 0), "+" + pts);
   AU.sfx("kill", panOf(e.x)); rumble(.4, .3, 90); if (Math.random() < .5) AU.sfx("caw", panOf(e.x)); G.hitstop = .035;
   if (e.type === D().boss && G.camp) { for (const h of G.en) if (h.type === "holo") h.alive = false; earn(200); return campWin(); }
@@ -55,11 +61,13 @@ function detonateBarrel(i, j) { G.grid[j][i] = "."; G.dirty = true; explode(i * 
 function dropSign(i, j) { G.grid[j][i] = "h"; G.dirty = true; AU.sfx("sign"); G.shake = 4; const x = i * TS + 8, y = j * TS + 10;
   fx(x, y, 20, [COL.magenta, COL.cyan, "#ffffff"], 80, .7); for (const e of G.en) if (e.alive && Math.abs(e.x - x) < 20 && Math.abs(e.y - y) < 16) killEnemy(e, "blast"); if (Math.abs(G.p.x - x) < 14 && Math.abs(G.p.y - y) < 12) playerDie("blast"); }
 
-function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [], col: o.col, big: o.big, homing: o.homing, feathers: o.feathers }); }
+function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [], col: o.col, big: o.big, homing: o.homing, feathers: o.feathers, blast: o.blast, arc: o.arc, freeze: o.freeze, vamp: o.vamp, split: o.split }); }
+// The traits a gun's rounds carry.
+function shotOpts(g, focus) { return { pierce: g.pierce, bounce: g.bounce, life: g.life, col: g.col, big: g.big, homing: g.homing, feathers: g.feathers, blast: g.blast, arc: g.arc, freeze: g.freeze, vamp: g.vamp, split: g.split }; }
 
 /* ---- Player ---- */
 function updatePlayer(dt, rdt) {
-  const p = G.p; p.iframes = Math.max(0, p.iframes - dt); p.fireCd -= dt; p.dashCd -= dt; p.tollCd = (p.tollCd || 0) - dt;
+  const p = G.p; p.iframes = Math.max(0, p.iframes - dt); p.fireCd -= dt; p.dashCd -= dt; p.tollCd = (p.tollCd || 0) - dt; p.shockCd = (p.shockCd || 0) - dt; p.berserk = Math.max(0, (p.berserk || 0) - dt);
   p.ram = Math.min(p.ramMax, p.ram + dt * .25);
   if (hasImp("redline") && p.oc > 0) p.oc = Math.max(0, p.oc - dt * 1.5);
   if (G.oc) return;
@@ -67,11 +75,13 @@ function updatePlayer(dt, rdt) {
   let ml = Math.hypot(mx, my); if (ml) { mx /= ml; my /= ml; }
   if (PAD.active && PAD.mag > 0) { mx = PAD.mx; my = PAD.my; ml = Math.hypot(mx, my); }
   p.face = mouse.x < p.x ? -1 : 1;
-  if ((hit(" ") || hit("shift")) && p.dashCd <= 0 && p.dash <= 0) { const dx = ml ? mx / ml : p.face, dy = ml ? my / ml : 0; p.dash = .16; p.dx = dx; p.dy = dy; p.dashCd = hasImp("reflex") ? .28 : .4; p.iframes = .22; AU.sfx("dash"); track("dash"); rumble(0, .35, 120); }
-  if (p.dash > 0) { p.dash -= dt; const s = (hasImp("reflex") ? 315 : 370) * dt; moveBody(p, p.dx * s, p.dy * s, true); p.trail.push({ x: p.x, y: p.y, life: .2 }); G.parts.push({ x: p.x + rnd(-6, 6), y: p.y - rnd(2, 26), vx: -p.dx * 120, vy: -p.dy * 120, life: .18, max: .18, col: COL.cyan, g: 0 });
+  if ((hit(" ") || hit("shift")) && p.dashCd <= 0 && p.dash <= 0) { const dx = ml ? mx / ml : p.face, dy = ml ? my / ml : 0; p.dash = .16; p.dx = dx; p.dy = dy; p.dashCd = hasImp("reflex") ? .28 : .4; p.iframes = hasImp("phase") ? .32 : .22; AU.sfx("dash"); track("dash"); rumble(0, .35, 120); }
+  if (p.dash > 0) { p.dash -= dt; const s = (hasImp("reflex") ? 315 : 370) * (hasImp("phase") ? 1.25 : 1) * dt;
+    if (hasImp("static")) { const n0 = G.bul.length; G.bul = G.bul.filter(q => q.owner === "p" || q.owner === "a" || Math.hypot(q.x - p.x, q.y - (p.y - BODY)) > 36); if (G.bul.length < n0) fx(p.x, p.y - BODY, 6, ["#9ff3ff", "#ffffff"], 60, .3); } moveBody(p, p.dx * s, p.dy * s, true); p.trail.push({ x: p.x, y: p.y, life: .2 }); G.parts.push({ x: p.x + rnd(-6, 6), y: p.y - rnd(2, 26), vx: -p.dx * 120, vy: -p.dy * 120, life: .18, max: .18, col: COL.cyan, g: 0 });
     if (hasImp("toll") && (p.tollCd || 0) <= 0) { const v = G.en.find(e => e.alive && !BOSSY.has(e.type) && !armored(e) && e.type !== "holo" && e.type !== "echo" && Math.hypot(e.x - p.x, e.y - p.y) < 13); if (v) { p.tollCd = 1; killEnemy(v, "dash"); fx(v.x, v.y - 10, 14, [COL.amber, "#ffffff"], 80, .4); AU.sfx("impactMetal", panOf(v.x)); } }
+    if (p.dash <= 0 && hasImp("shockdash") && (p.shockCd || 0) <= 0) { p.shockCd = 4; explode(p.x, p.y - 6, 30, "dash", true); }
     if (p.dash <= 0) { let n = 0; while (boxBlocked(p.x, p.y, p.r, false) && n++ < 20) { p.x += p.dx * 2; p.y += p.dy * 2; } if (boxBlocked(p.x, p.y, p.r, false)) { p.x -= p.dx * 40; p.y -= p.dy * 40; } } }
-  else { const od = hasImp("overdrive") ? 1 + Math.min(.25, Math.floor((p.streak || 0) / 10) * .05) : 1; moveBody(p, mx * 112 * od * dt, my * 112 * od * dt); }
+  else { const od = hasImp("overdrive") ? 1 + Math.min(.25, Math.floor((p.streak || 0) / 10) * .05) : 1; const ad = hasImp("adrenal") ? 1.12 : 1; moveBody(p, mx * 112 * od * ad * dt, my * 112 * od * ad * dt); }
   if (ml > 0 || p.dash > 0) p.still = 0; else { p.still = (p.still || 0) + dt; if (p.still > 2) p.streak = 0; }
   p.moving = ml > 0 || p.dash > 0;
   if (ml > 0 && p.dash <= 0) { p.stepT = (p.stepT || 0) - dt; if (p.stepT <= 0) { AU.sfx("step", panOf(p.x)); p.stepT = .24; if (tileOf(p.x, p.y) === "w") fx(p.x, p.y, 3, ["#9aa4c8"], 30, .25); } }
@@ -81,11 +91,14 @@ function updatePlayer(dt, rdt) {
   else if (hit("r") && p.ammo < p.gun.mag) { p.reload = p.gun.reload; AU.sfx("reload"); }
   if ((hit("lmb") || fireHeld()) && p.reload <= 0 && p.fireCd <= 0) { // holding keeps firing at the gun's own rate
     if (p.ammo > 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2, a = Math.atan2(mouse.y - gy, mouse.x - gx), last = p.ammo === 1 && hasImp("trigger");
-      for (let k = 0; k < g.pellets; k++) shoot(gx, gy, a + (g.pellets > 1 ? (k / (g.pellets - 1) - .5) * g.spread * 2 : 0) + rnd(-g.spread, g.spread) * (g.pellets > 1 ? .3 : 1), g.speed * (g.pellets > 1 ? rnd(.9, 1.1) : 1), "p", { pierce: g.pierce + (last ? 2 : 0), bounce: g.bounce, life: g.life, col: g.col, big: g.big, homing: g.homing, feathers: g.feathers });
+      const focus = hasImp("focus") && (p.still || 0) > .5;
+      for (let k = 0; k < g.pellets; k++) shoot(gx, gy, a + (g.pellets > 1 ? (k / (g.pellets - 1) - .5) * g.spread * 2 : 0) + rnd(-g.spread, g.spread) * (g.pellets > 1 ? .3 : 1), g.speed * (g.pellets > 1 ? rnd(.9, 1.1) : 1) * (focus ? 1.5 : 1), "p", Object.assign(shotOpts(g, focus), { pierce: g.pierce + (last ? 2 : 0) + (focus ? 1 : 0) }));
+      if (hasImp("twin")) shoot(gx, gy, a + .12, g.speed * (focus ? 1.5 : 1), "p", shotOpts(g, focus));
+      for (let k = 1; k < (g.burst || 0); k++) G.echoShots.push({ t: k * .07, a, burst: 1 });
       if (g.echo) (G.echoShots || (G.echoShots = [])).push({ t: g.echo, a }); // the Archive Repeater fires every shot again a beat later
-      p.ammo--; p.fireCd = g.cd; AU.sfx(g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
+      p.ammo--; p.fireCd = g.cd * (p.berserk > 0 ? .5 : 1); AU.sfx(g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
   }
-  for (const q of G.echoShots || []) { q.t -= dt; if (q.t <= 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2; shoot(gx, gy, q.a, g.speed, "p", { life: g.life, col: "#9fd8ff" }); AU.sfx("kestrel", 0); fx(gx, gy, 4, ["#9fd8ff", "#ffffff"], 50, .15); } }
+  for (const q of G.echoShots || []) { q.t -= dt; if (q.t <= 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2; if (q.burst) shoot(gx, gy, q.a + rnd(-.03, .03), g.speed, "p", shotOpts(g)); else shoot(gx, gy, q.a, g.speed, "p", { life: g.life, col: "#9fd8ff" }); AU.sfx("kestrel", 0); fx(gx, gy, 4, [q.burst ? COL.cyan : "#9fd8ff", "#ffffff"], 50, .15); } }
   if (G.echoShots) G.echoShots = G.echoShots.filter(q => q.t > 0);
   if (hit("q")) hack();
   if ((hit("rmb") || hit("f")) && p.oc >= 50 && G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); }
@@ -97,13 +110,20 @@ function updateOC(rdt) {
   if (!ocHeld() || o.t > 3) {
     const p = G.p, gx = p.x + p.face * 12, gy = p.y - BODY - 2; G.tracers = [];
     const prog = p.ocId; if (o.locks.length >= 6) { SAVE.stats.ocFull++; checkMilestones(); }
-    p.ocRefund = 0;
+    p.ocRefund = 0; G.scripMul = prog === "reaper" ? 3 : 1;
     o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 });
       if (prog === "crown" && e.alive && e.hp > 1) { hurtBoss(e); return; } // the crown cracks a story boss's armour; the last hit is still yours to land
       if (armored(e)) { AU.sfx("bulwark"); return; }
       if (prog === "swarm") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 30, "swarm"); } // every lock detonates, even if a neighbour's blast got it first
       else if (prog === "arc") { killEnemy(e, "oc"); arcFrom(e, 2, "oc"); }
+      else if (prog === "hydra") { killEnemy(e, "oc"); arcFrom(e, 4, "oc"); }
+      else if (prog === "nova") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 42, "nova", true); }
+      else if (prog === "mirror") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); ringShots(ex, ey, 6, "#9ff3ff"); }
+      else if (prog === "leech") { killEnemy(e, "oc"); p.ocRefund = (p.ocRefund || 0) + 12; p.ram = Math.min(p.ramMax, p.ram + 1); }
       else killEnemy(e, "oc"); });
+    G.scripMul = 1;
+    if (prog === "blackout") { G.bul = G.bul.filter(q => q.owner === "p" || q.owner === "a"); stunAround(p.x, p.y, 9999, 1.5); G.flash = .2; }
+    if (prog === "bastion") { p.iframes = 2.5; p.ram = p.ramMax; fx(p.x, p.y - BODY, 30, [COL.amber, "#ffffff"], 90, .7); pop(p.x, p.y - 36, "BASTION", COL.amber); }
     if (prog === "ghost" && o.locks.length) { const t = o.locks[o.locks.length - 1]; if (!boxBlocked(t.x, t.y, p.r, false) && tileOf(t.x, t.y) !== "o") { fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); p.trail.push({ x: p.x, y: p.y, life: .3 }); p.x = t.x; p.y = t.y; p.iframes = .6; fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); } }
     AU.sfx("ocFire", o.locks.length); rumble(.8, .8, 220); if (!o.locks.length) p.oc = Math.min(p.ocMax, p.oc + 50); else if (p.ocRefund) { p.oc = Math.min(p.ocMax, p.oc + p.ocRefund); pop(p.x, p.y - 34, "+" + p.ocRefund + " OC", COL.red); p.ocRefund = 0; }
     p.ammo = p.gun.mag; p.reload = 0; G.oc = null; AU.setOC(false); G.shake = 3;
@@ -165,6 +185,7 @@ function updateEnemy(e, dt) {
   const p = G.p, d = Math.hypot(p.x - e.x, p.y - e.y), ang = Math.atan2(p.y - e.y, p.x - e.x); e.t -= dt; e.anim = (e.anim || 0) + dt;
   const see = () => los(e.x, e.y - BODY, p.x, p.y - BODY);
   if (!FLYING.has(e.type) && tileOf(e.x, e.y) === "o") { fx(e.x, e.y - 6, 10, ["#2a2440", COL.magenta], 40, .5); return killEnemy(e, "fall"); }
+  if (e.stun > 0 && !BOSSY.has(e.type)) { e.stun -= dt; return; } // frozen solid
   switch (e.type) {
     case "hexer": updHexer(e, dt, d, see); break;
     case "nest": updNest(e, dt); break;
@@ -230,6 +251,7 @@ function updateBullets(dt) {
     // Homing rounds (Vane's missiles) turn towards you for a short while after launch.
     if (b.seek > 0) { b.seek -= dt; const sp = Math.hypot(b.vx, b.vy); let cur = Math.atan2(b.vy, b.vx), da = Math.atan2(p.y - BODY - b.y, p.x - b.x) - cur; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
       cur += Math.max(-2.4 * dt, Math.min(2.4 * dt, da)); b.vx = Math.cos(cur) * sp; b.vy = Math.sin(cur) * sp; }
+    if (b.split > 0) { b.split -= dt; if (b.split <= 0) { const a0 = Math.atan2(b.vy, b.vx), sp = Math.hypot(b.vx, b.vy); [-.32, .32].forEach(da => shoot(b.x, b.y, a0 + da, sp, "p", { life: b.life, col: b.col })); fx(b.x, b.y, 4, [b.col || COL.cyan, "#ffffff"], 40, .2); } }
     if (b.homing && b.owner === "p") { let best = null, bd = 170; for (const e of G.en) { if (!e.alive || armored(e) || e.type === "holo") continue; const d = Math.hypot(e.x - b.x, e.y - BODY - (e.alt || 0) - b.y); if (d < bd) { bd = d; best = e; } }
       if (best) { const sp = Math.hypot(b.vx, b.vy); let cur = Math.atan2(b.vy, b.vx), da = Math.atan2(best.y - BODY - (best.alt || 0) - b.y, best.x - b.x) - cur; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
         cur += Math.max(-5 * dt, Math.min(5 * dt, da)); b.vx = Math.cos(cur) * sp; b.vy = Math.sin(cur) * sp; } }
@@ -244,6 +266,7 @@ function updateBullets(dt) {
           const px = b.x - b.vx * dt / steps, py = b.y - b.vy * dt / steps, bx = SHOT_BLOCK.has(tileOf(b.x, py)), by = SHOT_BLOCK.has(tileOf(px, b.y));
           if (bx || !by) b.vx = -b.vx; if (by || !bx) b.vy = -b.vy; b.x = px; b.y = py; b.bounce--; b.d = 20; b.hits = [];
           AU.sfx("impactMetal", panOf(b.x)); fx(b.x, b.y, 5, [COL.cyan, "#ffffff"], 50, .2); continue; }
+        if (b.blast && b.owner === "p") { explode(b.x - b.vx * .01, b.y - b.vy * .01, b.blast, "gun", true); b.life = 0; break; }
         if (ch === "b") detonateBarrel(i, j);
         else if (ch !== "c") AU.sfx("kmvquWtdA".includes(ch) ? "impactMetal" : "impactWall", panOf(b.x));
         else if (ch === "c") { const k = i + "," + j; G.crateHp[k] = (G.crateHp[k] || 2) - 1; if (G.crateHp[k] <= 0) breakTile(i, j); else AU.sfx("crate", panOf(b.x)); }
@@ -253,10 +276,13 @@ function updateBullets(dt) {
       if (b.owner === "p" || b.owner === "a") { // your rounds and your allies' rounds
         for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman" || e.type === "cinder" || e.type === "widow" || e.type === "archivist" || e.type === "scarecrow" || e.type === "vanexo" || e.type === "corvina", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
+          if (b.blast && b.owner === "p") { const bx = b.x, by = b.y; b.life = 0; if (!armored(e) && e.hp > 1) hurtBoss(e); else if (!armored(e)) killEnemy(e, "shot"); explode(bx, by, b.blast, "gun", true); break; }
           if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
           if (e.hp > 1) { hurtBoss(e); b.life = 0; break; }
           { const kx = e.x, ky = e.y - 6; killEnemy(e, "shot"); if (b.owner === "p" && hasImp("kiln")) explode(kx, ky, 26, "kiln", true);
-            if (b.feathers) { const off = Math.random() * TAU; for (let k = 0; k < b.feathers; k++) shoot(kx, ky - 4, off + k / b.feathers * TAU, 380, "p", { life: .45, col: "#ff3d3d" }); fx(kx, ky, 12, ["#ff3d3d", "#2a2440"], 80, .4); } }
+            if (b.feathers) ringShots(kx, ky, b.feathers, "#ff3d3d");
+            if (b.owner === "p") { if (b.arc) arcFrom(e, b.arc, "shot"); if (b.freeze) stunAround(kx, ky, b.freeze, 2); if (b.vamp || hasImp("scavenger")) p.ammo = Math.min(p.gun.mag, p.ammo + 1);
+              if (hasImp("chainmod") && Math.random() < .35) arcFrom(e, 1, "shot"); } }
           if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;
       } else {

@@ -28,6 +28,7 @@ function drawWorld(c, t) {
   campDrawFloor(c, t);
   for (const g of G.pings) { const k = 1 - g.life; c.strokeStyle = rgba(COL.magenta, g.life); c.beginPath(); c.ellipse(g.x, g.y, 10 + k * 80, 6 + k * 50, 0, 0, TAU); c.stroke(); }
   for (const e of G.en) if (e.alive) {
+    if (e.stun > 0) { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 12 - (e.alt || 0), 12, "#9ff3ff", .45); c.restore(); c.strokeStyle = rgba("#9ff3ff", .7); c.strokeRect(Math.round(e.x) - 7.5, Math.round(e.y - 24 - (e.alt || 0)) + .5, 15, 24); }
     if (e.type === "hexer" && e.state === "cast") { c.save(); c.globalAlpha = .4 + .4 * Math.sin(t * .06); pline(c, e.x, e.y - 14, p.x, p.y - BODY, COL.magenta, 3); c.restore(); c.strokeStyle = rgba(COL.magenta, .8); c.beginPath(); c.arc(e.x, e.y - 16 - e.alt, 12 + (.8 - e.t) * 10, 0, TAU); c.stroke(); }
     if (e.type === "nest") { if (e.state === "open") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 10, 16 + Math.sin(t * .04) * 4, COL.red, .9); c.restore(); } else { c.strokeStyle = rgba(COL.magenta, .35); c.strokeRect(e.x - 8.5, e.y - 18.5, 17, 17); } }
     if (e.type === "jackdaw" && e.state === "charge") { const gx = e.x, gy = e.y - BODY - 6, a = e.t > .35 ? .35 : .8; c.save(); c.globalAlpha = a + .2 * Math.sin(t * .05); pline(c, gx, gy, gx + Math.cos(e.la) * 600, gy + Math.sin(e.la) * 600, COL.amber); c.restore(); }

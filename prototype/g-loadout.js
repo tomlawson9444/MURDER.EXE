@@ -6,6 +6,19 @@ const GUNS = {
   coil: { name: "RICOCHET COILGUN", mag: 5, reload: 1.2, cd: .14, speed: 600, pellets: 1, spread: 0, pierce: 0, bounce: 2, life: 2.5, sfx: "kestrel" },
   hornet: { name: "HORNET SMG", mag: 16, reload: 1.4, cd: .065, speed: 700, pellets: 1, spread: .09, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", auto: true },
   rail: { name: "RAILPIERCER", mag: 3, reload: 1.5, cd: .35, speed: 1150, pellets: 1, spread: 0, pierce: 3, bounce: 0, life: 2.5, sfx: "rail", kick: 4 },
+  // Magpie's wider stock.
+  duster: { name: "DUSTER DOUBLE", mag: 2, reload: 1.2, cd: .2, speed: 600, pellets: 8, spread: .38, pierce: 0, bounce: 0, life: .22, sfx: "kestrel", kick: 5 },
+  needler: { name: "NEEDLER", mag: 24, reload: 1.3, cd: .075, speed: 900, pellets: 1, spread: .05, pierce: 1, bounce: 0, life: .55, sfx: "kestrel", auto: true, col: "#9dff4a" },
+  tripletap: { name: "TRIPLE-TAP", mag: 4, reload: 1.1, cd: .34, speed: 780, pellets: 1, spread: .02, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", burst: 3 },
+  pipe: { name: "PIPE LAUNCHER", mag: 3, reload: 1.5, cd: .5, speed: 380, pellets: 1, spread: 0, pierce: 0, bounce: 0, life: 2, sfx: "rail", kick: 4, blast: 30, col: "#ffb22e", big: 1 },
+  arccaster: { name: "ARC CASTER", mag: 5, reload: 1.2, cd: .2, speed: 700, pellets: 1, spread: 0, pierce: 0, bounce: 0, life: 2.5, sfx: "rail", arc: 2, col: "#ff2d8a" },
+  cryo: { name: "CRYO PISTOL", mag: 6, reload: 1.1, cd: .14, speed: 720, pellets: 1, spread: 0, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", freeze: 44, col: "#9ff3ff" },
+  pinball: { name: "PINBALL SMG", mag: 20, reload: 1.4, cd: .08, speed: 520, pellets: 1, spread: .08, pierce: 0, bounce: 3, life: 1.6, sfx: "kestrel", auto: true, col: "#ff7ad9" },
+  magnum: { name: "SAINT'S MAGNUM", mag: 6, reload: 1.2, cd: .2, speed: 1000, pellets: 1, spread: 0, pierce: 1, bounce: 0, life: 2.5, sfx: "rail", kick: 3, vamp: 1 },
+  longbow: { name: "LONGBOW", mag: 1, reload: .9, cd: .3, speed: 1600, pellets: 1, spread: 0, pierce: 6, bounce: 0, life: 2.5, sfx: "rail", kick: 6, big: 1, col: "#e8f6ff" },
+  fanhammer: { name: "FAN HAMMER", mag: 6, reload: 1, cd: .05, speed: 740, pellets: 1, spread: .12, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", auto: true },
+  splitter: { name: "SPLITTER", mag: 5, reload: 1.2, cd: .22, speed: 640, pellets: 1, spread: 0, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", split: .14, col: "#b06cff" },
+  wisp: { name: "WISP LAUNCHER", mag: 4, reload: 1.4, cd: .35, speed: 180, pellets: 1, spread: 0, pierce: 2, bounce: 0, life: 3.2, sfx: "rail", homing: 1, col: "#9ff3ff", big: 1 },
   // Act reward weapons: never sold.
   harpoon: { name: "FERRYMAN'S HARPOON", mag: 2, reload: 1.3, cd: .4, speed: 540, pellets: 1, spread: 0, pierce: 99, bounce: 0, life: 2.5, sfx: "rail", kick: 5, col: "#ffb22e", big: 1 },
   bellows: { name: "CINDER'S BELLOWS", mag: 40, reload: 1.6, cd: .045, speed: 330, pellets: 2, spread: .2, pierce: 1, bounce: 0, life: .32, sfx: "kestrel", auto: true, col: "#ff7a1a" },
@@ -13,7 +26,7 @@ const GUNS = {
   wasp: { name: "VANE'S WASP", mag: 6, reload: 1.4, cd: .3, speed: 300, pellets: 3, spread: .35, pierce: 0, bounce: 0, life: 2.2, sfx: "rail", homing: 1, col: "#ffb22e" },
   requiem: { name: "CORVINA'S REQUIEM", mag: 7, reload: 1.1, cd: .12, speed: 800, pellets: 1, spread: 0, pierce: 0, bounce: 1, life: 2.5, sfx: "kestrel", feathers: 6, col: "#ff3d3d" },
 };
-const OCP = { deadlink: { locks: 6 }, arc: { locks: 3 }, swarm: { locks: 4 }, ghost: { locks: 5 }, crown: { locks: 8 } };
+const OCP = { deadlink: { locks: 6 }, arc: { locks: 3 }, swarm: { locks: 4 }, ghost: { locks: 5 }, crown: { locks: 8 }, nova: { locks: 3 }, hydra: { locks: 2 }, leech: { locks: 5 }, blackout: { locks: 6 }, mirror: { locks: 5 }, reaper: { locks: 6 }, bastion: { locks: 4 } };
 const it = (id, cat, name, price, req, reqText, desc, stats = []) => ({ id, cat, name, price, req, reqText, desc, stats });
 const ITEMS = [
   it("kestrel", "gun", "Kestrel .44", 0, null, "", "Your smart revolver. Accurate, reliable, six rounds.", ["MAG 6", "RELOAD 1.1S", "FAST TRAVEL"]),
@@ -34,6 +47,41 @@ const ITEMS = [
   it("redline", "imp", "Redline Cache", 600, s => s.ocCount >= 15, "Use Overclock 15 times", "Overclock holds three charges, but the meter slowly drains.", ["3 OC CHARGES", "DRAINS"]),
   it("backup", "imp", "Backup Ego", 1200, s => !!s.clears.rookery, "Clear the Chrome Rookery", "Flatline once and come back. Your score multiplier is halved after.", ["1 REVIVE / RUN"]),
   // Act rewards: never sold. Each one is earned by finishing an act of the story, then works in the story and in Arcade.
+  it("duster", "gun", "Duster Double", 650, null, "", "Two barrels, eight pellets each. Clears a doorway in one pull.", ["MAG 2", "8 PELLETS", "SHORT RANGE"]),
+  it("fanhammer", "gun", "Fan Hammer", 550, null, "", "A revolver you fan with your palm. Hold to empty it in a blink.", ["MAG 6", "FULL AUTO", "WILD SPREAD"]),
+  it("tripletap", "gun", "Triple-Tap", 600, null, "", "Every pull fires a tight three-round burst.", ["4 BURSTS", "3 ROUNDS", "ACCURATE"]),
+  it("needler", "gun", "Needler", 700, s => s.kills >= 250, "Get 250 kills in total", "Full-auto flechettes that pass through one body. Short reach.", ["MAG 24", "PIERCES 1", "MID RANGE"]),
+  it("cryo", "gun", "Cryo Pistol", 750, s => s.grazes >= 40, "Graze 40 bullets", "Every kill flash-freezes enemies around it for two seconds.", ["MAG 6", "KILLS FREEZE", "STUN 2S"]),
+  it("magnum", "gun", "Saint's Magnum", 800, s => (s.byType.rook || 0) >= 40, "Kill 40 Rooks", "Heavy rounds that pierce once. Every kill puts a round back in the cylinder.", ["MAG 6", "KILLS REFUND", "PIERCES 1"]),
+  it("arccaster", "gun", "Arc Caster", 850, s => s.hackKills >= 20, "Kill 20 enemies with hacks", "Kills arc into the two nearest enemies.", ["MAG 5", "CHAINS x2", "ACT LIKE A HACK"]),
+  it("splitter", "gun", "Splitter", 900, s => s.kills >= 600, "Get 600 kills in total", "Each round splits into three a moment after it leaves the barrel.", ["MAG 5", "SPLITS x3", "MID RANGE"]),
+  it("pinball", "gun", "Pinball SMG", 950, s => s.kills >= 500, "Get 500 kills in total", "Full-auto rounds that bounce off walls three times.", ["MAG 20", "3 BOUNCES", "FULL AUTO"]),
+  it("longbow", "gun", "Longbow", 1000, s => s.heatMax >= 4, "Reach Heat 4", "One shot per load. It goes through six bodies and the far wall's patience.", ["MAG 1", "PIERCES 6", "FAST RELOAD"]),
+  it("pipe", "gun", "Pipe Launcher", 1100, s => s.blastMulti >= 3, "Kill 3 enemies with one explosion", "Lobs slow grenades that burst on contact. Your own blasts can't hurt you.", ["MAG 3", "EXPLOSIVE", "SLOW"]),
+  it("wisp", "gun", "Wisp Launcher", 1200, s => s.ocCount >= 30, "Use Overclock 30 times", "Drifting ghost-lights that hunt the nearest enemy and pass through two.", ["MAG 4", "HOMING", "PIERCES 2"]),
+  it("hydra", "oc", "HYDRA.exe", 650, null, "", "Only two locks, but every kill chains into four more.", ["2 LOCKS", "CHAINS x4"]),
+  it("reaper", "oc", "REAPER_TAX", 600, null, "", "Six locks. Every kill in the volley pays triple scrip.", ["6 LOCKS", "SCRIP x3"]),
+  it("nova", "oc", "NOVA//BLOOM", 700, s => s.blastMulti >= 2, "Kill 2 enemies with one explosion", "Three locks. Each one bursts in a big blast that can't hurt you.", ["3 LOCKS", "SAFE BLASTS"]),
+  it("leech", "oc", "LEECH.sys", 750, s => s.ocCount >= 10, "Use Overclock 10 times", "Five locks. Every kill drinks back Overclock and RAM.", ["5 LOCKS", "REFUNDS OC", "+RAM"]),
+  it("bastion", "oc", "BASTION", 800, s => s.dashes >= 150, "Dash 150 times", "Four locks, then you're untouchable for 2.5 seconds with a full RAM bar.", ["4 LOCKS", "INVULNERABLE", "RAM REFILL"]),
+  it("mirror", "oc", "MIRRORSHARD", 850, s => s.kills >= 400, "Get 400 kills in total", "Five locks. Every kill bursts into six shards that fly out and kill again.", ["5 LOCKS", "SHARD BURST"]),
+  it("blackout", "oc", "BLACKOUT", 900, s => s.ocCount >= 25, "Use Overclock 25 times", "Six locks. The volley wipes every enemy bullet and freezes everyone left.", ["6 LOCKS", "CLEARS BULLETS", "FREEZE 1.5S"]),
+  it("adrenal", "imp", "Adrenal Pump", 350, null, "", "You run 12% faster. Everything else is your problem.", ["SPEED +12%"]),
+  it("quickload", "imp", "Quickloader", 400, null, "", "Reloads take 35% less time.", ["RELOAD -35%"]),
+  it("ricochet", "imp", "Ricochet Module", 400, null, "", "Every round bounces off one more wall.", ["BOUNCE +1"]),
+  it("focus", "imp", "Focus Lens", 400, null, "", "Stand still and your rounds fly 50% faster and pierce one more body.", ["STILL: SPEED +50%", "PIERCE +1"]),
+  it("static", "imp", "Static Skin", 450, null, "", "Dashing fries every enemy bullet close to you.", ["DASH CLEARS BULLETS"]),
+  it("hollow", "imp", "Hollow Points", 450, null, "", "Every round pierces one more body. One less round per magazine.", ["PIERCE +1", "MAG -1"]),
+  it("cryocore", "imp", "Cryo Core", 450, s => s.hackKills >= 5, "Kill 5 enemies with hacks", "Hack kills freeze everything near the target for two seconds.", ["HACKS FREEZE"]),
+  it("phase", "imp", "Phase Step", 500, s => s.dashes >= 50, "Dash 50 times", "Dashes go 25% further and you stay untouchable a little longer.", ["DASH +25%", "I-FRAMES +"]),
+  it("overcharger", "imp", "Overcharger", 500, null, "", "Kills charge Overclock 60% more.", ["OC FROM KILLS +60%"]),
+  it("scavenger", "imp", "Scavenger Chip", 500, s => s.kills >= 300, "Get 300 kills in total", "Every shot kill puts a round back in your magazine.", ["KILLS REFUND A ROUND"]),
+  it("extmag", "imp", "Extended Mags", 550, null, "", "Half again as many rounds in every magazine.", ["MAG +50%"]),
+  it("bounty", "imp", "Bounty Chip", 600, null, "", "Kills pay 40% more scrip. Magpie approves.", ["SCRIP +40%"]),
+  it("berserk", "imp", "Berserker Chip", 600, s => s.heatMax >= 4, "Reach Heat 4", "Every 8-kill streak doubles your fire rate for four seconds.", ["STREAK: FIRE RATE x2"]),
+  it("shockdash", "imp", "Shockwave Dash", 650, s => s.dashes >= 100, "Dash 100 times", "The end of a dash bursts in a blast that can't hurt you. Every 4 seconds.", ["DASH BLAST", "4S COOLDOWN"]),
+  it("chainmod", "imp", "Chain Reaction", 650, s => s.hackKills >= 15, "Kill 15 enemies with hacks", "Shot kills have a 35% chance to arc into the nearest enemy.", ["35% ARC ON KILL"]),
+  it("twin", "imp", "Twin Barrel", 700, s => s.kills >= 400, "Get 400 kills in total", "Every trigger pull fires one extra round, angled slightly.", ["+1 ROUND PER SHOT"]),
   Object.assign(it("harpoon", "gun", "Ferryman's Harpoon", 0, null, "Finish Act 1", "Two heavy bolts that punch through every body in a line.", ["MAG 2", "PIERCES ALL", "ACT 1 REWARD"]), { relic: 1 }),
   Object.assign(it("bellows", "gun", "Cinder's Bellows", 0, null, "Finish Act 2", "A slag thrower. Hold the trigger for a short, wide gout of fire.", ["MAG 40", "FULL AUTO", "SHORT RANGE"]), { relic: 2 }),
   Object.assign(it("repeater", "gun", "Archive Repeater", 0, null, "Finish Act 3", "Every shot is fired again a moment later by your own echo.", ["MAG 8", "SHOTS REPEAT", "ACT 3 REWARD"]), { relic: 3 }),
@@ -47,6 +95,7 @@ const ITEMS = [
 ];
 // Scrip for finishing each act, paid once.
 const ACT_SCRIP = { 1: 1000, 2: 1500, 3: 2000, 4: 2500, 5: 4000 };
+const IMP_SLOTS = 3;
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const CATS = [["gun", "SIDEARMS"], ["oc", "OVERCLOCK"], ["imp", "IMPLANTS"]];
 
@@ -86,7 +135,11 @@ function checkMilestones() {
 }
 // Copy the equipped loadout onto the player at the start of a run or district.
 function applyLoadout(p, fresh) {
-  const L = SAVE.loadout; p.gunId = L.gun; p.gun = GUNS[L.gun]; p.ocId = L.oc; p.maxLocks = OCP[L.oc].locks; p.imps = L.imp.slice();
+  const L = SAVE.loadout; p.gunId = L.gun; p.ocId = L.oc; p.maxLocks = OCP[L.oc].locks; p.imps = L.imp.slice(0, IMP_SLOTS);
+  // Your gun with your implants applied: magazine, pierce, bounce and reload.
+  const g = p.gun = Object.assign({}, GUNS[L.gun]), has = id => p.imps.includes(id);
+  if (has("extmag")) g.mag = Math.max(g.mag + 1, Math.round(g.mag * 1.5)); if (has("hollow")) { g.pierce += 1; g.mag = Math.max(1, g.mag - 1); }
+  if (has("ricochet")) g.bounce += 1; if (has("quickload")) g.reload *= .65;
   p.ocMax = p.imps.includes("redline") ? 150 : 100; p.ramMax = p.imps.includes("deck") ? 9 : 6; p.hitR = p.imps.includes("graze") ? 5.5 : 4.5;
   p.ammo = p.gun.mag; p.reload = 0; p.ram = p.ramMax; if (fresh) { p.egoUsed = false; p.streak = 0; p.oc = 50; p.aegis = true; p.aegisK = 0; } p.oc = Math.min(p.oc, p.ocMax); p.still = 0;
 }

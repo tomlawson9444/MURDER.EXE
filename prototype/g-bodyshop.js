@@ -4,12 +4,12 @@
 const LOOK_OFF = 3, LOOK_VIS = 13;
 // RANDOM and DEFAULT buttons under the preview (also rows 1 and 2 of LOOK, and the R / X keys).
 const BTN_RAND = [12, 244, 82, 18], BTN_DEF = [98, 244, 82, 18];
-const INV_COLS = 10, INV_W = 27, INV_H = 21; // 10 x 6 grid of small cells keeps every item clear of the details below
+const INV_COLS = 10, INV_W = 27, INV_H = 21, INV_ROWS = 6; // 10 x 6 grid on screen; the inventory scrolls by row
 const BTABS = ["LOOK", "GEAR", "INVENTORY", "ORIGIN"], BROW_Y = 42, BTAB_W = 69, BTN_DONE = [356, 244, 114, 18], BTN_BBACK = [198, 244, 60, 18];
-const GEAR_ROWS = [["SIDEARM", "gun"], ["OVERCLOCK", "oc"], ["IMPLANT 1", "imp", 0], ["IMPLANT 2", "imp", 1]];
+const GEAR_ROWS = [["SIDEARM", "gun"], ["OVERCLOCK", "oc"], ["IMPLANT 1", "imp", 0], ["IMPLANT 2", "imp", 1], ["IMPLANT 3", "imp", 2]];
 const invItems = () => ITEMS;
 
-addEventListener("wheel", e => { if (G.mode === "body") G.wheel = (G.wheel || 0) + Math.sign(e.deltaY); }, { passive: true }); // scroll the LOOK list
+addEventListener("wheel", e => { if (G.mode === "body" || G.mode === "shop") G.wheel = (G.wheel || 0) + Math.sign(e.deltaY); }, { passive: true }); // scroll the LOOK list
 function openBodyshop(from) {
   // Gun icons in GEAR and INVENTORY need the shop sprites.
   AU.init(); shopSprites(); G.mode = "body"; G.body = { tab: from === "create" ? 3 : 0, sel: 0, from, edit: false, t: 0, msg: from === "create" ? "PICK AN ORIGIN, THEN MAKE THEM YOURS." : "", msgT: 0, mx: mouse.x, my: mouse.y };
@@ -31,8 +31,8 @@ function randomLook() { const L = SAVE.char.look, making = G.body.from === "crea
 function defaultLook() { SAVE.char.look = Object.assign({}, DEFAULT_LOOK); applyLook(); persist(); AU.sfx("lock", 2); say2("BACK TO THE STANDARD LOOK."); }
 function cycleGear(row, d) {
   const [, cat, slot] = row, L = SAVE.loadout, owned = ITEMS.filter(i => i.cat === cat && owns(i.id)).map(i => i.id);
-  if (cat === "imp") { const other = L.imp[1 - slot], opts = [null].concat(owned.filter(id => id !== other)); const cur = L.imp[slot] || null; const next = opts[(opts.indexOf(cur) + d + opts.length) % opts.length];
-    const imp = [L.imp[0] || null, L.imp[1] || null]; imp[slot] = next; L.imp = imp.filter(Boolean); }
+  if (cat === "imp") { const others = L.imp.filter((x, k) => k !== slot), opts = [null].concat(owned.filter(id => !others.includes(id))); const cur = L.imp[slot] || null; const next = opts[(opts.indexOf(cur) + d + opts.length) % opts.length];
+    const imp = Array.from({ length: IMP_SLOTS }, (_, k) => L.imp[k] || null); imp[slot] = next; L.imp = imp.filter(Boolean); }
   else { if (owned.length < 2) { say2("BUY MORE AT MAGPIE'S."); AU.sfx("hackFail"); return; } L[cat] = owned[(owned.indexOf(L[cat]) + d + owned.length) % owned.length]; }
   AU.sfx("lock", 3); persist();
 }
@@ -73,7 +73,9 @@ function updateBodyshop(rdt, actions) {
   const rowH = t === "GEAR" ? 18 : t === "ORIGIN" ? 46 : 14, rowAt = y => Math.floor((y - BROW_Y) / rowH) + (t === "LOOK" ? B.scroll || 0 : 0);
   if (t === "LOOK") { B.scroll = Math.max(0, Math.min(B.scroll || 0, n - LOOK_VIS)); if (B.sel < B.scroll) B.scroll = B.sel; if (B.sel >= B.scroll + LOOK_VIS) B.scroll = B.sel - LOOK_VIS + 1;
     if (G.wheel) { B.scroll = Math.max(0, Math.min(n - LOOK_VIS, B.scroll + Math.sign(G.wheel))); B.sel = Math.max(B.scroll, Math.min(B.scroll + LOOK_VIS - 1, B.sel)); G.wheel = 0; } }
-  const cellAt = (x, y) => { const cx = Math.floor((x - 200) / INV_W), cy = Math.floor((y - 44) / INV_H); return cx >= 0 && cx < INV_COLS && cy >= 0 ? cy * INV_COLS + cx : -1; };
+  if (t === "INVENTORY") { const rows = Math.ceil(n / INV_COLS), r = Math.floor(B.sel / INV_COLS); B.iscroll = Math.max(0, Math.min(B.iscroll || 0, rows - INV_ROWS)); if (r < B.iscroll) B.iscroll = r; if (r >= B.iscroll + INV_ROWS) B.iscroll = r - INV_ROWS + 1;
+    if (G.wheel) { B.iscroll = Math.max(0, Math.min(rows - INV_ROWS, B.iscroll + Math.sign(G.wheel))); B.sel = Math.max(B.iscroll * INV_COLS, Math.min((B.iscroll + INV_ROWS) * INV_COLS - 1, B.sel)); G.wheel = 0; } }
+  const cellAt = (x, y) => { const cx = Math.floor((x - 200) / INV_W), cy = Math.floor((y - 44) / INV_H); return cx >= 0 && cx < INV_COLS && cy >= 0 && cy < INV_ROWS ? (cy + (B.iscroll || 0)) * INV_COLS + cx : -1; };
   if (Math.hypot(mouse.x - B.mx, mouse.y - B.my) > .5) { B.mx = mouse.x; B.my = mouse.y; if (mouse.x > 198) { const i = t === "INVENTORY" ? cellAt(mouse.x, mouse.y) : rowAt(mouse.y); if (i >= 0 && i < n && mouse.y >= BROW_Y && mouse.y < 236) B.sel = i; } }
   if (hit("lmb")) { const x = mouse.x, y = mouse.y;
     if (y >= 20 && y < 36 && x > 196) { const k = Math.min(BTABS.length - 1, Math.floor((x - 198) / BTAB_W)); if (k !== B.tab) { B.tab = k; B.sel = 0; AU.sfx("lock", 1); } }
@@ -116,12 +118,14 @@ function drawBodyshop(c, t) {
     GEAR_ROWS.forEach((row, i) => { const [lbl, cat, slot] = row, y = BROW_Y + i * 18, on = i === B.sel, id = cat === "imp" ? SAVE.loadout.imp[slot] : SAVE.loadout[cat], it2 = id && ITEM[id]; if (on) sel(y - 2, 16);
       if (it2) itemIcon(c, it2, 202, y); txt(c, lbl, 230, y + 3, on ? COL.ink : COL.dim); txt(c, on ? "< " + (it2 ? it2.name.toUpperCase() : "EMPTY") + " >" : (it2 ? it2.name.toUpperCase() : "EMPTY"), 470, y + 3, on ? COL.cyan : COL.ink, 8, "right"); });
     const row = GEAR_ROWS[B.sel], id = row[1] === "imp" ? SAVE.loadout.imp[row[2]] : SAVE.loadout[row[1]], it2 = id && ITEM[id];
-    if (it2) { txt(c, it2.name.toUpperCase(), 202, 130, COL.ink); wrapText(c, it2.desc.toUpperCase(), 266).slice(0, 3).forEach((l, k) => txt(c, l, 202, 142 + k * 10, COL.dim)); }
+    if (it2) { txt(c, it2.name.toUpperCase(), 202, 144, COL.ink); wrapText(c, it2.desc.toUpperCase(), 266).slice(0, 3).forEach((l, k) => txt(c, l, 202, 156 + k * 10, COL.dim)); }
     txt(c, "ONLY GEAR YOU OWN IS LISTED. BUY MORE AT MAGPIE'S.", 202, 222, rgba(COL.amber, .8));
   } else if (tab === "INVENTORY") {
     const all = invItems(), gearOwned = all.filter(i => i.cat !== "style" && owns(i.id)).length, styleOwned = all.filter(i => i.cat === "style" && owns(i.id)).length;
     txt(c, `GEAR ${gearOwned}/${all.filter(i => i.cat !== "style").length} · STYLE ${styleOwned}/${all.filter(i => i.cat === "style").length}`, 470, 8, COL.amber, 8, "right");
-    all.forEach((i, k) => { const x = 200 + (k % INV_COLS) * INV_W, y = 44 + Math.floor(k / INV_COLS) * INV_H, on = k === B.sel, own = owns(i.id);
+    const r0 = (B.iscroll || 0) * INV_COLS, rows = Math.ceil(all.length / INV_COLS);
+    if (rows > INV_ROWS) { c.fillStyle = "#2a2640"; c.fillRect(473, 44, 2, INV_ROWS * INV_H); c.fillStyle = COL.cyan; c.fillRect(473, 44 + INV_ROWS * INV_H * (B.iscroll || 0) / rows, 2, INV_ROWS * INV_H * INV_ROWS / rows); }
+    all.slice(r0, r0 + INV_ROWS * INV_COLS).forEach((i, kk) => { const k = kk + r0, x = 200 + (kk % INV_COLS) * INV_W, y = 44 + Math.floor(kk / INV_COLS) * INV_H, on = k === B.sel, own = owns(i.id);
       c.fillStyle = own ? "#16121f" : "#0b0912"; c.fillRect(x, y, INV_W - 2, INV_H - 2); c.strokeStyle = on ? COL.cyan : equipped(i.id) ? rgba(COL.cyan, .5) : "#2a2640"; c.strokeRect(x + .5, y + .5, INV_W - 3, INV_H - 3);
       c.globalAlpha = own ? 1 : .3; itemIcon(c, i, x + 1, y + 2); c.globalAlpha = 1; if (!own && !i.relic) { c.fillStyle = COL.magenta; c.fillRect(x + INV_W - 6, y + 2, 3, 3); } });
     const i = all[B.sel]; if (i) { const own = owns(i.id), kit = Object.values(ORIGIN[SAVE.char.origin].kit).flat().includes(i.id);

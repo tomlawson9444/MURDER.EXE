@@ -746,7 +746,7 @@ function grantActRewards() {
   const S = SAVE.camp, got = []; S.actPaid = S.actPaid || {};
   ACTS.forEach(A => { if (!actDone(A)) return; const L = SAVE.loadout, scrip = S.actPaid[A.n] ? 0 : ACT_SCRIP[A.n] || 0, items = actRewards(A).filter(i => !owns(i.id)); // items added later still reach finished saves
     if (!items.length && !scrip) return; S.actPaid[A.n] = true; SAVE.scrip += scrip;
-    items.forEach(i => { SAVE.owned.push(i.id); if (i.cat === "gun") L.gun = i.id; if (i.cat === "imp" && L.imp.length < 2) L.imp.push(i.id); }); // new weapon goes straight in your hand
+    items.forEach(i => { SAVE.owned.push(i.id); if (i.cat === "gun") L.gun = i.id; if (i.cat === "imp" && L.imp.length < IMP_SLOTS) L.imp.push(i.id); }); // new weapon goes straight in your hand
     got.push({ act: A.n, items, scrip }); });
   if (got.length) persist(); return got;
 }
