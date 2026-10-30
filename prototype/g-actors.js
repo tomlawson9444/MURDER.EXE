@@ -186,7 +186,7 @@ function spawnEnemy(type, x, y) {
   if (type === "hexer") { e.t = 1.5; }
   G.en.push(e); return e;
 }
-function walk(e, spd, dt) { const [dx, dy] = flowDir(e); moveBody(e, dx * spd * dt, dy * spd * dt); if (dx) e.face = dx < 0 ? -1 : 1; }
+function walk(e, spd, dt) { if (e.raid && G.camp && raidMove(e, spd, dt)) return; const [dx, dy] = flowDir(e); moveBody(e, dx * spd * dt, dy * spd * dt); if (dx) e.face = dx < 0 ? -1 : 1; }
 function updateEnemy(e, dt) {
   const p = G.p, d = Math.hypot(p.x - e.x, p.y - e.y), ang = Math.atan2(p.y - e.y, p.x - e.x); e.t -= dt; e.anim = (e.anim || 0) + dt;
   const see = () => los(e.x, e.y - BODY, p.x, p.y - BODY);

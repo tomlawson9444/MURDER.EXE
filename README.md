@@ -90,6 +90,13 @@ The story campaign is complete: **30 chapters across 10 districts in five acts, 
 - **Datacrypt:** a story server-hall district under the river.
 - **Rack defence (Cold Storage):** four numbered racks, placed away from the enemies' main routes. The fight comes in three waves with short breaks, and the last wave is the hardest. Most Carrions hunt a rack (a red dashed line shows which) and blow up on it. Stand beside a damaged rack to reboot it, or quickhack it for a quick +30. Trace pauses while you reboot. A rack under attack flashes and Magpie calls out its number. You can lose one rack; a second ends the chapter. Saving all four pays 200 scrip and changes lines from Magpie, Vane and Dex.
 - **THE ARCHIVIST:** hides inside a shield while echoes of you walk paths you really took earlier in the chapter, firing as they go. Break every echo and it's exposed for 5 seconds; it drifts towards you while shielded, and an echo that stays out of sight for 8 seconds steps back into view.
+- **Enemies go for the objective:** in objective chapters some ground enemies become raiders and head for the objective instead of only hunting you, while Corvids, Hexers and snipers keep hunting you. A red dashed line shows who's coming and Magpie calls it out.
+  - **Magpie's stall and the cargo crane:** Shrikes slash, Bulwarks ram and Rooks shoot the stall or the cargo, and Carrions blow up on it. Cargo raiders keep pushing in until you're right on them.
+  - **Server racks:** Shrikes and Rooks join the Carrion hunters.
+  - **Floodgates, beacons, relays, furnaces and index nodes:** guards gather at the terminal, and an enemy standing at it blocks your progress (CONTESTED).
+  - **Hold rings:** raiders shove into the ring to contest it.
+  - **Extraction:** when the van arrives, raiders rush it.
+  - **Close range:** any raider turns on you when you get close, so defending means meeting them at the objective.
 - **Hold and extract objectives:** stand in a ring to fill it (enemies inside stop the clock), or survive until a van arrives and then reach it. Trace pauses while you hold a ring.
 - **Wren, if you abandoned the sleepers:** in Chapter 19 Wren comes at you as a crow-masked cultist. Two hits kill them; a quickhack on the implant frees them, and they rejoin your side.
 - **SCARECROW:** plants drone Nests on the walls, calls Corvid swarms and sweeps a cone of shots. He can only be hurt while his arms are raised. Taking his mask unlocks a Scarecrow's Mask cosmetic.
