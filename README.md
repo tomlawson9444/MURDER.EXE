@@ -15,7 +15,7 @@ Everything is plain HTML and JavaScript with no build step. All art and audio is
 
 ## Run it
 
-Open `prototype/index.html` in Chrome, Edge or Firefox. For the design document, open `design/index.html`.
+Open `prototype/index.html` in Chrome, Edge or Firefox. For the design document, open `design/index.html`. To browse procedurally generated maps, open `prototype/maplab.html`.
 
 The pages load fonts from Google Fonts, so the first load needs an internet connection. If your browser blocks scripts on `file://` pages, serve the folder instead:
 
@@ -52,6 +52,9 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 - **Scrip:** earned from every kill (more at higher Heat), Nests, bosses, district clears and milestones. Saved between runs, even when you die. You start with 300.
 - **Gear:** 5 sidearms (Kestrel .44, Breacher Custom, Ricochet Coilgun, Hornet SMG, Railpiercer), 4 Overclock programs (DEADLINK, ARC//CHAIN, SWARMKEY, GHOST_PROTOCOL) and 8 implants, with 2 implant slots.
 - **Milestone unlocks:** most gear is locked until you hit a milestone (for example, the Railpiercer needs a Rain Market clear). Hitting one pays 100 scrip and Magpie restocks.
+- **Procedural maps:** every run builds a brand-new arena for each district from a seed (about 2.18 billion per district). A layout archetype, buildings pushed in from the walls, spawn doors, hand-designed cyberpunk set pieces, hazards, signage, colour tint and weather are all generated, then a validator checks the level-design rules (everything reachable, no dead ends, safe start, doors reachable, cover on both sides) and rebuilds any map that fails. Phase 2 events (tram lane, bridge collapse, barricades) come from the generated layout.
+- **Seeds:** the seed shows in the HUD and on the death and clear screens. After a death you can retry the same map or reboot into a new one. Links ending `#seed-ABC123` or `#seed-ABC123-rookery` load that exact map. The title screen's MAP option switches between generated and the classic hand-made maps (`#classic` forces classic).
+- **Map Lab (`maplab.html`):** a gallery of freshly generated maps for all four districts, with art and tactical views, Phase 2 previews, validator stats, seed search and a "Play this map" link.
 - Bullets fly until they hit something solid.
 - Cover system: hard cover, low cover you can dash over and shoot across, crates that break, and barrels and signs you can hack.
 - Eight enemy types, each with its own visual and audio tell: Shrike, Rook, Jackdaw, Carrion, Corvid, Bulwark, Hexer and Nest.
@@ -76,7 +79,9 @@ Progress (scrip, owned gear, loadout, milestones and best score) is saved in the
 | `engine.js` | Shared utilities and the shaded pixel-sprite renderer |
 | `defs.js` | Sprite definitions for Vesper, enemies, bosses and weapons |
 | `scenes.js`, `keyart.js` | Backdrops, rain and painted-art helpers used by the map renderer |
-| `maptiles.js`, `maps.js` | Tile painters, district map data, map renderer and tactical overlay |
+| `maptiles.js`, `maps.js` | Tile painters, classic district map data, map renderer and tactical overlay |
+| `g-procgen.js` | Procedural map generator, validator, seeds, names and per-map styling |
+| `maplab.html`, `maplab.js` | Map Lab: gallery and inspector for generated maps |
 | `audio.js` | Synth SFX, ambience beds and the Heat-driven music sequencer |
 | `sfx-bank.js` | Layered combat sounds rendered offline into variants |
 | `g-core.js` | Game state, input, collision, line of sight, pathfinding |

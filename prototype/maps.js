@@ -17,7 +17,7 @@ const THEMES = {
 };
 const BORDER = [["#", 0, 0, 30, 2], ["#", 0, 0, 1, 17], ["#", 29, 0, 1, 17], ["#", 0, 16, 30, 1]];
 const MAPS = {
-  market: { theme: "market", seed: 31, name: "Rain Market",
+  market: { theme: "market", seed: 31, name: "Rain Market", tramRow: 14, phaseTxt: "TRAM LINE LIVE",
     ops: [...BORDER, ["s", 5, 1], ["s", 15, 1], ["s", 24, 1], ["s", 0, 8], ["s", 29, 8],
       ["v", 1, 2], ["v", 2, 2], ["v", 27, 2], ["g", 12, 2], ["g", 26, 9],
       ["m", 13, 6, 4, 2], ["h", 11, 5, 2, 1], ["h", 17, 5, 2, 1], ["h", 11, 9, 2, 1], ["h", 17, 9, 2, 1],
@@ -31,7 +31,7 @@ const MAPS = {
     zones: [["A · STALL ISLAND", 11, 4], ["B · CAR PARK", 1, 7], ["C · SNIPER WALK", 21, 2], ["D · TRAM LANE", 2, 13]],
     actors: [["jackdaw", 23, 2], ["rook", 17, 4], ["shrike", 6, 8], ["corvid", 12, 3]],
     notes: { cover: "The noodle stall is the only hard cover in the middle. Low barriers on its four corners let you rotate around it. The west car park gives strong cover, but it has one exit, so it's a trap if a Carrion follows you in.", choke: "The gap between the stall and the east car is the main lane. The north doors push enemies straight down it.", hazard: "The three hanging signs drop when shot (2 tiles wide). Puddles conduct Short Circuit. Steam from the vents hides bullets.", phase: "At kill 50 the tram starts running. It sweeps the south lane every 12 seconds, cuts the arena in half for 3 seconds, and kills anything on the rails, enemies included." } },
-  rookery: { theme: "rookery", seed: 41, name: "Chrome Rookery",
+  rookery: { theme: "rookery", seed: 41, name: "Chrome Rookery", collapseTiles: [[13, 5], [14, 5], [15, 5], [16, 5]], phaseTxt: "NORTH BRIDGE FAILING",
     ops: [...BORDER, ["o", 13, 2, 4, 14], ["=", 13, 5, 4, 1], ["=", 13, 11, 4, 1], ["N", 6, 1], ["N", 22, 1], ["s", 0, 12], ["s", 29, 4],
       ["u", 2, 3, 2, 1], ["u", 9, 3, 2, 1], ["W", 5, 6, 3, 3], ["h", 2, 9, 3, 1], ["A", 10, 8], ["c", 10, 12], ["c", 11, 12], ["u", 3, 13, 2, 1], ["h", 7, 12, 1, 3],
       ["S", 23, 2, 4, 2], ["u", 19, 6, 2, 1], ["u", 24, 8, 2, 1], ["h", 18, 10, 3, 1], ["W", 21, 12, 3, 3], ["c", 26, 12], ["c", 27, 13], ["b", 18, 4], ["b", 11, 6], ["w", 4, 11, 2, 1], ["w", 25, 5, 2, 1], ["P", 7, 10]],
@@ -81,6 +81,7 @@ function renderMap(key, phase2, SP, Gover) {
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) FLOORS[th.floorFn](c, x * TS, y * TS, r, th);
   if (key === "market") { c.fillStyle = "rgba(210,170,80,.5)"; for (let x = 16; x < W - 16; x += 22) c.fillRect(x, 12 * TS + 8, 12, 1); }
   if (key === "spire") { c.fillStyle = "rgba(255,178,46,.45)"; c.fillRect(TS, 9 * TS, W - 2 * TS, 1); }
+  if (M.roadRow != null) { c.fillStyle = "rgba(210,170,80,.5)"; for (let x = 16; x < W - 16; x += 22) c.fillRect(x, M.roadRow * TS + 8, 12, 1); }
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const d = DECALS[G[y][x]]; if (d) d(c, x * TS, y * TS, G, x, y, r, em); }
   th.back(c, W, H, r, em);
   const items = [];

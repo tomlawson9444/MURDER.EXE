@@ -6,17 +6,17 @@
   addEventListener("resize", fit); fit();
   // Load a district into the current run. Score, kills and Overclock carry across a breach.
   function enterDistrict(key) {
-    G.district = key; G.grid = buildGrid(MAPS[key], false); G.base = renderMap(key, false, SP, G.grid); G.dirty = false;
+    G.district = key; G.mapKey = chooseMap(key); G.grid = buildGrid(MAPS[G.mapKey], false); G.base = renderMap(G.mapKey, false, SP, G.grid); G.dirty = false; G.perch = perchSpot(); G.gapTiles = gapTiles();
     const ps = playerStart(); if (!G.p) { G.p = newPlayer(ps.x, ps.y); applyLoadout(G.p, true); } else { Object.assign(G.p, { x: ps.x, y: ps.y, trail: [], dash: 0, iframes: .5 }); applyLoadout(G.p, false); }
     Object.assign(G, { en: [], bul: [], pending: [], parts: [], blasts: [], zaps: [], tracers: [], pings: [], dStart: G.kills, phase2: false, tram: null, wind: null, collapse: null,
       boss: false, oc: null, hexed: 0, trace: 0, anchor: null, crateHp: {}, spawnT: 1.5 });
     G.heat = G.heatBase; G.lastHeat = G.heat; G.mult = 1 + G.heat * .5;
-    G.banner = { txt: D().name + " · SURVIVE TO 100", col: COL.cyan, life: 2.4 };
+    G.banner = { txt: mapName() + " · SURVIVE TO 100", col: COL.cyan, life: 2.4 };
     spawnNests();
   }
   function reset(key) { Object.assign(G, { p: null, runScrip: 0, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : 0 }); enterDistrict(key); }
   function music() { AU.setOC(false); AU.start(); AU.setHeat(Math.min(5, G.heat + 2)); setTimeout(() => AU.ambience(D().amb), 60); }
-  function start(key) { G.startDistrict = key; reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
+  function start(key, sameSeed) { G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
   function breach() { G.heatBase = Math.min(2, G.heat); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
   function cashOut() { persist(); AU.stop(); AU.ambience("off"); G.mode = "title"; reset(DORDER[G.sel || 0]); }
   const shopActions = {
@@ -24,15 +24,19 @@
     back: () => { persist(); if (G.shop.from === "clear") G.mode = "clear"; else { G.mode = "title"; AU.stop(); AU.ambience("off"); } },
   };
   function step(rdt, t) {
+    if (G.mode === "play" || G.mode === "shop" || G.mode === "intro") G.menuMode = null; // menus always reopen on their first option
     const wantStart = hit("lmb") || hit("r") || hit(" ");
     if (G.mode === "title") {
       const n = G.unlocked || 1; if (hit("arrowleft") || hit("a")) G.sel = Math.max(0, (G.sel || 0) - 1); if (hit("arrowright") || hit("d")) G.sel = Math.min(n - 1, (G.sel || 0) + 1);
-      G.menu = layoutMenu([{ label: "JACK IN", act: () => start(DORDER[G.sel || 0]) }, { label: "MAGPIE'S · CHROME & IRON", col: COL.magenta, act: () => openShop("title") }], 196); runMenu(G.menu); return; }
+      const mapLabel = SAVE.mapMode === "gen" ? (G.queuedSeed != null ? "MAP: SEED " + PG.seedName(G.queuedSeed) : "MAP: GENERATED · NEW EVERY RUN") : "MAP: CLASSIC";
+      G.menu = layoutMenu([{ label: "JACK IN", act: () => start(DORDER[G.sel || 0]) }, { label: "MAGPIE'S · CHROME & IRON", col: COL.magenta, act: () => openShop("title") },
+        { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } }], 190, 11); runMenu(G.menu); return; }
     if (G.mode === "shop") { updateShop(rdt, shopActions); return; }
     if (G.mode === "dead") { G.deadT += rdt; G.menu = null;
       if (G.deadT > .8) { const regear = () => { G.sel = DORDER.indexOf(G.startDistrict); openShop("title"); };
+        const retrySame = () => start(G.startDistrict, true);
         if (hit("r")) { start(G.startDistrict); } else if (hit("escape")) { regear(); return; }
-        else { G.menu = layoutMenu([{ label: "REBOOT", act: () => start(G.startDistrict) }, { label: "MAGPIE'S · RE-GEAR", col: COL.magenta, act: regear }, { label: "QUIT TO TITLE", col: COL.dim, act: cashOut }], 174); runMenu(G.menu); } } }
+        else { G.menu = layoutMenu([{ label: G.mapKey === "run" ? "REBOOT · NEW MAP" : "REBOOT", act: () => start(G.startDistrict) }].concat(G.mapKey === "run" ? [{ label: "RETRY SAME MAP", act: retrySame }] : [], [{ label: "MAGPIE'S · RE-GEAR", col: COL.magenta, act: regear }, { label: "QUIT TO TITLE", col: COL.dim, act: cashOut }]), 170); runMenu(G.menu); } } }
     if (G.mode === "clear") { G.clearT += rdt; G.menu = null;
       if (G.clearT > 1) { if (hit("escape")) { cashOut(); return; }
         G.menu = layoutMenu(D().next ? [{ label: "BREACH NOW", act: breach }, { label: "MAGPIE'S, THEN BREACH", col: COL.magenta, act: () => openShop("clear") }, { label: "CASH OUT", col: COL.dim, act: cashOut }]
@@ -73,6 +77,9 @@
   setupInput(cv);
   G.best = SAVE.best || 0; G.unlocked = SAVE.unlocked || 1;
   const qs = location.hash.match(/district=(\w+)/);
+  if (location.hash.includes("classic")) SAVE.mapMode = "classic"; // e.g. #classic or #autostart-classic: play the hand-made maps
+  // Shared seed links: #seed-ABC123 or #seed-ABC123-rookery queue that map for the next run.
+  const sq = location.hash.match(/^#seed-([0-9a-z]{1,6})(?:-(\w+))?$/i); if (sq) { G.queuedSeed = PG.parseSeed(sq[1]); SAVE.mapMode = "gen"; if (sq[2] && DORDER.indexOf(sq[2].toLowerCase()) >= 0 && DORDER.indexOf(sq[2].toLowerCase()) < (G.unlocked || 1)) G.sel = DORDER.indexOf(sq[2].toLowerCase()); }
   const fonts = Promise.race([Promise.all([document.fonts.load('8px "Silkscreen"'), document.fonts.load('32px "Silkscreen"'), document.fonts.load('700 44px "Chakra Petch"')]), new Promise(r => setTimeout(r, 2500))]);
   BANK.build(); fonts.then(() => { updateHelp(); buildSprites(); reset("market"); G.mode = "title"; if (location.hash.startsWith("#autostart")) start(qs ? qs[1] : "market"); requestAnimationFrame(frame); });
   window.__G = G;

@@ -15,7 +15,14 @@ const BOSSY = new Set(["blackwing", "augur", "holo", "nest"]);
 const FLYING = new Set(["corvid", "hexer", "augur", "holo", "nest", "blackwing"]);
 
 function perchSpot() { const g = groups(G.grid).find(x => x[0] === "S"); if (!g) return null; const [, x, y, w] = g; return { x: (x + w / 2) * TS, y: (y + 1) * TS + 6 }; }
-function playerStart() { const o = MAPS[G.district].ops.find(o => o[0] === "P"); return { x: o[1] * TS + 8, y: o[2] * TS + 12 }; }
+// Generated maps are built per district from the run seed; classic maps use the hand-made layouts.
+function chooseMap(key) {
+  if (SAVE.mapMode === "gen" && G.runSeed != null) { PG.generate(key, G.runSeed, "run"); return "run"; }
+  return key;
+}
+const mapName = () => G.mapKey === "run" ? MAPS.run.name : D().name;
+function gapTiles() { const out = []; for (let y = 2; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) if (G.grid[y][x] === "o") out.push([x, y]); return out; }
+function playerStart() { const o = MAPS[G.mapKey].ops.find(o => o[0] === "P"); return { x: o[1] * TS + 8, y: o[2] * TS + 12 }; }
 function floorSpots(minFromPlayer) {
   const out = []; for (let y = 3; y < MH - 2; y++) for (let x = 2; x < MW - 2; x++) { const ch = G.grid[y][x]; if (WALK_BLOCK.has(ch) || ch === "o" || ch === "=") continue;
     const px = x * TS + 8, py = y * TS + 12; if (Math.hypot(px - G.p.x, py - G.p.y) > minFromPlayer) out.push({ x: px, y: py }); }
@@ -37,20 +44,19 @@ function updateTrace(dt) {
 }
 
 /* Rookery wind: gusts across the chasm push bullets downward. */
-const CHASM = [13 * TS, 17 * TS];
 function updateWind(dt) {
   if (G.district !== "rookery") return; const w = G.wind || (G.wind = { on: false, t: 5 }); w.t -= dt;
   if (w.t <= 0) { w.on = !w.on; w.t = w.on ? 2.5 : rnd(4, 7); if (w.on) AU.sfx("vent"); }
   if (!w.on) return;
-  for (const b of G.bul) if (b.x > CHASM[0] && b.x < CHASM[1]) b.vy += 300 * dt;
-  if (Math.random() < .7) G.parts.push({ x: rnd(CHASM[0], CHASM[1]), y: rnd(30, GH - 20), vx: rnd(20, 50), vy: rnd(140, 220), life: .3, max: .3, col: "#b9c2ff", g: 0 });
+  for (const b of G.bul) if (tileOf(b.x, b.y) === "o") b.vy += 300 * dt; // gusts only push bullets over open drops
+  const gap = G.gapTiles; if (gap && gap.length && Math.random() < .7) { const [gx, gy] = gap[Math.random() * gap.length | 0]; G.parts.push({ x: gx * TS + rnd(0, TS), y: gy * TS + rnd(0, TS), vx: rnd(20, 50), vy: rnd(140, 220), life: .3, max: .3, col: "#b9c2ff", g: 0 }); }
 }
 
 /* Rookery Phase 2: the north bridge cracks for 2.2s, then falls. */
 function updateCollapse(dt) {
   const c = G.collapse; if (!c) return; c.t -= dt;
-  if (c.t <= 0) { G.collapse = null; MAPS[G.district].phase2.forEach(([ch, x, y, w = 1, h = 1]) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (ch === "o" || Math.hypot(i * TS + 8 - G.p.x, j * TS + 8 - G.p.y) > 20) G.grid[j][i] = ch; });
-    G.dirty = true; AU.sfx("boom"); G.shake = 6; for (let i = 13; i < 17; i++) fx(i * TS + 8, 5 * TS + 8, 10, ["#4a5070", "#9aa4c8", "#2a3048"], 70, .8); }
+  if (c.t <= 0) { G.collapse = null; MAPS[G.mapKey].phase2.forEach(([ch, x, y, w = 1, h = 1]) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (ch === "o" || Math.hypot(i * TS + 8 - G.p.x, j * TS + 8 - G.p.y) > 20) G.grid[j][i] = ch; });
+    G.dirty = true; AU.sfx("boom"); G.shake = 6; c.tiles.forEach(([x, y]) => fx(x * TS + 8, y * TS + 8, 10, ["#4a5070", "#9aa4c8", "#2a3048"], 70, .8)); G.gapTiles = gapTiles(); }
 }
 
 /* Hexer: keeps its distance, then hexes you (locks Overclock and hacking, scrambles the HUD). */
@@ -71,7 +77,7 @@ function updNest(e, dt) {
   else if (e.t <= 0) { if (G.en.filter(x => x.alive && x.type === "corvid").length < 6) { spawnEnemy("corvid", e.x - 8, e.y + 10); spawnEnemy("corvid", e.x + 8, e.y + 10); }
     e.state = "closed"; e.t = Math.max(3, rnd(6, 9) - G.heat * .5); }
 }
-function spawnNests() { MAPS[G.district].ops.filter(o => o[0] === "N").forEach(([, x, y]) => { const e = spawnEnemy("nest", x * TS + 9, y * TS + 17); e.tx = x; e.ty = y; e.state = "closed"; e.t = rnd(3, 6); }); }
+function spawnNests() { MAPS[G.mapKey].ops.filter(o => o[0] === "N").forEach(([, x, y]) => { const e = spawnEnemy("nest", x * TS + 9, y * TS + 17); e.tx = x; e.ty = y; e.state = "closed"; e.t = rnd(3, 6); }); }
 
 /* THE AUGUR: splits into five copies; only the real one casts a shadow. */
 function augurShuffle(e) {

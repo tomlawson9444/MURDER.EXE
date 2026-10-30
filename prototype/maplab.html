@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MURDER.EXE Map Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Silkscreen&display=swap">
+<style>
+/* Layout: a lab bench. Controls strip, live validator readout, then a two-column wall of generated arenas.
+   Single deliberate dark theme, matching the game. */
+:root {
+  color-scheme: dark;
+  --void: #07060d; --panel: #110f1c; --panel2: #18152a; --line: #2a2640; --ink: #e9e6f5; --dim: #9a94b5;
+  --cyan: #2be4ff; --magenta: #ff2d8a; --amber: #ffb22e; --blood: #ff4545;
+  --f-display: "Chakra Petch", "Arial Narrow", sans-serif; --f-body: "IBM Plex Sans", system-ui, sans-serif; --f-pixel: "Silkscreen", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--void); color: var(--ink); font: 400 15px/1.55 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-block: 28px 60px; display: grid; gap: 22px; }
+h1 { font: 700 clamp(2rem, 5vw, 3.2rem)/1 var(--f-display); margin: 0; letter-spacing: .01em; text-shadow: -2px 0 var(--magenta), 2px 0 var(--cyan); }
+h1 span { color: var(--magenta); text-shadow: none; font-family: var(--f-pixel); font-size: .45em; margin-left: .4em; }
+.lede { max-width: 72ch; color: var(--dim); margin: 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; background: var(--panel); border: 1px solid var(--line); padding: 14px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button, .btn { font: 400 .7rem var(--f-pixel); text-transform: uppercase; letter-spacing: .05em; background: var(--panel2); color: var(--dim); border: 1px solid var(--line); padding: 9px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #05040b; border-color: var(--ink); }
+.btn.primary { background: var(--cyan); color: #05040b; border-color: var(--cyan); }
+.btn:hover, .seg button:hover { border-color: var(--cyan); }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.seed { display: flex; gap: 6px; align-items: center; }
+.seed label { font: 400 .66rem var(--f-pixel); color: var(--dim); }
+.seed input { width: 8.5ch; font: 400 .9rem var(--f-pixel); text-transform: uppercase; background: #05040b; color: var(--amber); border: 1px solid var(--line); padding: 7px 8px; }
+.bench { font: 400 .7rem var(--f-pixel); color: var(--dim); letter-spacing: .04em; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.bench b { color: var(--cyan); font-weight: 400; }
+.grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); min-width: 0; display: grid; }
+.card canvas { width: 100%; height: auto; display: block; image-rendering: pixelated; image-rendering: crisp-edges; aspect-ratio: 480 / 272; background: #05040b; }
+.card .in { padding: 12px 14px 14px; display: grid; gap: 8px; }
+.name { font: 700 1.25rem/1.1 var(--f-display); }
+.meta { font: 400 .68rem var(--f-pixel); color: var(--dim); letter-spacing: .04em; }
+.meta b { color: var(--amber); font-weight: 400; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 400 .62rem var(--f-pixel); padding: 4px 7px; background: rgba(43,228,255,.1); color: var(--cyan); }
+.chip.p2 { background: rgba(255,69,69,.12); color: #ff8a8a; }
+.chip.ok { background: rgba(43,255,154,.1); color: #6dffc0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.actions a.btn { text-decoration: none; }
+.actions .note { font-size: .8rem; color: var(--dim); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .82rem; color: var(--dim); }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+footer { color: var(--dim); font-size: .85rem; }
+</style>
+<div class="wrap">
+  <header style="display:grid;gap:10px">
+    <h1>MAP LAB<span>MURDER.EXE</span></h1>
+    <p class="lede">Every arena on this page was built in your browser a moment ago from a random seed. The generator picks a layout type, pushes buildings in from the walls, places spawn doors, drops in hand-designed cyberpunk set pieces, adds hazards and neon, then runs a validator against the level-design rules. Any map that fails gets rebuilt. Hit generate as often as you like: no two maps are the same.</p>
+  </header>
+  <div class="bar" role="group" aria-label="Lab controls">
+    <div class="seg" id="dist" role="group" aria-label="District">
+      <button type="button" id="d-all" data-d="all" aria-pressed="true">All</button>
+      <button type="button" id="d-market" data-d="market" aria-pressed="false">Rain Market</button>
+      <button type="button" id="d-rookery" data-d="rookery" aria-pressed="false">Chrome Rookery</button>
+      <button type="button" id="d-datacrypt" data-d="datacrypt" aria-pressed="false">Datacrypt</button>
+      <button type="button" id="d-spire" data-d="spire" aria-pressed="false">Spire Zero</button>
+    </div>
+    <div class="seg" id="view" role="group" aria-label="View">
+      <button type="button" id="v-art" data-v="art" aria-pressed="true">Art</button>
+      <button type="button" id="v-tac" data-v="tac" aria-pressed="false">Tactical</button>
+    </div>
+    <div class="seg" id="phase" role="group" aria-label="Phase">
+      <button type="button" id="p-1" data-p="1" aria-pressed="true">Phase 1</button>
+      <button type="button" id="p-2" data-p="2" aria-pressed="false">Phase 2</button>
+    </div>
+    <button type="button" class="btn primary" id="gen">Generate 6 new maps</button>
+    <form class="seed" id="seedform"><label for="seedin">SEED</label><input id="seedin" maxlength="6" placeholder="ABC123" autocomplete="off"><button type="submit" class="btn" id="seedgo">Build</button></form>
+  </div>
+  <div class="bench" id="bench">Running the validator…</div>
+  <div class="legend" id="legend" hidden>
+    <span><i style="background:#d8d4ee"></i>Hard cover</span><span><i style="background:var(--cyan)"></i>Low cover</span><span><i style="background:var(--amber)"></i>Destructible</span><span><i style="background:var(--magenta)"></i>Hackable · spawn door</span><span><i style="background:var(--blood)"></i>Hazard</span><span><i style="background:rgba(255,178,46,.35);border:1px solid var(--amber)"></i>Sniper / turret sightline</span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <footer>Rain Market and Chrome Rookery maps are playable now. Datacrypt and Spire Zero layouts are previews until those districts are built.</footer>
+</div>
+<script src="engine.js"></script>
+<script src="defs.js"></script>
+<script src="scenes.js"></script>
+<script src="keyart.js"></script>
+<script src="maptiles.js"></script>
+<script src="maps.js"></script>
+<script src="g-procgen.js"></script>
+<script src="maplab.js"></script>

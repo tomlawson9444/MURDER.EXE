@@ -21,9 +21,10 @@ function drawWorld(c, t) {
   c.drawImage(G.base.C, 0, 0); G.base.steam.forEach(([x, y]) => steam(c, x, y, t));
   // telegraphs on the floor
   for (const s of G.pending) { const on = Math.floor(t / 100) % 2; if (s.door) { c.fillStyle = rgba(COL.magenta, on ? .9 : .4); c.fillRect(s.door.tx * TS + 1, s.door.ty * TS + 1, 14, 14); } else if (s.perch) { c.save(); c.globalCompositeOperation = "lighter"; glow(c, s.x, s.y - 10, 18, COL.amber, on ? .6 : .2); c.restore(); } }
-  if (G.tram && G.tram.state === "warn") { const on = Math.floor(t / 120) % 2; c.fillStyle = rgba(COL.red, on ? .35 : .12); c.fillRect(TS, 14 * TS, GW - 2 * TS, TS); txt(c, "TRAM", GW / 2, 14 * TS + 4, rgba("#ffffff", on ? 1 : .5), 8, "center"); }
-  if (G.collapse) { const on = Math.floor(t / 110) % 2; c.fillStyle = rgba(COL.red, on ? .45 : .15); c.fillRect(13 * TS, 5 * TS, 4 * TS, TS); c.fillStyle = "#05040a"; for (let i = 0; i < 4; i++) pline(c, 13 * TS + 6 + i * 16, 5 * TS + 1, 13 * TS + 2 + i * 16 + (i % 2) * 8, 5 * TS + 15, "#05040a"); txt(c, "BRIDGE", 15 * TS, 5 * TS + 4, rgba("#ffffff", on ? 1 : .5), 8, "center"); }
-  if (G.wind && G.wind.on) txt(c, "WIND", 15 * TS, 2 * TS + 4, rgba("#b9c2ff", .6 + .4 * Math.sin(t * .02)), 8, "center");
+  if (G.tram && G.tram.state === "warn") { const on = Math.floor(t / 120) % 2; c.fillStyle = rgba(COL.red, on ? .35 : .12); c.fillRect(TS, G.tram.row * TS, GW - 2 * TS, TS); txt(c, "TRAM", GW / 2, G.tram.row * TS + 4, rgba("#ffffff", on ? 1 : .5), 8, "center"); }
+  if (G.collapse) { const on = Math.floor(t / 110) % 2, ts = G.collapse.tiles; c.fillStyle = rgba(COL.red, on ? .45 : .15); ts.forEach(([x, y], i) => { c.fillRect(x * TS, y * TS, TS, TS); pline(c, x * TS + 6, y * TS + 1, x * TS + 2 + (i % 2) * 8, y * TS + 15, "#05040a"); });
+    const mx = ts.reduce((s, q) => s + q[0], 0) / ts.length, my = ts.reduce((s, q) => s + q[1], 0) / ts.length; txt(c, "BRIDGE", mx * TS + 8, my * TS + 4, rgba("#ffffff", on ? 1 : .5), 8, "center"); }
+  if (G.wind && G.wind.on && G.gapTiles && G.gapTiles.length) txt(c, "WIND", G.gapTiles[0][0] * TS + 24, G.gapTiles[0][1] * TS + 4, rgba("#b9c2ff", .6 + .4 * Math.sin(t * .02)), 8, "center");
   for (const g of G.pings) { const k = 1 - g.life; c.strokeStyle = rgba(COL.magenta, g.life); c.beginPath(); c.ellipse(g.x, g.y, 10 + k * 80, 6 + k * 50, 0, 0, TAU); c.stroke(); }
   for (const e of G.en) if (e.alive) {
     if (e.type === "hexer" && e.state === "cast") { c.save(); c.globalAlpha = .4 + .4 * Math.sin(t * .06); pline(c, e.x, e.y - 14, p.x, p.y - BODY, COL.magenta, 3); c.restore(); c.strokeStyle = rgba(COL.magenta, .8); c.beginPath(); c.arc(e.x, e.y - 16 - e.alt, 12 + (.8 - e.t) * 10, 0, TAU); c.stroke(); }
@@ -51,7 +52,7 @@ function drawWorld(c, t) {
     if (e.type === "bulwark") { c.strokeStyle = rgba(COL.magenta, .7); c.beginPath(); c.arc(e.x, e.y - 10, 16, e.dir - 1.1, e.dir + 1.1); c.stroke(); }
   }
   for (const e of G.en) if (e.alive && e.type === "blackwing" && e.state === "rise") { c.globalAlpha = .7; drawSpr(c, sprOf("blackwing", e.face), e.x - 25, e.y - 48 - e.alt); c.globalAlpha = 1; }
-  if (G.tram && G.tram.state === "run") { const em = []; OBJ.T(c, Math.round(G.tram.x), 14 * TS, 288, TS, { em, light: () => {} }); em.forEach(f => f(c)); }
+  if (G.tram && G.tram.state === "run") { const em = []; OBJ.T(c, Math.round(G.tram.x), G.tram.row * TS, 288, TS, { em, light: () => {} }); em.forEach(f => f(c)); }
   // bullets
   for (const b of G.bul) { const col = b.owner === "p" ? COL.cyan : b.rail ? COL.amber : COL.magenta, sp = Math.hypot(b.vx, b.vy), ux = b.vx / sp, uy = b.vy / sp;
     if (b.owner === "e" && !b.rail) { c.save(); c.globalCompositeOperation = "lighter"; glow(c, b.x, b.y, 7, col, .55); c.restore(); c.fillStyle = col; c.fillRect(Math.round(b.x) - 1, Math.round(b.y) - 1, 3, 3); c.fillStyle = "#ffd1e6"; c.fillRect(Math.round(b.x), Math.round(b.y), 1, 1); }
@@ -80,7 +81,8 @@ function drawOC(c, t) {
 function drawHUD(c, t) {
   const p = G.p, W = GW, H = GH;
   if (G.hexed > 0) { c.save(); c.translate(Math.round(rnd(-2, 2)), Math.round(rnd(-1, 1))); }
-  panel(c, 6, 6, 110, 24, "#3a3456"); txt(c, D().name, 12, 9, COL.ink); txt(c, D().code + (G.phase2 ? " · PHASE 2" : ""), 12, 19, G.phase2 ? COL.red : COL.dim);
+  const nm = mapName(); c.font = "8px Silkscreen"; const pw = Math.max(110, c.measureText(nm).width + 16);
+  panel(c, 6, 6, pw, 24, "#3a3456"); txt(c, nm, 12, 9, COL.ink); txt(c, D().code + (G.runSeed != null && G.mapKey === "run" ? " · " + PG.seedName(G.runSeed) : "") + (G.phase2 ? " · PHASE 2" : ""), 12, 19, G.phase2 ? COL.red : COL.dim);
   panel(c, W / 2 - 54, 6, 108, 24, "#3a3456"); txt(c, G.boss ? D().bossName : `${String(Math.min(dk(), 100)).padStart(3, "0")}/100`, W / 2, 9, G.boss ? COL.magenta : COL.ink, 8, "center");
   for (let i = 0; i < 20; i++) { c.fillStyle = i < Math.min(dk(), 100) / 5 ? COL.magenta : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); }
   panel(c, W - 108, 6, 102, 24, "#3a3456"); txt(c, String(G.score).padStart(7, "0"), W - 100, 9, COL.ink); txt(c, "x" + G.mult.toFixed(1), W - 12, 9, COL.cyan, 8, "right");
@@ -112,22 +114,22 @@ function drawTitle(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .72);
   drawLogo(c, GW / 2 - 18, 92, 44); txt(c, "ONE BULLET. ONE LIFE.", GW / 2, 104, COL.dim, 8, "center");
   const L = lab(); const rows = [[L.move, "MOVE"], [L.aim, "AIM"], [L.fire, "SHOOT"], [L.dash, "PHASE DASH (OVER LOW COVER)"], [L.oc, "OVERCLOCK · SWEEP TO LOCK"], [L.hack, "SHORT CIRCUIT"], [L.reload, "RELOAD"]];
-  rows.forEach(([k, v], i) => { txt(c, k, GW / 2 - 8, 114 + i * 10, COL.cyan, 8, "right"); txt(c, v, GW / 2 + 4, 114 + i * 10, COL.ink); });
-  const k = DIST[DORDER[G.sel || 0]]; txt(c, (G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`, GW / 2, 184, COL.amber, 8, "center");
+  rows.forEach(([k, v], i) => { txt(c, k, GW / 2 - 8, 111 + i * 9, COL.cyan, 8, "right"); txt(c, v, GW / 2 + 4, 111 + i * 9, COL.ink); });
+  const k = DIST[DORDER[G.sel || 0]]; txt(c, (G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`, GW / 2, 178, COL.amber, 8, "center");
   drawMenu(c, G.menu, t);
-  txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 222, rgba(COL.cyan, .75), 8, "center");
-  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED"), GW / 2, 234, COL.dim, 8, "center");
+  txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 226, rgba(COL.cyan, .75), 8, "center");
+  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED"), GW / 2, 237, COL.dim, 8, "center");
   txt(c, ((G.unlocked || 1) > 1 ? (PAD.active ? "LEFT / RIGHT: DISTRICT · " : "A / D: DISTRICT · ") : "CLEAR THE RAIN MARKET TO UNLOCK D-02 · ") + (PAD.active ? "UP / DOWN + " + L.confirm : "W / S + ENTER OR CLICK"), GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
 function drawDead(c, t) {
   c.save(); c.globalCompositeOperation = "multiply"; c.fillStyle = "#b03048"; c.fillRect(0, 0, GW, GH); c.restore();
   const r = rngF(Math.floor(t / 140)); for (let i = 0; i < 10; i++) { const sy = r() * GH | 0, sh = 2 + r() * 8 | 0, dx = (r() - .5) * 20 | 0; c.drawImage(c.canvas, 0, sy, GW, sh, dx, sy, GW, sh); }
-  c.fillStyle = "rgba(5,3,10,.6)"; c.fillRect(0, 80, GW, 146);
+  c.fillStyle = "rgba(5,3,10,.6)"; c.fillRect(0, 80, GW, 150);
   ["#2be4ff", "#ff2d8a", "#ffe8ee"].forEach((col, i) => txt(c, "FLATLINE", GW / 2 + (i === 0 ? -2 : i === 1 ? 2 : 0), 88, col, 32, "center"));
-  txt(c, "KILLED BY  " + G.killer, GW / 2, 130, COL.amber, 8, "center");
+  txt(c, "KILLED BY  " + G.killer + (G.mapKey === "run" ? "   ·   SEED " + PG.seedName(G.runSeed) : ""), GW / 2, 130, COL.amber, 8, "center");
   txt(c, `KILLS ${String(G.kills).padStart(3, "0")}   HEAT ${G.heat}   SCORE ${String(G.score).padStart(7, "0")}`, GW / 2, 144, COL.ink, 8, "center");
   txt(c, "BEST " + String(G.best || 0).padStart(7, "0") + "   ·   +" + (G.runScrip || 0) + " SCRIP KEPT", GW / 2, 158, COL.dim, 8, "center");
-  if (G.deadT > .8) { drawMenu(c, G.menu, t); if (!PAD.active) txt(c, "R: QUICK REBOOT", GW / 2, 214, rgba(COL.dim, .7), 8, "center"); }
+  if (G.deadT > .8) { drawMenu(c, G.menu, t); if (!PAD.active) txt(c, "R: QUICK REBOOT", GW / 2, 220, rgba(COL.dim, .7), 8, "center"); }
 }
 function drawIntro(c, t) {
   const k = Math.min(1, G.introT / .3); c.fillStyle = `rgba(12,7,18,${.85 * k})`; c.fillRect(0, 0, GW, GH);
@@ -142,7 +144,7 @@ function drawIntro(c, t) {
 function drawClear(c, t) {
   veil(c, .78); txt(c, "DISTRICT CLEAR", GW / 2, 78, COL.cyan, 32, "center");
   txt(c, `SCORE ${String(G.score).padStart(7, "0")}   ·   BEST ${String(G.best || 0).padStart(7, "0")}`, GW / 2, 124, COL.ink, 8, "center");
-  txt(c, `TIME ${Math.floor(G.time / 60)}:${String(Math.floor(G.time % 60)).padStart(2, "0")}   ·   KILLS ${G.kills}`, GW / 2, 134, COL.dim, 8, "center");
+  txt(c, `TIME ${Math.floor(G.time / 60)}:${String(Math.floor(G.time % 60)).padStart(2, "0")}   ·   KILLS ${G.kills}` + (G.mapKey === "run" ? "   ·   SEED " + PG.seedName(G.runSeed) : ""), GW / 2, 134, COL.dim, 8, "center");
   const nx = D().next ? DIST[D().next] : null, L = lab();
   if (nx) { txt(c, `NEXT: ${nx.code} ${nx.name} · HEAT CARRIES OVER (MAX 2)`, GW / 2, 160, COL.magenta, 8, "center");
     txt(c, "+" + (G.runScrip || 0) + " SCRIP THIS RUN · " + SAVE.scrip + " BANKED", GW / 2, 146, COL.amber, 8, "center");

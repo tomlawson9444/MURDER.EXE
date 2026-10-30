@@ -211,7 +211,7 @@ function updateBullets(dt) {
         else if (ch === "c") { const k = i + "," + j; G.crateHp[k] = (G.crateHp[k] || 2) - 1; if (G.crateHp[k] <= 0) breakTile(i, j); else AU.sfx("crate", panOf(b.x)); }
         fx(b.x - b.vx * .01, b.y - b.vy * .01, 4, [b.owner === "p" ? COL.cyan : COL.magenta, "#ffffff"], 40, .25); b.life = 0; break;
       }
-      if (G.tram && G.tram.state === "run" && b.y > 14 * TS - 10 && b.y < 15 * TS && b.x > G.tram.x && b.x < G.tram.x + 288) { b.life = 0; break; }
+      if (G.tram && G.tram.state === "run" && b.y > G.tram.row * TS - 10 && b.y < (G.tram.row + 1) * TS && b.x > G.tram.x && b.x < G.tram.x + 288) { b.life = 0; break; }
       if (b.owner === "p") {
         for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
