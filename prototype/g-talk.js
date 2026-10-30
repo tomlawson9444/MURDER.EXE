@@ -13,6 +13,7 @@ const speakerName = w => { const S = SPEAKERS[w]; return typeof S.name === "func
 /* ---- Portraits ---- */
 const NPC_LOOKS = {
   vane: { coat: "long", coatCol: "white", lining: "black", hair: "bob", hairCol: "silver", skin: "s1", eyes: "eyes", arm: "none", glow: "amber", trail: "glow", gun: "gold", extra: "none" },
+  dex: { coat: "long", coatCol: "graphite", lining: "magenta", hair: "buzz", hairCol: "silver", skin: "s2", eyes: "eyes", arm: "both", glow: "magenta", trail: "glow", gun: "steel", extra: "none" },
   wren: { coat: "jacket", coatCol: "olive", lining: "amber", hair: "mohawk", hairCol: "green", skin: "s4", eyes: "goggles", arm: "none", glow: "lime", trail: "glow", gun: "carbon", extra: "scarf" },
 };
 function portrait(who) {
@@ -29,7 +30,8 @@ function applyFx(fx) {
   if (fx.res) { C.res += fx.res; log.push({ res: fx.res }); note("CORVUS RESONANCE +" + fx.res, COL.red); }
   if (fx.flag) { C.flags[fx.flag] = true; if (FLAG_PAIRS[fx.flag]) delete C.flags[FLAG_PAIRS[fx.flag]]; log.push({ flag: fx.flag }); }
   // Scrip from a conversation is paid once per chapter, so replays can't farm it.
-  if (fx.scrip && !C.paid[C.cur]) { SAVE.scrip += fx.scrip; C.paidNow = true; note("+" + fx.scrip + " SCRIP", COL.amber); }
+  if (fx.scrip < 0) { SAVE.scrip = Math.max(0, SAVE.scrip + fx.scrip); note(fx.scrip + " SCRIP", COL.red); }
+  else if (fx.scrip && !C.paid[C.cur]) { SAVE.scrip += fx.scrip; C.paidNow = true; note("+" + fx.scrip + " SCRIP", COL.amber); }
   persist();
 }
 // Replaying a chapter takes back the trust, Resonance and flags it gave last time, so choices can be remade.

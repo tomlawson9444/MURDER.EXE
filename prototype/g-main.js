@@ -39,7 +39,7 @@
       const next = CHAPTERS[nextChapter()];
       G.menu = layoutMenu([
         { label: begun ? `STORY · CONTINUE ${chLabel(nextChapter())}` : "STORY · NEW CAMPAIGN", col: COL.amber, act: () => made ? openCamp() : openBodyshop("create"),
-          desc: made ? (begun ? `NINE NIGHTS OF RAIN · NEXT: ${next.title}` : "NINE NIGHTS OF RAIN · ACT 1 · YOUR CHOICES CHANGE THE STORY") : need },
+          desc: made ? (begun ? `ACT ${actOf(nextChapter()).n} · ${actOf(nextChapter()).name} · NEXT: ${next.title}` : "NINE NIGHTS OF RAIN · ACT 1 · YOUR CHOICES CHANGE THE STORY") : need },
         { label: "ARCADE", act: () => made ? openArcade() : openBodyshop("create"), desc: made ? "PICK A DISTRICT · KILL 100 · BEAT THE BOSS · GO DEEPER" : need },
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
         { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" }], 176, 13); runMenu(G.menu); return; }
@@ -73,7 +73,7 @@
         G.menu = layoutMenu(D().next ? [{ label: "BREACH NOW", act: breach }, { label: "MAGPIE'S, THEN BREACH", col: COL.magenta, act: () => openShop("clear") }, { label: "CASH OUT", col: COL.dim, act: cashOut }]
           : [{ label: "RETURN TO TITLE", act: cashOut }, { label: "MAGPIE'S", col: COL.magenta, act: () => { cashOut(); openShop("title"); } }], 176); runMenu(G.menu); }
       return; }
-    if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else if (D().boss === "ferryman") spawnFerryman(); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
+    if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else if (STORY_BOSSES[D().boss]) STORY_BOSSES[D().boss](); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
     if (G.mode === "play") {
       if (hit("p") || hit("escape")) G.paused = !G.paused; if (G.paused) { if (hit("lmb")) G.paused = false; return; }
       if (G.hitstop > 0) { G.hitstop -= rdt; return; }
@@ -119,6 +119,6 @@
   const sq = location.hash.match(/^#seed-([0-9a-z]{1,6})(?:-(\w+))?$/i); if (sq) { G.queuedSeed = PG.parseSeed(sq[1]); SAVE.mapMode = "gen"; if (sq[2] && DORDER.indexOf(sq[2].toLowerCase()) >= 0 && DORDER.indexOf(sq[2].toLowerCase()) < (G.unlocked || 1)) G.sel = DORDER.indexOf(sq[2].toLowerCase()); }
   const fonts = Promise.race([Promise.all([document.fonts.load('8px "Silkscreen"'), document.fonts.load('32px "Silkscreen"'), document.fonts.load('700 44px "Chakra Petch"')]), new Promise(r => setTimeout(r, 2500))]);
   BANK.build(); fonts.then(() => { updateHelp(); buildSprites(); reset("market"); G.mode = "title"; if (location.hash.startsWith("#autostart")) start(qs ? qs[1] : "market"); else if (sq && SAVE.char.created) openArcade();
-    const cq = location.hash.match(/chapter-(\d)/); if (cq && CHAPTERS[+cq[1]]) { SAVE.camp.cur = Math.max(SAVE.camp.cur, +cq[1]); startChapter(+cq[1], location.hash.includes("nobrief")); } requestAnimationFrame(frame); });
+    const cq = location.hash.match(/chapter-(\d+)/); if (cq && CHAPTERS[+cq[1]]) { SAVE.camp.cur = Math.max(SAVE.camp.cur, +cq[1]); startChapter(+cq[1], location.hash.includes("nobrief")); } requestAnimationFrame(frame); });
   window.__G = G;
 })();

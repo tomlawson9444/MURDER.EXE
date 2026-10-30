@@ -4,7 +4,7 @@ let SP = {}, SPF = {};
 function flipSpr(s) { const cv = mk(s.w, s.h), c = cv.getContext("2d"); c.translate(s.w, 0); c.scale(-1, 1); c.drawImage(s.cv, 0, 0); const gc = mk(s.gc.width, s.gc.height), g = gc.getContext("2d"); g.translate(gc.width, 0); g.scale(-1, 1); g.drawImage(s.gc, 0, 0); return { cv, gc, G: s.G, w: s.w, h: s.h }; }
 function buildSprites() {
   const rim = { rimR: COL.cyan, rimL: "#7f74c9" }, er = { rimL: COL.magenta, rimR: "#6f66b0" };
-  ["corvid", "shrike", "rook", "jackdaw", "carrion", "bulwark", "hexer", "nest", "blackwing", "augur", "ferryman"].forEach(k => SP[k] = sprite(DEFS[k], er));
+  ["corvid", "shrike", "rook", "jackdaw", "carrion", "bulwark", "hexer", "nest", "blackwing", "augur", "ferryman", "cinder"].forEach(k => SP[k] = sprite(DEFS[k], er));
   for (const k in SP) SPF[k] = flipSpr(SP[k]);
   SP.corvus = sprite(DEFS.corvus, { rimL: COL.red, rimR: COL.magenta });
   applyLook(); // the player is drawn from the character's saved look (g-char.js)

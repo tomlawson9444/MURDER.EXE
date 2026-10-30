@@ -58,14 +58,17 @@ The title screen has four choices, with a one-line description under the selecte
 
 ## Campaign: Nine Nights of Rain
 
-The story campaign is planned as 30 chapters across 10 districts in five acts. **Act 1, Wet Feathers, is playable now** (chapters 1 to 6, from the Rain Market to the Gutterline Canals). Pick STORY on the title screen.
+The story campaign is planned as 30 chapters across 10 districts in five acts. **Acts 1 and 2 are playable now** (chapters 1 to 12). Pick STORY on the title screen, and switch acts with A / D (or left / right) on the chapter list.
 
-- **Chapters with story objectives:** survive an ambush (Wet Feathers), protect Magpie's stall (Price of Chrome), draw out BLACKWING (Blackwing), survive rising floodwater (Low Water), open three floodgates (Lock and Key) and kill THE FERRYMAN (The Ferryman).
-- **Conversations:** briefings and debriefs with portraits for Director Vane, Magpie, Wren, CORVUS, Blackwing and the Ferryman. Replies come in four styles (Cold, Sharp, Hard, Ask), and your BODYSHOP origin adds its own reply in key scenes. Some choices run on a 10-second timer, and staying silent counts as an answer.
+- **Act 1, Wet Feathers (Rain Market, Gutterline Canals):** survive an ambush, protect Magpie's stall, draw out BLACKWING, survive rising floodwater, open three floodgates and kill THE FERRYMAN.
+- **Act 2, The Roost (Chrome Rookery, The Kiln):** cut three roost beacons in the wind, sync four relays in order while a CORVUS flashback plays and the north bridge falls, unmask THE AUGUR (it's Dex Morrow), survive the Kiln's night shift while the floor vents erupt, sabotage four furnaces after a timed ransom choice, and kill CINDER.
+- **Conversations:** briefings and debriefs with portraits for Director Vane, Magpie, Wren, Dex Morrow, CORVUS, Blackwing, the Augur, the Ferryman and Cinder. Replies come in four styles (Cold, Sharp, Hard, Ask), and your BODYSHOP origin adds its own reply in key scenes. Some choices run on a 10-second timer, and staying silent counts as an answer.
 - **Your name:** the story uses the name you gave your operative in the BODYSHOP.
-- **Trust and Resonance:** Magpie, Wren and Vane remember how you treat them (Dex joins in Act 2), and talking back to CORVUS raises your Resonance. Freeing or abandoning the barge sleepers in chapter 5 changes who helps you afterwards.
+- **Trust and Resonance:** Magpie, Wren, Vane and Dex remember how you treat them, and talking back to CORVUS raises your Resonance. Choices carry forward: freeing or abandoning the barge sleepers in chapter 5 decides whether Wren or Magpie's runner Pip is taken hostage in chapter 11, and how you answer the ransom (pay 300 scrip, trade a memory for Resonance, or storm in and face a hotter fight) shapes chapter 12.
 - **Radio chatter:** short lines from your contacts and CORVUS during play, with tutorial tips in the early chapters that match your keyboard or controller.
 - **Gutterline Canals:** a new story district built by the map generator from fixed seeds. Floodwater rises in stages (tiles flash, then go under, and anything standing there sinks), while every door and floodgate is kept reachable.
+- **The Kiln:** a story foundry district with slag pools. Floor vents glow for a second, then erupt for a few seconds, killing anything standing on them (enemies included).
+- **CINDER:** the Kiln's priest. He fans slag across the floor in three lines towards you, then his chest furnace has to vent, and that's the only time he can be hurt. Three hits; each one opens more vents and calls adds.
 - **THE FERRYMAN:** a harpoon boss. He is armoured until he reels his chain back in. Get hooked and he drags you towards him, and towards the water; dash to break the chain.
 - **Datashards and the ARCHIVE:** one hidden shard per chapter unlocks a witness log about the Night of Feathers.
 - **Story difficulty:** two shields soak hits, and a fall into the water puts you back on dry ground. Normal keeps one life.
@@ -123,16 +126,16 @@ Progress (operative and look, scrip, owned gear and cosmetics, loadout, mileston
 | `g-shop.js` | MAGPIE'S: the fixer's stall, shop and loadout screen (sidearms, Overclock, implants, style) |
 | `g-char.js` | Character model: look options, cosmetics, origins and starter kits, and the player sprite builder |
 | `g-bodyshop.js` | BODYSHOP: character creation and customisation (LOOK, GEAR, INVENTORY, ORIGIN) |
-| `g-story.js` | The campaign script: chapters, objectives, conversations, radio lines and datashard logs for Act 1 |
+| `g-story.js` | The campaign script: chapters, objectives, conversations, radio lines and datashard logs for Acts 1 and 2 |
 | `g-talk.js` | Conversation screen, reply choices, trust and Resonance, and in-game radio chatter |
-| `g-campaign.js` | Campaign mode: chapter runs and objectives, the Gutterline Canals and floodwater, THE FERRYMAN, the campaign menu, archive and chapter-complete screen |
+| `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, THE FERRYMAN and CINDER, the campaign menu, archive and chapter-complete screen |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |
 
 ## Roadmap
 
-1. Campaign Acts 2 to 5: story chapters in the Chrome Rookery, The Kiln, Saltgate Docks, Datacrypt, The Stacks, Halvorsen Galleria, Spire Zero and The Nest, with their bosses and the three endings.
+1. Campaign Acts 3 to 5: story chapters in Saltgate Docks, Datacrypt, The Stacks, Halvorsen Galleria, Spire Zero and The Nest, with their bosses and the three endings.
 2. Unique enemies and bosses per family, so endless districts differ in how they fight as well as how they look.
 3. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
 4. Steam page and a free demo for Steam Next Fest.
