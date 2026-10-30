@@ -6,6 +6,12 @@ const GUNS = {
   coil: { name: "RICOCHET COILGUN", mag: 5, reload: 1.2, cd: .14, speed: 600, pellets: 1, spread: 0, pierce: 0, bounce: 2, life: 2.5, sfx: "kestrel" },
   hornet: { name: "HORNET SMG", mag: 16, reload: 1.4, cd: .065, speed: 700, pellets: 1, spread: .09, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", auto: true },
   rail: { name: "RAILPIERCER", mag: 3, reload: 1.5, cd: .35, speed: 1150, pellets: 1, spread: 0, pierce: 3, bounce: 0, life: 2.5, sfx: "rail", kick: 4 },
+  // Act reward weapons: never sold.
+  harpoon: { name: "FERRYMAN'S HARPOON", mag: 2, reload: 1.3, cd: .4, speed: 540, pellets: 1, spread: 0, pierce: 99, bounce: 0, life: 2.5, sfx: "rail", kick: 5, col: "#ffb22e", big: 1 },
+  bellows: { name: "CINDER'S BELLOWS", mag: 40, reload: 1.6, cd: .045, speed: 330, pellets: 2, spread: .2, pierce: 1, bounce: 0, life: .32, sfx: "kestrel", auto: true, col: "#ff7a1a" },
+  repeater: { name: "ARCHIVE REPEATER", mag: 8, reload: 1.2, cd: .16, speed: 760, pellets: 1, spread: 0, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", echo: .18 },
+  wasp: { name: "VANE'S WASP", mag: 6, reload: 1.4, cd: .3, speed: 300, pellets: 3, spread: .35, pierce: 0, bounce: 0, life: 2.2, sfx: "rail", homing: 1, col: "#ffb22e" },
+  requiem: { name: "CORVINA'S REQUIEM", mag: 7, reload: 1.1, cd: .12, speed: 800, pellets: 1, spread: 0, pierce: 0, bounce: 1, life: 2.5, sfx: "kestrel", feathers: 6, col: "#ff3d3d" },
 };
 const OCP = { deadlink: { locks: 6 }, arc: { locks: 3 }, swarm: { locks: 4 }, ghost: { locks: 5 }, crown: { locks: 8 } };
 const it = (id, cat, name, price, req, reqText, desc, stats = []) => ({ id, cat, name, price, req, reqText, desc, stats });
@@ -28,10 +34,15 @@ const ITEMS = [
   it("redline", "imp", "Redline Cache", 600, s => s.ocCount >= 15, "Use Overclock 15 times", "Overclock holds three charges, but the meter slowly drains.", ["3 OC CHARGES", "DRAINS"]),
   it("backup", "imp", "Backup Ego", 1200, s => !!s.clears.rookery, "Clear the Chrome Rookery", "Flatline once and come back. Your score multiplier is halved after.", ["1 REVIVE / RUN"]),
   // Act rewards: never sold. Each one is earned by finishing an act of the story, then works in the story and in Arcade.
-  Object.assign(it("toll", "imp", "Toll Chain", 0, null, "Finish Act 1 of the story", "The Ferryman's chain. Dash through an enemy to kill it, once a second.", ["DASH KILLS", "ACT 1 REWARD"]), { relic: 1 }),
-  Object.assign(it("kiln", "imp", "Kiln Rounds", 0, null, "Finish Act 2 of the story", "Cinder's slag in your bullets. Every shot kill bursts in a blast that can't hurt you.", ["KILLS EXPLODE", "ACT 2 REWARD"]), { relic: 2 }),
-  Object.assign(it("echo", "imp", "Echo Shell", 0, null, "Finish Act 3 of the story", "The Archivist kept a copy of you. Now it fights beside you.", ["ECHO ALLY", "ACT 3 REWARD"]), { relic: 3 }),
-  Object.assign(it("aegis", "imp", "Aegis Lattice", 0, null, "Finish Act 4 of the story", "Halvorsen's prototype. Shrugs off one hit, then recharges after 20 kills.", ["1 SHIELD", "RECHARGES", "ACT 4 REWARD"]), { relic: 4 }),
+  Object.assign(it("harpoon", "gun", "Ferryman's Harpoon", 0, null, "Finish Act 1", "Two heavy bolts that punch through every body in a line.", ["MAG 2", "PIERCES ALL", "ACT 1 REWARD"]), { relic: 1 }),
+  Object.assign(it("bellows", "gun", "Cinder's Bellows", 0, null, "Finish Act 2", "A slag thrower. Hold the trigger for a short, wide gout of fire.", ["MAG 40", "FULL AUTO", "SHORT RANGE"]), { relic: 2 }),
+  Object.assign(it("repeater", "gun", "Archive Repeater", 0, null, "Finish Act 3", "Every shot is fired again a moment later by your own echo.", ["MAG 8", "SHOTS REPEAT", "ACT 3 REWARD"]), { relic: 3 }),
+  Object.assign(it("wasp", "gun", "Vane's Wasp", 0, null, "Finish Act 4", "Fires three micro-missiles that hunt the nearest enemy.", ["MAG 6", "3 HOMING", "ACT 4 REWARD"]), { relic: 4 }),
+  Object.assign(it("requiem", "gun", "Corvina's Requiem", 0, null, "Finish the story", "Every kill bursts into six feathers that fly out and kill again.", ["MAG 7", "KILLS BURST", "ACT 5"]), { relic: 5 }),
+  Object.assign(it("toll", "imp", "Toll Chain", 0, null, "Finish Act 1", "The Ferryman's chain. Dash through an enemy to kill it, once a second.", ["DASH KILLS", "ACT 1 REWARD"]), { relic: 1 }),
+  Object.assign(it("kiln", "imp", "Kiln Rounds", 0, null, "Finish Act 2", "Cinder's slag in your bullets. Every shot kill bursts in a blast that can't hurt you.", ["KILLS EXPLODE", "ACT 2 REWARD"]), { relic: 2 }),
+  Object.assign(it("echo", "imp", "Echo Shell", 0, null, "Finish Act 3", "The Archivist kept a copy of you. Now it fights beside you.", ["ECHO ALLY", "ACT 3 REWARD"]), { relic: 3 }),
+  Object.assign(it("aegis", "imp", "Aegis Lattice", 0, null, "Finish Act 4", "Halvorsen's prototype. Shrugs off one hit, then recharges after 20 kills.", ["1 SHIELD", "RECHARGES", "ACT 4 REWARD"]), { relic: 4 }),
   Object.assign(it("crown", "oc", "CORVUS//CROWN", 0, null, "Finish the story", "Eight locks. Locks crack boss armour, and every kill gives Overclock back.", ["8 LOCKS", "HITS BOSSES", "ACT 5"]), { relic: 5 }),
 ];
 // Scrip for finishing each act, paid once.

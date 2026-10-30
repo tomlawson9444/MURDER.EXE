@@ -739,15 +739,18 @@ function campWin() {
   G.pending = []; G.bul = []; G.banner = { txt: "OBJECTIVE COMPLETE", col: COL.cyan, life: 1.6 }; AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best;
 }
 // Finishing an act pays out once: its reward item (never sold) and a pile of scrip.
-const actReward = A => ITEMS.find(i => i.relic === A.n);
+// Finishing an act pays out once: a weapon and a piece of gear Magpie never sells, plus a pile of scrip.
+const actRewards = A => ITEMS.filter(i => i.relic === A.n);
 const actDone = A => A.chapters.every(n => SAVE.camp.done[n]);
 function grantActRewards() {
   const S = SAVE.camp, got = []; S.actPaid = S.actPaid || {};
-  ACTS.forEach(A => { if (S.actPaid[A.n] || !actDone(A)) return; const R = actReward(A), L = SAVE.loadout; S.actPaid[A.n] = true; SAVE.scrip += ACT_SCRIP[A.n] || 0;
-    let on = false; if (R && !owns(R.id)) { SAVE.owned.push(R.id); if (R.cat === "imp" && L.imp.length < 2) { L.imp.push(R.id); on = true; } }
-    got.push({ act: A.n, item: R, scrip: ACT_SCRIP[A.n] || 0, on }); });
+  ACTS.forEach(A => { if (!actDone(A)) return; const L = SAVE.loadout, scrip = S.actPaid[A.n] ? 0 : ACT_SCRIP[A.n] || 0, items = actRewards(A).filter(i => !owns(i.id)); // items added later still reach finished saves
+    if (!items.length && !scrip) return; S.actPaid[A.n] = true; SAVE.scrip += scrip;
+    items.forEach(i => { SAVE.owned.push(i.id); if (i.cat === "gun") L.gun = i.id; if (i.cat === "imp" && L.imp.length < 2) L.imp.push(i.id); }); // new weapon goes straight in your hand
+    got.push({ act: A.n, items, scrip }); });
   if (got.length) persist(); return got;
 }
+const rewardNames = items => items.map(i => i.name.toUpperCase()).join(" + ");
 function chapterDone() {
   const C = G.camp, S = SAVE.camp; earn(150); S.done[C.n] = true; if (S.paidNow) S.paid[C.n] = true; S.paidNow = false;
   S.cur = Math.max(S.cur, Math.min(C.n + 1, maxChapter())); C.reward = grantActRewards().find(r => r.act === actOf(C.n).n) || null; if (C.ch.district === "market" && G.rules.goal.type === "boss") track("clear", "market");
@@ -894,7 +897,7 @@ function campHudCenter(c, t) {
 /* ---- Campaign menu and archive ---- */
 const actOpen = A => A.chapters[0] <= SAVE.camp.cur;
 function openCamp() { G.mode = "camp"; G.campView = "list"; G.camp = null; G.rules = null; G.chapMap = null; shopSprites();
-  const late = grantActRewards(); G.campNote = late.length ? { txt: "ACT REWARDS CLAIMED: " + late.map(r => (r.item ? r.item.name.toUpperCase() : "") + " +" + r.scrip).join(" · "), life: 6 } : null; // acts finished before rewards existed
+  const late = grantActRewards(); G.campNote = late.length ? { txt: "ACT REWARDS CLAIMED: " + late.map(r => rewardNames(r.items) + (r.scrip ? " +" + r.scrip : "")).join(" · "), life: 6 } : null; // acts finished before rewards existed
   // Open on the act and chapter you play next.
   const nx = nextChapter(), A = actOf(nx); G.campAct = ACTS.indexOf(A);
   G.menuMode = "camp"; G.menuSel = A.chapters.indexOf(nx); G.menuMx = mouse.x; G.menuMy = mouse.y; }
@@ -944,9 +947,9 @@ function drawCamp(c, t) {
   txt(c, aOpen ? `${chLabel(hov)} · ${DIST[ch.district].name}` : chLabel(hov), 276, 52, aOpen ? COL.amber : "#5a5276");
   if (open) { wrapText(c, ch.goal, 180).forEach((l, i) => txt(c, l, 276, 64 + i * 10, COL.ink)); txt(c, S.done[hov] ? "CLEARED" + (S.shards[hov] ? " · DATASHARD FOUND" : " · DATASHARD MISSING") : "NOT CLEARED YET", 276, 102, S.done[hov] ? COL.cyan : COL.dim); }
   else txt(c, aOpen ? "CLEAR THE CHAPTER BEFORE IT" : `FINISH ACT ${A.n - 1} TO UNLOCK`, 276, 64, COL.dim);
-  const R = actReward(A), paid = (S.actPaid || {})[A.n]; // what finishing this act gets you
-  txt(c, paid ? "ACT REWARD CLAIMED: " : "ACT REWARD: ", 20, 214, COL.dim); c.font = "8px Silkscreen"; const rx = 20 + c.measureText(paid ? "ACT REWARD CLAIMED: " : "ACT REWARD: ").width;
-  txt(c, `${R ? R.name.toUpperCase() : ""} + ${ACT_SCRIP[A.n]} SCRIP`, rx, 214, paid ? COL.dim : COL.amber);
+  const paid = (S.actPaid || {})[A.n]; // what finishing this act gets you
+  txt(c, paid ? "CLAIMED: " : "ACT REWARD: ", 20, 214, COL.dim); c.font = "8px Silkscreen"; const rx = 20 + c.measureText(paid ? "CLAIMED: " : "ACT REWARD: ").width;
+  txt(c, `${rewardNames(actRewards(A))} + ${ACT_SCRIP[A.n]} SCRIP`, rx, 214, paid ? COL.dim : COL.amber);
   if (G.campNote) { G.campNote.life -= 1 / 60; txt(c, G.campNote.txt, GW / 2, 228, COL.amber, 8, "center"); if (G.campNote.life <= 0) G.campNote = null; }
   panel(c, 268, 122, 196, 84, "#3a3456"); txt(c, "WHO TRUSTS YOU", 276, 128, COL.dim);
   const metOf = { magpie: S.done[1] || S.cur >= 2, wren: S.flags.freed || S.flags.leftThem, vane: true, dex: S.done[9] || S.flags.metDex };
@@ -981,10 +984,11 @@ function drawChap(c, t) {
   shown.forEach(([k, nm]) => { txt(c, nm, x, 126, COL.dim); trustPips(c, x + 40, 128, S.trust[k]); x += 92; });
   txt(c, "CORVUS RESONANCE " + S.res, GW / 2, 142, COL.red, 8, "center");
   if (last) drawEnding(c, t);
-  const R = C.reward; if (R) { const pulse = .75 + .25 * Math.sin(t * .008), nm = R.item ? R.item.name.toUpperCase() : "";
-    if (last) txt(c, `ACT 5 REWARD: ${nm} · +${R.scrip} SCRIP`, GW / 2, 197, rgba(COL.amber, pulse), 8, "center");
-    else { txt(c, `ACT ${R.act} REWARD UNLOCKED: ${nm}`, GW / 2, 156, rgba(COL.amber, pulse), 8, "center"); if (R.item) txt(c, R.item.desc.toUpperCase(), GW / 2, 167, rgba(COL.ink, .85), 8, "center");
-      txt(c, `+${R.scrip} SCRIP · ` + (R.on ? "EQUIPPED · WORKS IN ARCADE TOO" : "EQUIP IT AT MAGPIE'S · WORKS IN ARCADE TOO"), GW / 2, 178, COL.amber, 8, "center"); } }
+  const R = C.reward; if (R) { const pulse = .75 + .25 * Math.sin(t * .008), nm = rewardNames(R.items);
+    if (last) txt(c, `ACT 5 REWARDS: ${nm} · +${R.scrip} SCRIP`, GW / 2, 197, rgba(COL.amber, pulse), 8, "center");
+    else { txt(c, `ACT ${R.act} REWARDS: ${nm}`, GW / 2, 152, rgba(COL.amber, pulse), 8, "center");
+      R.items.forEach((i, k) => txt(c, i.desc.toUpperCase(), GW / 2, 163 + k * 10, rgba(COL.ink, .85), 8, "center"));
+      txt(c, `+${R.scrip} SCRIP · NEW WEAPON EQUIPPED · NOT SOLD AT MAGPIE'S · WORKS IN ARCADE TOO`, GW / 2, 165 + R.items.length * 10, COL.amber, 8, "center"); } }
   if (G.chapT > .8) drawMenu(c, G.menu, t);
 }
 

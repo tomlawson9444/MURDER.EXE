@@ -8,7 +8,7 @@
   function enterDistrict(key) {
     G.district = key; G.mapKey = chooseMap(key); G.grid = buildGrid(MAPS[G.mapKey], false); G.base = renderMap(G.mapKey, false, SP, G.grid); G.dirty = false; G.perch = perchSpot(); G.gapTiles = gapTiles();
     const ps = playerStart(); if (!G.p) { G.p = newPlayer(ps.x, ps.y); applyLoadout(G.p, true); } else { Object.assign(G.p, { x: ps.x, y: ps.y, trail: [], dash: 0, iframes: .5 }); applyLoadout(G.p, false); } placeEchoAlly();
-    Object.assign(G, { en: [], bul: [], pending: [], parts: [], blasts: [], zaps: [], tracers: [], pings: [], dStart: G.kills, phase2: false, tram: null, wind: null, collapse: null,
+    Object.assign(G, { en: [], bul: [], echoShots: [], pending: [], parts: [], blasts: [], zaps: [], tracers: [], pings: [], dStart: G.kills, phase2: false, tram: null, wind: null, collapse: null,
       boss: false, oc: null, hexed: 0, trace: 0, anchor: null, crateHp: {}, spawnT: 1.5 });
     G.heat = G.heatBase; G.lastHeat = G.heat; G.mult = 1 + G.heat * .5;
     G.banner = { txt: mapName() + " · SURVIVE TO 100", col: COL.cyan, life: 2.4 };

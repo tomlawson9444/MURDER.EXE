@@ -55,7 +55,7 @@ function detonateBarrel(i, j) { G.grid[j][i] = "."; G.dirty = true; explode(i * 
 function dropSign(i, j) { G.grid[j][i] = "h"; G.dirty = true; AU.sfx("sign"); G.shake = 4; const x = i * TS + 8, y = j * TS + 10;
   fx(x, y, 20, [COL.magenta, COL.cyan, "#ffffff"], 80, .7); for (const e of G.en) if (e.alive && Math.abs(e.x - x) < 20 && Math.abs(e.y - y) < 16) killEnemy(e, "blast"); if (Math.abs(G.p.x - x) < 14 && Math.abs(G.p.y - y) < 12) playerDie("blast"); }
 
-function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [] }); }
+function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [], col: o.col, big: o.big, homing: o.homing, feathers: o.feathers }); }
 
 /* ---- Player ---- */
 function updatePlayer(dt, rdt) {
@@ -81,9 +81,12 @@ function updatePlayer(dt, rdt) {
   else if (hit("r") && p.ammo < p.gun.mag) { p.reload = p.gun.reload; AU.sfx("reload"); }
   if ((hit("lmb") || fireHeld()) && p.reload <= 0 && p.fireCd <= 0) { // holding keeps firing at the gun's own rate
     if (p.ammo > 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2, a = Math.atan2(mouse.y - gy, mouse.x - gx), last = p.ammo === 1 && hasImp("trigger");
-      for (let k = 0; k < g.pellets; k++) shoot(gx, gy, a + (g.pellets > 1 ? (k / (g.pellets - 1) - .5) * g.spread * 2 : 0) + rnd(-g.spread, g.spread) * (g.pellets > 1 ? .3 : 1), g.speed * (g.pellets > 1 ? rnd(.9, 1.1) : 1), "p", { pierce: g.pierce + (last ? 2 : 0), bounce: g.bounce, life: g.life });
+      for (let k = 0; k < g.pellets; k++) shoot(gx, gy, a + (g.pellets > 1 ? (k / (g.pellets - 1) - .5) * g.spread * 2 : 0) + rnd(-g.spread, g.spread) * (g.pellets > 1 ? .3 : 1), g.speed * (g.pellets > 1 ? rnd(.9, 1.1) : 1), "p", { pierce: g.pierce + (last ? 2 : 0), bounce: g.bounce, life: g.life, col: g.col, big: g.big, homing: g.homing, feathers: g.feathers });
+      if (g.echo) (G.echoShots || (G.echoShots = [])).push({ t: g.echo, a }); // the Archive Repeater fires every shot again a beat later
       p.ammo--; p.fireCd = g.cd; AU.sfx(g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
   }
+  for (const q of G.echoShots || []) { q.t -= dt; if (q.t <= 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2; shoot(gx, gy, q.a, g.speed, "p", { life: g.life, col: "#9fd8ff" }); AU.sfx("kestrel", 0); fx(gx, gy, 4, ["#9fd8ff", "#ffffff"], 50, .15); } }
+  if (G.echoShots) G.echoShots = G.echoShots.filter(q => q.t > 0);
   if (hit("q")) hack();
   if ((hit("rmb") || hit("f")) && p.oc >= 50 && G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); }
   else if ((hit("rmb") || hit("f")) && p.oc >= 50) { G.oc = { locks: [], t: 0 }; p.oc -= 50; track("oc", 0); AU.sfx("ocIn"); AU.setOC(true); }
@@ -227,6 +230,9 @@ function updateBullets(dt) {
     // Homing rounds (Vane's missiles) turn towards you for a short while after launch.
     if (b.seek > 0) { b.seek -= dt; const sp = Math.hypot(b.vx, b.vy); let cur = Math.atan2(b.vy, b.vx), da = Math.atan2(p.y - BODY - b.y, p.x - b.x) - cur; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
       cur += Math.max(-2.4 * dt, Math.min(2.4 * dt, da)); b.vx = Math.cos(cur) * sp; b.vy = Math.sin(cur) * sp; }
+    if (b.homing && b.owner === "p") { let best = null, bd = 170; for (const e of G.en) { if (!e.alive || armored(e) || e.type === "holo") continue; const d = Math.hypot(e.x - b.x, e.y - BODY - (e.alt || 0) - b.y); if (d < bd) { bd = d; best = e; } }
+      if (best) { const sp = Math.hypot(b.vx, b.vy); let cur = Math.atan2(b.vy, b.vx), da = Math.atan2(best.y - BODY - (best.alt || 0) - b.y, best.x - b.x) - cur; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
+        cur += Math.max(-5 * dt, Math.min(5 * dt, da)); b.vx = Math.cos(cur) * sp; b.vy = Math.sin(cur) * sp; } }
     const steps = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 3);
     for (let s = 0; s < steps && b.life > 0; s++) {
       b.x += b.vx * dt / steps; b.y += b.vy * dt / steps; b.d += Math.hypot(b.vx, b.vy) * dt / steps;
@@ -249,7 +255,8 @@ function updateBullets(dt) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
           if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
           if (e.hp > 1) { hurtBoss(e); b.life = 0; break; }
-          { const kx = e.x, ky = e.y - 6; killEnemy(e, "shot"); if (b.owner === "p" && hasImp("kiln")) explode(kx, ky, 26, "kiln", true); }
+          { const kx = e.x, ky = e.y - 6; killEnemy(e, "shot"); if (b.owner === "p" && hasImp("kiln")) explode(kx, ky, 26, "kiln", true);
+            if (b.feathers) { const off = Math.random() * TAU; for (let k = 0; k < b.feathers; k++) shoot(kx, ky - 4, off + k / b.feathers * TAU, 380, "p", { life: .45, col: "#ff3d3d" }); fx(kx, ky, 12, ["#ff3d3d", "#2a2440"], 80, .4); } }
           if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;
       } else {

@@ -27,7 +27,7 @@ const LINES = {
 };
 const say = k => { const l = LINES[k]; G.shop.line = l[Math.random() * l.length | 0]; G.shop.lineT = 0; };
 let SHOPBG = null;
-function shopSprites() { if (SP.magpie) return; ["magpie", "coil", "breacher", "hornet"].forEach(k => SP[k] = sprite(DEFS[k], k === "magpie" ? { rimR: COL.magenta, rimL: COL.cyan } : { rimR: COL.cyan })); SP.kestrel = SP.kestrel || sprite(DEFS.kestrel, { rimR: COL.cyan }); SP.rail = SP.rail || sprite(DEFS.rail, { rimR: COL.cyan }); }
+function shopSprites() { if (SP.magpie) return; ["magpie", "coil", "breacher", "hornet"].forEach(k => SP[k] = sprite(DEFS[k], k === "magpie" ? { rimR: COL.magenta, rimL: COL.cyan } : { rimR: COL.cyan })); SP.kestrel = SP.kestrel || sprite(DEFS.kestrel, { rimR: COL.cyan }); SP.rail = SP.rail || sprite(DEFS.rail, { rimR: COL.cyan }); ["harpoon", "bellows", "repeater", "wasp", "requiem"].forEach(k => SP[k] = SP[k] || sprite(DEFS[k], { rimR: COL.amber })); }
 function buildShopBG() {
   const C = mk(GW, GH), c = C.getContext("2d"), r = rngF(77); c.imageSmoothingEnabled = false;
   c.fillStyle = "#0b0912"; c.fillRect(0, 0, GW, GH);

@@ -61,13 +61,13 @@ The title screen has four choices, with a one-line description under the selecte
 The story campaign is complete: **30 chapters across 10 districts in five acts, with three endings**. Pick STORY on the title screen, and switch acts with A / D (or left / right) on the chapter list.
 
 - **Locked progression:** chapters open one at a time, and each act stays locked (no name, no chapter titles) until you finish the act before it.
-- **Act rewards:** finishing an act pays out once: a pile of scrip and a piece of gear Magpie never sells. Implants go straight into a free slot. Every reward works in the story and in Arcade, and the BODYSHOP inventory shows the ones still to earn.
-  - **Act 1 · Toll Chain** (implant, +1000 scrip): dash through an enemy to kill it, once a second.
-  - **Act 2 · Kiln Rounds** (implant, +1500 scrip): every shot kill bursts in a blast that can't hurt you or anything you're guarding.
-  - **Act 3 · Echo Shell** (implant, +2000 scrip): a copy of you walks behind you and shoots the Murder.
-  - **Act 4 · Aegis Lattice** (implant, +2500 scrip): shrugs off one hit, then recharges after 20 kills (shown on the HUD).
-  - **Act 5 · CORVUS//CROWN** (Overclock, +4000 scrip): eight locks; a lock on a story boss lands a hit through its armour (the final hit is still yours), and every kill in the volley gives Overclock back.
-  - Saves that already finished acts get their rewards the next time the campaign menu opens.
+- **Act rewards:** finishing an act pays out once: a weapon and a piece of gear Magpie never sells, plus a pile of scrip. The new weapon goes straight into your hand and reward implants into a free slot (swap them back any time at Magpie's or the BODYSHOP). Every reward works in the story and in Arcade, and the BODYSHOP inventory shows the ones still to earn.
+  - **Act 1 · Ferryman's Harpoon + Toll Chain** (+1000 scrip): two heavy bolts that punch through every body in a line; dash through an enemy to kill it, once a second.
+  - **Act 2 · Cinder's Bellows + Kiln Rounds** (+1500 scrip): a full-auto slag thrower with a short, wide spray; every shot kill bursts in a blast that can't hurt you or anything you're guarding.
+  - **Act 3 · Archive Repeater + Echo Shell** (+2000 scrip): every shot is fired again a beat later by your echo; a copy of you walks behind you and shoots the Murder.
+  - **Act 4 · Vane's Wasp + Aegis Lattice** (+2500 scrip): three micro-missiles per shot that hunt the nearest enemy; shrugs off one hit, then recharges after 20 kills (shown on the HUD).
+  - **Act 5 · Corvina's Requiem + CORVUS//CROWN** (+4000 scrip): every kill bursts into six feathers that fly out and kill again; an Overclock with eight locks where a lock on a story boss lands a hit through its armour (the final hit is still yours) and every kill gives Overclock back.
+  - Saves that already finished acts get any rewards they're missing the next time the campaign menu opens (the scrip is never paid twice).
 
 - **Act 1, Wet Feathers (Rain Market, Gutterline Canals):** survive an ambush, protect Magpie's stall, draw out BLACKWING, survive rising floodwater, open three floodgates and kill THE FERRYMAN.
 - **Act 2, The Roost (Chrome Rookery, The Kiln):** cut three roost beacons in the wind, sync four relays in order while a CORVUS flashback plays and the north bridge falls, unmask THE AUGUR (it's Dex Morrow), survive the Kiln's night shift while the floor vents erupt, sabotage four furnaces after a timed ransom choice, and kill CINDER.

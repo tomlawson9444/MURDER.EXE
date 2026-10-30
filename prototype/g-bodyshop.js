@@ -1,6 +1,6 @@
 /* BODYSHOP: create and customise your operative. Tabs: LOOK, GEAR, INVENTORY, ORIGIN. */
 "use strict";
-const INV_COLS = 10, INV_W = 27; // 10 x 27px cells keep every item on five rows
+const INV_COLS = 10, INV_W = 27, INV_H = 21; // 10 x 6 grid of small cells keeps every item clear of the details below
 const BTABS = ["LOOK", "GEAR", "INVENTORY", "ORIGIN"], BROW_Y = 42, BTAB_W = 69, BTN_DONE = [356, 244, 114, 18], BTN_BBACK = [198, 244, 60, 18];
 const GEAR_ROWS = [["SIDEARM", "gun"], ["OVERCLOCK", "oc"], ["IMPLANT 1", "imp", 0], ["IMPLANT 2", "imp", 1]];
 const invItems = () => ITEMS;
@@ -56,7 +56,7 @@ function updateBodyshop(rdt, actions) {
   if (hit("enter")) bodyConfirm(actions);
   // mouse
   const rowH = t === "GEAR" ? 18 : t === "ORIGIN" ? 46 : 14, rowAt = y => Math.floor((y - BROW_Y) / rowH);
-  const cellAt = (x, y) => { const cx = Math.floor((x - 200) / INV_W), cy = Math.floor((y - 44) / 24); return cx >= 0 && cx < INV_COLS && cy >= 0 ? cy * INV_COLS + cx : -1; };
+  const cellAt = (x, y) => { const cx = Math.floor((x - 200) / INV_W), cy = Math.floor((y - 44) / INV_H); return cx >= 0 && cx < INV_COLS && cy >= 0 ? cy * INV_COLS + cx : -1; };
   if (Math.hypot(mouse.x - B.mx, mouse.y - B.my) > .5) { B.mx = mouse.x; B.my = mouse.y; if (mouse.x > 198) { const i = t === "INVENTORY" ? cellAt(mouse.x, mouse.y) : rowAt(mouse.y); if (i >= 0 && i < n && mouse.y >= BROW_Y && mouse.y < 236) B.sel = i; } }
   if (hit("lmb")) { const x = mouse.x, y = mouse.y;
     if (y >= 20 && y < 36 && x > 196) { const k = Math.min(BTABS.length - 1, Math.floor((x - 198) / BTAB_W)); if (k !== B.tab) { B.tab = k; B.sel = 0; AU.sfx("lock", 1); } }
@@ -100,12 +100,12 @@ function drawBodyshop(c, t) {
   } else if (tab === "INVENTORY") {
     const all = invItems(), gearOwned = all.filter(i => i.cat !== "style" && owns(i.id)).length, styleOwned = all.filter(i => i.cat === "style" && owns(i.id)).length;
     txt(c, `GEAR ${gearOwned}/${all.filter(i => i.cat !== "style").length} · STYLE ${styleOwned}/${all.filter(i => i.cat === "style").length}`, 470, 8, COL.amber, 8, "right");
-    all.forEach((i, k) => { const x = 200 + (k % INV_COLS) * INV_W, y = 44 + Math.floor(k / INV_COLS) * 24, on = k === B.sel, own = owns(i.id);
-      c.fillStyle = own ? "#16121f" : "#0b0912"; c.fillRect(x, y, INV_W - 2, 22); c.strokeStyle = on ? COL.cyan : equipped(i.id) ? rgba(COL.cyan, .5) : "#2a2640"; c.strokeRect(x + .5, y + .5, INV_W - 3, 21);
-      c.globalAlpha = own ? 1 : .3; itemIcon(c, i, x + 1, y + 4); c.globalAlpha = 1; if (!own && !i.relic) { c.fillStyle = COL.magenta; c.fillRect(x + INV_W - 6, y + 2, 3, 3); } });
+    all.forEach((i, k) => { const x = 200 + (k % INV_COLS) * INV_W, y = 44 + Math.floor(k / INV_COLS) * INV_H, on = k === B.sel, own = owns(i.id);
+      c.fillStyle = own ? "#16121f" : "#0b0912"; c.fillRect(x, y, INV_W - 2, INV_H - 2); c.strokeStyle = on ? COL.cyan : equipped(i.id) ? rgba(COL.cyan, .5) : "#2a2640"; c.strokeRect(x + .5, y + .5, INV_W - 3, INV_H - 3);
+      c.globalAlpha = own ? 1 : .3; itemIcon(c, i, x + 1, y + 2); c.globalAlpha = 1; if (!own && !i.relic) { c.fillStyle = COL.magenta; c.fillRect(x + INV_W - 6, y + 2, 3, 3); } });
     const i = all[B.sel]; if (i) { const own = owns(i.id), kit = Object.values(ORIGIN[SAVE.char.origin].kit).flat().includes(i.id);
       const status = equipped(i.id) ? ["EQUIPPED", COL.cyan] : own ? [i.relic ? "ACT REWARD" : kit && SAVE.char.starterClaimed ? "OWNED · STARTER KIT" : "OWNED", i.relic ? COL.amber : COL.ink] : i.relic ? ["STORY ONLY · " + i.reqText.toUpperCase(), COL.amber] : !available(i) ? ["LOCKED · " + i.reqText.toUpperCase(), COL.magenta] : ["AT MAGPIE'S · " + priceOf(i) + " SC", COL.amber];
-      txt(c, i.name.toUpperCase(), 202, 172, COL.ink); txt(c, status[0], 470, 172, status[1], 8, "right"); wrapText(c, i.desc.toUpperCase(), 266).slice(0, 3).forEach((l, k) => txt(c, l, 202, 186 + k * 10, COL.dim)); }
+      txt(c, i.name.toUpperCase(), 202, 176, COL.ink); txt(c, status[0], 470, 176, status[1], 8, "right"); wrapText(c, i.desc.toUpperCase(), 266).slice(0, 3).forEach((l, k) => txt(c, l, 202, 188 + k * 10, COL.dim)); }
   } else if (tab === "ORIGIN") {
     ORIGINS.forEach((O, i) => { const y = BROW_Y + i * 46, on = i === B.sel, mine = SAVE.char.origin === O.id; if (on) sel(y - 2, 44);
       txt(c, O.name, 202, y + 1, mine ? COL.magenta : on ? COL.ink : COL.dim); txt(c, mine ? (SAVE.char.created ? "YOUR ORIGIN" : "SELECTED") : "", 470, y + 1, COL.magenta, 8, "right");
