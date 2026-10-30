@@ -26,21 +26,31 @@
   const bodyActions = { back: () => { persist(); G.mode = "title"; G.menuMode = null; } };
   const shopActions = {
     jackIn: () => { persist(); const f = G.shop.from; if (f === "clear") breach(); else if (f === "campNext") startChapter(G.camp.n + 1); else if (f === "campRetry") startChapter(G.camp.n, true); else start(DORDER[G.sel || 0]); },
-    back: () => { persist(); const f = G.shop.from; if (f === "clear") G.mode = "clear"; else if (f === "campNext") G.mode = "chap"; else if (f === "campRetry") toCamp(); else { G.mode = "title"; AU.stop(); AU.ambience("off"); } },
+    back: () => { persist(); const f = G.shop.from; if (f === "clear") G.mode = "clear"; else if (f === "campNext") G.mode = "chap"; else if (f === "campRetry") toCamp(); else if (f === "arcade") G.mode = "arcade"; else { G.mode = "title"; AU.stop(); AU.ambience("off"); } },
   };
   function step(rdt, t) {
     if (G.mode === "play" || G.mode === "shop" || G.mode === "intro" || G.mode === "body" || G.mode === "talk") G.menuMode = null; // menus always reopen on their first option
     const wantStart = hit("lmb") || hit("r") || hit(" ");
     if (G.mode === "title") {
-      const n = Math.min(DORDER.length, G.unlocked || 1); if (hit("arrowleft") || hit("a")) G.sel = Math.max(0, (G.sel || 0) - 1); if (hit("arrowright") || hit("d")) G.sel = Math.min(n - 1, (G.sel || 0) + 1);
-      const mapLabel = SAVE.mapMode === "gen" ? (G.queuedSeed != null ? "MAP: SEED " + PG.seedName(G.queuedSeed) : "MAP: GENERATED · NEW EVERY RUN") : "MAP: CLASSIC";
       if (G.titleMsg) { G.titleMsg.life -= rdt; if (G.titleMsg.life <= 0) G.titleMsg = null; }
-      // First JACK IN goes through the BODYSHOP so every run has an operative.
-      G.menu = layoutMenu([{ label: "CAMPAIGN · NINE NIGHTS OF RAIN", col: COL.amber, act: () => SAVE.char.created ? openCamp() : openBodyshop("create") },
-        { label: "ARCADE · JACK IN", act: () => SAVE.char.created ? start(DORDER[G.sel || 0]) : openBodyshop("create") },
-        { label: SAVE.char.created ? "BODYSHOP · CHARACTER" : "BODYSHOP · CREATE OPERATIVE", act: () => openBodyshop(SAVE.char.created ? "title" : "create") },
-        { label: "MAGPIE'S · CHROME & IRON", col: COL.magenta, act: () => openShop("title") },
-        { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } }], 189, 10); runMenu(G.menu); return; }
+      // Four clear choices. Story and Arcade go through the BODYSHOP first if there is no operative yet.
+      const made = SAVE.char.created, need = "CREATE YOUR OPERATIVE FIRST", S = SAVE.camp, begun = Object.keys(S.done).length > 0;
+      const next = CHAPTERS[Math.min(S.cur, maxChapter())];
+      G.menu = layoutMenu([
+        { label: begun ? `STORY · CONTINUE ${chLabel(Math.min(S.cur, maxChapter()))}` : "STORY · NEW CAMPAIGN", col: COL.amber, act: () => made ? openCamp() : openBodyshop("create"),
+          desc: made ? (begun ? `NINE NIGHTS OF RAIN · NEXT: ${next.title}` : "NINE NIGHTS OF RAIN · ACT 1 · YOUR CHOICES CHANGE THE STORY") : need },
+        { label: "ARCADE", act: () => made ? openArcade() : openBodyshop("create"), desc: made ? "PICK A DISTRICT · KILL 100 · BEAT THE BOSS · GO DEEPER" : need },
+        { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
+        { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" }], 176, 13); runMenu(G.menu); return; }
+    if (G.mode === "arcade") {
+      const n = Math.min(DORDER.length, G.unlocked || 1), move = d => { G.sel = Math.max(0, Math.min(n - 1, (G.sel || 0) + d)); AU.sfx("lock", 1); };
+      if (hit("arrowleft") || hit("a")) move(-1); if (hit("arrowright") || hit("d")) move(1);
+      if (hit("escape")) { G.mode = "title"; G.menuMode = null; return; }
+      const mapLabel = SAVE.mapMode === "gen" ? (G.queuedSeed != null ? "MAP: SEED " + PG.seedName(G.queuedSeed) : "MAP: NEW EVERY RUN") : "MAP: CLASSIC LAYOUT";
+      G.menu = layoutMenu([{ label: "START RUN", act: () => start(DORDER[G.sel || 0]) },
+        { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } },
+        { label: "MAGPIE'S FIRST", col: COL.magenta, act: () => openShop("arcade") },
+        { label: "BACK", col: COL.dim, act: () => { G.mode = "title"; G.menuMode = null; } }], 174, 13); runMenu(G.menu); return; }
     if (G.mode === "talk") { updateTalk(rdt); return; }
     if (G.mode === "camp") { updateCamp(rdt); return; }
     if (G.mode === "chap") { updateChap(rdt, chapActions); return; }
@@ -80,6 +90,7 @@
   function draw(t) {
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
     if (G.mode === "title") return drawTitle(c, t);
+    if (G.mode === "arcade") return drawArcade(c, t);
     if (G.mode === "shop") return drawShop(c, t);
     if (G.mode === "body") return drawBodyshop(c, t);
     if (G.mode === "talk") return drawTalk(c, t);
@@ -103,7 +114,7 @@
   // Shared seed links: #seed-ABC123 or #seed-ABC123-rookery queue that map for the next run.
   const sq = location.hash.match(/^#seed-([0-9a-z]{1,6})(?:-(\w+))?$/i); if (sq) { G.queuedSeed = PG.parseSeed(sq[1]); SAVE.mapMode = "gen"; if (sq[2] && DORDER.indexOf(sq[2].toLowerCase()) >= 0 && DORDER.indexOf(sq[2].toLowerCase()) < (G.unlocked || 1)) G.sel = DORDER.indexOf(sq[2].toLowerCase()); }
   const fonts = Promise.race([Promise.all([document.fonts.load('8px "Silkscreen"'), document.fonts.load('32px "Silkscreen"'), document.fonts.load('700 44px "Chakra Petch"')]), new Promise(r => setTimeout(r, 2500))]);
-  BANK.build(); fonts.then(() => { updateHelp(); buildSprites(); reset("market"); G.mode = "title"; if (location.hash.startsWith("#autostart")) start(qs ? qs[1] : "market");
+  BANK.build(); fonts.then(() => { updateHelp(); buildSprites(); reset("market"); G.mode = "title"; if (location.hash.startsWith("#autostart")) start(qs ? qs[1] : "market"); else if (sq && SAVE.char.created) openArcade();
     const cq = location.hash.match(/chapter-(\d)/); if (cq && CHAPTERS[+cq[1]]) { SAVE.camp.cur = Math.max(SAVE.camp.cur, +cq[1]); startChapter(+cq[1], location.hash.includes("nobrief")); } requestAnimationFrame(frame); });
   window.__G = G;
 })();

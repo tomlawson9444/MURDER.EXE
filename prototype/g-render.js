@@ -118,15 +118,33 @@ function drawTitle(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .72);
   drawLogo(c, GW / 2 - 18, 62, 44); txt(c, "ONE BULLET. ONE LIFE.", GW / 2, 72, COL.dim, 8, "center");
   const L = lab(), s = Math.floor(t / 400) % 2 ? SP.vesperB : SP.vesper, gl = optOf(SAVE.char.look, "glow")[3];
-  c.save(); c.globalCompositeOperation = "lighter"; glow(c, GW / 2, 140, 40, gl, .18); c.restore(); c.fillStyle = "rgba(0,0,0,.5)"; c.beginPath(); c.ellipse(GW / 2, 152, 18, 4, 0, 0, TAU); c.fill();
-  c.save(); c.imageSmoothingEnabled = false; c.translate(GW / 2 - s.w, 152 - s.h * 2 + 4); c.scale(2, 2); c.drawImage(s.cv, 0, 0); c.globalCompositeOperation = "lighter"; c.drawImage(s.gc, -s.G, -s.G); c.restore();
-  txt(c, SAVE.char.created ? SAVE.char.name + " · " + ORIGIN[SAVE.char.origin].name : "NO OPERATIVE YET", GW / 2, 158, SAVE.char.created ? COL.ink : COL.magenta, 8, "center");
-  txt(c, loadoutLine(), GW / 2, 168, rgba(COL.cyan, .75), 8, "center");
-  const k = DIST[DORDER[G.sel || 0]]; txt(c, "ARCADE: " + ((G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`), GW / 2, 178, COL.amber, 8, "center");
+  c.save(); c.globalCompositeOperation = "lighter"; glow(c, GW / 2, 132, 40, gl, .18); c.restore(); c.fillStyle = "rgba(0,0,0,.5)"; c.beginPath(); c.ellipse(GW / 2, 148, 18, 4, 0, 0, TAU); c.fill();
+  c.save(); c.imageSmoothingEnabled = false; c.translate(GW / 2 - s.w, 148 - s.h * 2 + 4); c.scale(2, 2); c.drawImage(s.cv, 0, 0); c.globalCompositeOperation = "lighter"; c.drawImage(s.gc, -s.G, -s.G); c.restore();
+  txt(c, SAVE.char.created ? SAVE.char.name + " · " + ORIGIN[SAVE.char.origin].name : "NO OPERATIVE YET", GW / 2, 154, SAVE.char.created ? rgba(COL.ink, .8) : COL.magenta, 8, "center");
   drawMenu(c, G.menu, t);
+  const cur = G.menu && G.menu[G.menuMode === G.mode ? G.menuSel : 0]; if (cur && cur.desc) txt(c, cur.desc, GW / 2, 232, rgba(COL.cyan, .8), 8, "center");
   if (G.titleMsg) txt(c, G.titleMsg.txt, GW / 2, 86, rgba(COL.amber, Math.min(1, G.titleMsg.life * 2)), 8, "center");
-  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED"), GW / 2, 241, COL.dim, 8, "center");
-  txt(c, ((G.unlocked || 1) > 1 ? (PAD.active ? "LEFT / RIGHT: DISTRICT · " : "A / D: DISTRICT · ") : "CLEAR THE RAIN MARKET TO UNLOCK D-02 · ") + (PAD.active ? "UP / DOWN + " + L.confirm : "W / S + ENTER OR CLICK"), GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
+  txt(c, SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER · UP / DOWN + " + L.confirm : "W / S + ENTER OR CLICK · CONTROLLERS SUPPORTED"), GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
+}
+/* ARCADE: pick a district and a map type, then start a run for score. */
+const ARCADE_INFO = { market: ["BOSS: BLACKWING", "WHERE IT STARTS. A TRAM SWEEPS THE SOUTH LANE AT KILL 50."], rookery: ["BOSS: THE AUGUR", "ROOFTOPS OVER A CHASM. WIND, DRONE NESTS AND A BRIDGE THAT FALLS."],
+  endless: ["BOSSES: BLACKWING AND THE AUGUR, IN TURN", "A NEW DISTRICT STYLE EVERY TIME. HEAT KEEPS CLIMBING. IT NEVER ENDS."] };
+function openArcade() { G.mode = "arcade"; G.menuMode = null; }
+function drawArcade(c, t) {
+  c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .8);
+  ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, "ARCADE", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 12, col, 16, "center"));
+  txt(c, "ONE LIFE · KILL 100 · BEAT THE BOSS · BREACH INTO THE NEXT DISTRICT", GW / 2, 34, COL.dim, 8, "center");
+  const n = Math.min(DORDER.length, G.unlocked || 1), i = G.sel || 0, key = DORDER[i], k = DIST[key], info = ARCADE_INFO[key];
+  panel(c, 60, 48, 360, 104, "#3a3456");
+  txt(c, k.code, GW / 2, 56, COL.amber, 8, "center"); txt(c, k.name, GW / 2, 68, COL.ink, 16, "center");
+  const on = Math.floor(t / 400) % 2; txt(c, "<", 80, 74, i > 0 ? (on ? COL.cyan : rgba(COL.cyan, .6)) : "#2a2640", 16, "center"); txt(c, ">", 400, 74, i < n - 1 ? (on ? COL.cyan : rgba(COL.cyan, .6)) : "#2a2640", 16, "center");
+  txt(c, info[0], GW / 2, 96, COL.magenta, 8, "center"); wrapText(c, info[1], 320).forEach((l, j) => txt(c, l, GW / 2, 110 + j * 10, rgba(COL.ink, .85), 8, "center"));
+  DORDER.forEach((d, j) => { c.fillStyle = j === i ? COL.cyan : j < n ? "#4a4274" : "#221d33"; c.fillRect(GW / 2 - DORDER.length * 6 + j * 12 + 2, 140, 8, 3); });
+  if (n < DORDER.length) txt(c, "CLEAR " + DIST[DORDER[n - 1]].name + " TO UNLOCK " + DIST[DORDER[n]].name, GW / 2, 156, rgba(COL.dim, .8), 8, "center");
+  drawMenu(c, G.menu, t);
+  txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 228, rgba(COL.cyan, .75), 8, "center");
+  if (G.best) txt(c, "BEST SCORE " + String(G.best).padStart(7, "0"), GW / 2, 239, COL.dim, 8, "center");
+  const L = lab(); txt(c, PAD.active ? "LEFT / RIGHT: DISTRICT · UP / DOWN + " + L.confirm + " · B: BACK" : "A / D: DISTRICT · W / S + ENTER OR CLICK · ESC: BACK", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
 function drawDead(c, t) {
   c.save(); c.globalCompositeOperation = "multiply"; c.fillStyle = "#b03048"; c.fillRect(0, 0, GW, GH); c.restore();

@@ -247,7 +247,9 @@ function campHudCenter(c, t) {
 }
 
 /* ---- Campaign menu and archive ---- */
-function openCamp() { G.mode = "camp"; G.campView = "list"; G.menuMode = null; G.camp = null; G.rules = null; G.chapMap = null; shopSprites(); }
+function openCamp() { G.mode = "camp"; G.campView = "list"; G.camp = null; G.rules = null; G.chapMap = null; shopSprites();
+  // Open with the cursor on the next chapter to play.
+  G.menuMode = "camp"; G.menuSel = Math.min(SAVE.camp.cur, maxChapter()) - 1; G.menuMx = mouse.x; G.menuMy = mouse.y; }
 function campMenuItems() {
   const S = SAVE.camp, items = [];
   ACTS[0].chapters.forEach((n, i) => { const open = n <= S.cur; items.push({ label: n, ch: n, y: 52 + i * 15, box: [20, 50 + i * 15, 236, 13], act: () => open ? startChapter(n) : AU.sfx("hackFail") }); });

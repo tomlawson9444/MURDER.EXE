@@ -38,7 +38,7 @@ Then open <http://localhost:8000/prototype/>.
 | Reload | R | X | □ |
 | Pause | P or Esc | Menu | Options |
 | Cash out after a district clear | Esc | B | ○ |
-| Pick a district on the title screen | A / D or ← / → | D-pad or left stick | D-pad or left stick |
+| Pick a district on the ARCADE screen | A / D or ← / → | D-pad or left stick | D-pad or left stick |
 | Magpie's: switch tab | Q / E or Tab | LB / RB | L1 / R1 |
 | Magpie's: move / buy or equip | W / S or ↑ / ↓, Enter or click | D-pad, A | D-pad, ✕ |
 | Magpie's: jack in / back | Space / Esc | Start / B | Options / ○ |
@@ -47,9 +47,18 @@ Then open <http://localhost:8000/prototype/>.
 
 Browsers only detect a controller after you press one of its buttons. Rumble works in Chrome and Edge.
 
+## Title screen
+
+The title screen has four choices, with a one-line description under the selected one:
+
+- **STORY:** the campaign. It shows the next chapter to play and opens the chapter list.
+- **ARCADE:** score runs. Pick a district (Rain Market, Chrome Rookery, Endless Sprawl), choose a map type (new every run, or the classic layout), visit Magpie's first if you like, then start. Seed links open this screen with the seed ready.
+- **OPERATIVE:** the BODYSHOP (or CREATE OPERATIVE before your first game).
+- **MAGPIE'S:** the shop.
+
 ## Campaign: Nine Nights of Rain
 
-The story campaign is planned as 30 chapters across 10 districts in five acts. **Act 1, Wet Feathers, is playable now** (chapters 1 to 6, from the Rain Market to the Gutterline Canals). Pick CAMPAIGN on the title screen.
+The story campaign is planned as 30 chapters across 10 districts in five acts. **Act 1, Wet Feathers, is playable now** (chapters 1 to 6, from the Rain Market to the Gutterline Canals). Pick STORY on the title screen.
 
 - **Chapters with story objectives:** survive an ambush (Wet Feathers), protect Magpie's stall (Price of Chrome), draw out BLACKWING (Blackwing), survive rising floodwater (Low Water), open three floodgates (Lock and Key) and kill THE FERRYMAN (The Ferryman).
 - **Conversations:** briefings and debriefs with portraits for Director Vane, Magpie, Wren, CORVUS, Blackwing and the Ferryman. Replies come in four styles (Cold, Sharp, Hard, Ask), and your BODYSHOP origin adds its own reply in key scenes. Some choices run on a 10-second timer, and staying silent counts as an answer.
@@ -72,9 +81,9 @@ The story campaign is planned as 30 chapters across 10 districts in five acts. *
 - **Gear:** 5 sidearms (Kestrel .44, Breacher Custom, Ricochet Coilgun, Hornet SMG, Railpiercer), 4 Overclock programs (DEADLINK, ARC//CHAIN, SWARMKEY, GHOST_PROTOCOL) and 8 implants, with 2 implant slots.
 - **Milestone unlocks:** most gear is locked until you hit a milestone (for example, the Railpiercer needs a Rain Market clear). Hitting one pays 100 scrip and Magpie restocks.
 - **Procedural maps:** every run builds a brand-new arena for each district from a seed (about 2.18 billion per district). A layout archetype, buildings pushed in from the walls, spawn doors, hand-designed cyberpunk set pieces, hazards, signage, colour tint and weather are all generated, then a validator checks the level-design rules (everything reachable, no dead ends, safe start, doors reachable, cover on both sides) and rebuilds any map that fails. Phase 2 events (tram lane, bridge collapse, barricades) come from the generated layout.
-- **Endless districts:** after the Chrome Rookery, breaching continues forever (District 3, 4, 5…). Each district gets a procedurally generated style and map, the bosses alternate between BLACKWING and THE AUGUR, and Heat and spawn pressure creep up with depth. Clearing the Rookery unlocks an ENDLESS start on the title screen.
+- **Endless districts:** after the Chrome Rookery, breaching continues forever (District 3, 4, 5…). Each district gets a procedurally generated style and map, the bosses alternate between BLACKWING and THE AUGUR, and Heat and spawn pressure creep up with depth. Clearing the Rookery unlocks an ENDLESS start on the ARCADE screen.
 - **Procedural district styles:** a style mixes one of 10 families (streets, night markets, rooftops, server halls, summits, foundries, docks, slums, galleria, canals) with one of 6 moods and a generated palette from any hue, one of 10 floors, one of 10 backdrops (shopfronts, skyline, server walls, storm glass, giant billboards, highway overpass, shanty stacks, dockside cranes, factory, mall), a hazard look (city drop, flood water, toxic sludge, molten slag, raw data), one of 8 weathers (rain, downpour, acid rain, snow, ash, embers, smog, clear) and a family-specific set-piece pool, including shipping containers, container yards, canals, sludge pools and shanty shacks.
-- **Seeds:** the seed shows in the HUD and on the death and clear screens. After a death you can retry the same map or reboot into a new one. Links ending `#seed-ABC123`, `#seed-ABC123-rookery` or `#seed-ABC123-endless` load that exact run. The title screen's MAP option switches between generated and the classic hand-made maps (`#classic` forces classic).
+- **Seeds:** the seed shows in the HUD and on the death and clear screens. After a death you can retry the same map or reboot into a new one. Links ending `#seed-ABC123`, `#seed-ABC123-rookery` or `#seed-ABC123-endless` load that exact run. The ARCADE screen's MAP option switches between generated and the classic hand-made maps (`#classic` forces classic).
 - **Map Lab (`maplab.html`):** a gallery of freshly generated maps for all four districts, with art and tactical views, Phase 2 previews, validator stats, seed search and a "Play this map" link.
 - Bullets fly until they hit something solid.
 - Cover system: hard cover, low cover you can dash over and shoot across, crates that break, and barrels and signs you can hack.
@@ -82,7 +91,7 @@ The story campaign is planned as 30 chapters across 10 districts in five acts. *
 - Heat rises every 15 kills, bringing harder enemy mixes and adding layers to the music.
 - Phase 2 at kill 50: a tram starts sweeping the south lane and kills anything on the rails.
 - BLACKWING boss at kill 100, only vulnerable for a moment after each landing.
-- Beat a district boss to **breach** into the next one with your score, and up to 2 Heat, carried over, or cash out. Cleared districts can be picked on the title screen.
+- Beat a district boss to **breach** into the next one with your score, and up to 2 Heat, carried over, or cash out. Cleared districts can be picked on the ARCADE screen.
 - **District 02, Chrome Rookery:** two rooftops over a lethal chasm joined by two bridges. Wind gusts bend bullets over the gap, drone Nests spawn Corvids (armoured except while open, hackable any time), and at kill 50 the north bridge collapses. Enemies that lunge into the chasm fall.
 - **Hexer:** keeps its distance and hexes you, locking Overclock and hacking for 3 seconds and scrambling the HUD.
 - **THE AUGUR:** splits into five copies and only the real one casts a shadow. Shooting a fake fires a bullet ring at you; hacking any copy reveals the real one.
