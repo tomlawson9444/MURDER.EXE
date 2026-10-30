@@ -1,22 +1,27 @@
 /* BODYSHOP: create and customise your operative. Tabs: LOOK, GEAR, INVENTORY, ORIGIN. */
 "use strict";
+// LOOK rows: NAME, RANDOMISE, then one row per slot; 13 show at once and the list scrolls.
+const LOOK_OFF = 2, LOOK_VIS = 13;
 const INV_COLS = 10, INV_W = 27, INV_H = 21; // 10 x 6 grid of small cells keeps every item clear of the details below
 const BTABS = ["LOOK", "GEAR", "INVENTORY", "ORIGIN"], BROW_Y = 42, BTAB_W = 69, BTN_DONE = [356, 244, 114, 18], BTN_BBACK = [198, 244, 60, 18];
 const GEAR_ROWS = [["SIDEARM", "gun"], ["OVERCLOCK", "oc"], ["IMPLANT 1", "imp", 0], ["IMPLANT 2", "imp", 1]];
 const invItems = () => ITEMS;
 
+addEventListener("wheel", e => { if (G.mode === "body") G.wheel = (G.wheel || 0) + Math.sign(e.deltaY); }, { passive: true }); // scroll the LOOK list
 function openBodyshop(from) {
   // Gun icons in GEAR and INVENTORY need the shop sprites.
   AU.init(); shopSprites(); G.mode = "body"; G.body = { tab: from === "create" ? 3 : 0, sel: 0, from, edit: false, t: 0, msg: from === "create" ? "PICK AN ORIGIN, THEN MAKE THEM YOURS." : "", msgT: 0, mx: mouse.x, my: mouse.y };
   if (from === "create") G.body.sel = Math.max(0, ORIGINS.findIndex(o => o.id === SAVE.char.origin));
 }
-const bodyRows = () => { const t = BTABS[G.body.tab]; return t === "LOOK" ? 1 + LOOK_SLOTS.length : t === "GEAR" ? GEAR_ROWS.length : t === "ORIGIN" ? ORIGINS.length : invItems().length; };
+const bodyRows = () => { const t = BTABS[G.body.tab]; return t === "LOOK" ? LOOK_OFF + LOOK_SLOTS.length : t === "GEAR" ? GEAR_ROWS.length : t === "ORIGIN" ? ORIGINS.length : invItems().length; };
 const say2 = m => { G.body.msg = m; G.body.msgT = 0; };
 
 function cycleLook(slot, d) {
   const L = SAVE.char.look, opts = slot.opts.filter(o => lookOwned(slot.key, o)); if (opts.length < 2) { say2("MORE " + slot.label + " OPTIONS AT MAGPIE'S."); AU.sfx("hackFail"); return; }
   const i = opts.findIndex(o => o[0] === L[slot.key]); L[slot.key] = opts[(i + d + opts.length) % opts.length][0]; applyLook(); persist(); AU.sfx("lock", 2);
 }
+// Roll every slot at random from what you own (afterimage and gun finish included).
+function randomLook() { const L = SAVE.char.look; LOOK_SLOTS.forEach(sl => { const opts = sl.opts.filter(o => lookOwned(sl.key, o)); L[sl.key] = opts[Math.random() * opts.length | 0][0]; }); applyLook(); persist(); AU.sfx("lock", 4); say2("NEW LOOK. KEEP ROLLING OR TWEAK IT."); }
 function cycleGear(row, d) {
   const [, cat, slot] = row, L = SAVE.loadout, owned = ITEMS.filter(i => i.cat === cat && owns(i.id)).map(i => i.id);
   if (cat === "imp") { const other = L.imp[1 - slot], opts = [null].concat(owned.filter(id => id !== other)); const cur = L.imp[slot] || null; const next = opts[(opts.indexOf(cur) + d + opts.length) % opts.length];
@@ -27,7 +32,8 @@ function cycleGear(row, d) {
 function bodyConfirm(actions) {
   const B = G.body, t = BTABS[B.tab];
   if (t === "LOOK" && B.sel === 0) { if (PAD.active) { SAVE.char.name = randomName(); persist(); AU.sfx("lock", 4); } else { B.edit = !B.edit; } return; }
-  if (t === "LOOK") return cycleLook(LOOK_SLOTS[B.sel - 1], 1);
+  if (t === "LOOK" && B.sel === 1) return randomLook();
+  if (t === "LOOK") return cycleLook(LOOK_SLOTS[B.sel - LOOK_OFF], 1);
   if (t === "GEAR") return cycleGear(GEAR_ROWS[B.sel], 1);
   if (t === "ORIGIN") { const O = ORIGINS[B.sel]; if (SAVE.char.created && SAVE.char.origin !== O.id) { say2("YOUR ORIGIN IS SET. YOUR STORY STAYS YOURS."); AU.sfx("hackFail"); return; }
     SAVE.char.origin = O.id; persist(); AU.sfx("lock", 4); say2(O.name + " · STARTER KIT: " + kitNames(O)); if (B.from === "create") { B.tab = 0; B.sel = 0; } return; }
@@ -52,10 +58,12 @@ function updateBodyshop(rdt, actions) {
     if (hit("arrowup") || hit("w")) B.sel = Math.max(0, B.sel - cols); if (hit("arrowdown") || hit("s")) B.sel = Math.min(n - 1, B.sel + cols); }
   else { if (hit("arrowup") || hit("w")) { B.sel = (B.sel - 1 + n) % n; AU.sfx("lock", 0); } if (hit("arrowdown") || hit("s")) { B.sel = (B.sel + 1) % n; AU.sfx("lock", 0); }
     const dir = (hit("arrowright") || hit("d")) ? 1 : (hit("arrowleft") || hit("a")) ? -1 : 0;
-    if (dir && t === "LOOK" && B.sel > 0) cycleLook(LOOK_SLOTS[B.sel - 1], dir); else if (dir && t === "LOOK" && B.sel === 0) { SAVE.char.name = randomName(); persist(); } else if (dir && t === "GEAR") cycleGear(GEAR_ROWS[B.sel], dir); }
+    if (dir && t === "LOOK" && B.sel >= LOOK_OFF) cycleLook(LOOK_SLOTS[B.sel - LOOK_OFF], dir); else if (dir && t === "LOOK" && B.sel === 1) randomLook(); else if (dir && t === "LOOK" && B.sel === 0) { SAVE.char.name = randomName(); persist(); } else if (dir && t === "GEAR") cycleGear(GEAR_ROWS[B.sel], dir); }
   if (hit("enter")) bodyConfirm(actions);
   // mouse
-  const rowH = t === "GEAR" ? 18 : t === "ORIGIN" ? 46 : 14, rowAt = y => Math.floor((y - BROW_Y) / rowH);
+  const rowH = t === "GEAR" ? 18 : t === "ORIGIN" ? 46 : 14, rowAt = y => Math.floor((y - BROW_Y) / rowH) + (t === "LOOK" ? B.scroll || 0 : 0);
+  if (t === "LOOK") { B.scroll = Math.max(0, Math.min(B.scroll || 0, n - LOOK_VIS)); if (B.sel < B.scroll) B.scroll = B.sel; if (B.sel >= B.scroll + LOOK_VIS) B.scroll = B.sel - LOOK_VIS + 1;
+    if (G.wheel) { B.scroll = Math.max(0, Math.min(n - LOOK_VIS, B.scroll + Math.sign(G.wheel))); B.sel = Math.max(B.scroll, Math.min(B.scroll + LOOK_VIS - 1, B.sel)); G.wheel = 0; } }
   const cellAt = (x, y) => { const cx = Math.floor((x - 200) / INV_W), cy = Math.floor((y - 44) / INV_H); return cx >= 0 && cx < INV_COLS && cy >= 0 ? cy * INV_COLS + cx : -1; };
   if (Math.hypot(mouse.x - B.mx, mouse.y - B.my) > .5) { B.mx = mouse.x; B.my = mouse.y; if (mouse.x > 198) { const i = t === "INVENTORY" ? cellAt(mouse.x, mouse.y) : rowAt(mouse.y); if (i >= 0 && i < n && mouse.y >= BROW_Y && mouse.y < 236) B.sel = i; } }
   if (hit("lmb")) { const x = mouse.x, y = mouse.y;
@@ -86,11 +94,14 @@ function drawBodyshop(c, t) {
   BTABS.forEach((name, i) => { const x = 198 + i * BTAB_W, on = i === B.tab; c.fillStyle = on ? COL.cyan : "#16121f"; c.fillRect(x, 20, BTAB_W - 3, 15); txt(c, name, x + (BTAB_W - 3) / 2, 24, on ? "#05040b" : COL.dim, 8, "center"); });
   const sel = (y, h) => { c.fillStyle = "rgba(43,228,255,.12)"; c.fillRect(198, y, 274, h); c.fillStyle = COL.cyan; c.fillRect(198, y, 1, h); };
   if (tab === "LOOK") {
-    const rows = [["NAME", B.edit ? "TYPING…" : SAVE.char.name, null]].concat(LOOK_SLOTS.map(sl => { const o = optOf(L, sl.key), own = sl.opts.filter(x => lookOwned(sl.key, x)).length; return [sl.label, o[1], o[3], own < sl.opts.length ? sl.opts.length - own : 0]; }));
-    rows.forEach(([lbl, val, col, more], i) => { const y = BROW_Y + i * 14, on = i === B.sel; if (on) sel(y - 2, 13);
-      txt(c, lbl, 202, y + 1, on ? COL.ink : COL.dim); const v = on ? "< " + val + " >" : val; txt(c, v, col ? 456 : 470, y + 1, on ? COL.cyan : COL.ink, 8, "right");
+    const rows = [["NAME", B.edit ? "TYPING…" : SAVE.char.name, null], ["RANDOMISE", "ROLL A NEW LOOK", null]].concat(LOOK_SLOTS.map(sl => { const o = optOf(L, sl.key), own = sl.opts.filter(x => lookOwned(sl.key, x)), at = own.findIndex(x => x[0] === o[0]);
+      return [sl.label, o[1], o[3], sl.opts.length - own.length, (at + 1) + "/" + own.length]; }));
+    const sc = B.scroll || 0;
+    rows.slice(sc, sc + LOOK_VIS).forEach(([lbl, val, col, more, count], k) => { const i = k + sc, y = BROW_Y + k * 14, on = i === B.sel; if (on) sel(y - 2, 13);
+      txt(c, lbl, 202, y + 1, i === 1 ? (on ? COL.amber : rgba(COL.amber, .75)) : on ? COL.ink : COL.dim); const v = on && i !== 1 ? "< " + val + " >" : val; txt(c, v, col ? 456 : 470, y + 1, on ? COL.cyan : i === 1 ? rgba(COL.amber, .6) : COL.ink, 8, "right");
       if (col) { c.fillStyle = col; c.fillRect(460, y, 9, 8); c.strokeStyle = "#05040b"; c.strokeRect(460.5, y + .5, 8, 7); }
-      if (more && on) txt(c, more + " MORE AT MAGPIE'S", 300, y + 1, rgba(COL.amber, .8)); });
+      if (on && count && !(B.msg && B.msgT < 3.5)) txt(c, `${lbl} ${count}` + (more ? ` · ${more} MORE AT MAGPIE'S` : "") + " · A/D TO CHANGE", 334, 226, rgba(more ? COL.amber : COL.dim, .85), 8, "center"); });
+    if (rows.length > LOOK_VIS) { const h = 182 * LOOK_VIS / rows.length; c.fillStyle = "#2a2640"; c.fillRect(473, BROW_Y - 2, 2, 182); c.fillStyle = COL.cyan; c.fillRect(473, BROW_Y - 2 + 182 * sc / rows.length, 2, h); }
   } else if (tab === "GEAR") {
     GEAR_ROWS.forEach((row, i) => { const [lbl, cat, slot] = row, y = BROW_Y + i * 18, on = i === B.sel, id = cat === "imp" ? SAVE.loadout.imp[slot] : SAVE.loadout[cat], it2 = id && ITEM[id]; if (on) sel(y - 2, 16);
       if (it2) itemIcon(c, it2, 202, y); txt(c, lbl, 230, y + 3, on ? COL.ink : COL.dim); txt(c, on ? "< " + (it2 ? it2.name.toUpperCase() : "EMPTY") + " >" : (it2 ? it2.name.toUpperCase() : "EMPTY"), 470, y + 3, on ? COL.cyan : COL.ink, 8, "right"); });
