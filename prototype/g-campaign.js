@@ -972,7 +972,7 @@ function updateChap(rdt, actions) {
   G.chapT += rdt; if (G.chapT < .8) return; const n = G.camp.n, next = n < maxChapter() ? n + 1 : null;
   if (hit("escape")) { actions.toCamp(); return; }
   G.menu = layoutMenu(next ? [{ label: "NEXT · " + chLabel(next) + " " + CHAPTERS[next].title, act: () => startChapter(next) }, { label: "MAGPIE'S, THEN " + chLabel(next), col: COL.magenta, act: () => openShop("campNext") }, { label: "CAMPAIGN MENU", col: COL.dim, act: actions.toCamp }]
-    : [{ label: "CAMPAIGN MENU", act: actions.toCamp }, { label: "MAGPIE'S", col: COL.magenta, act: () => { actions.toCamp(); openShop("title"); } }], next ? 196 : 206); runMenu(G.menu);
+    : [{ label: "CAMPAIGN MENU", act: actions.toCamp }, { label: "MAGPIE'S", col: COL.magenta, act: () => { actions.toCamp(); openShop("title"); } }], next ? 196 : 212); runMenu(G.menu);
 }
 function drawChap(c, t) {
   drawCampBG(c, t); const C = G.camp, S = SAVE.camp, A = actOf(C.n), actEnd = A.chapters[A.chapters.length - 1] === C.n, last = C.n === maxChapter();
