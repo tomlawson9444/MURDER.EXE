@@ -247,12 +247,17 @@ function spawnArchivist() { echoSprites(); const s2 = bossSpot(); const e = spaw
 // An echo walks a few seconds of the path you really took this chapter, and fires at you as it goes.
 function spawnEcho() {
   const R2 = G.camp.rec || [], len = 50; let path;
-  if (R2.length > len + 5) { const i0 = Math.floor(Math.random() * (R2.length - len)); path = R2.slice(i0, i0 + len); } else { const s2 = floorSpots(80)[0] || { x: GW / 2, y: GH / 2 }; path = [s2]; }
+  if (R2.length > len + 5) { const i0 = Math.floor(Math.random() * (R2.length - len)); path = R2.slice(i0, i0 + len); }
+  else { buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0; // not enough recorded movement: stand on a random reachable spot in view
+    const ok = floorSpots(60).filter(q => reach(q) && Math.hypot(q.x - G.p.x, q.y - G.p.y) < 200), seen = ok.filter(q => los(G.p.x, G.p.y - 12, q.x, q.y - 10, 1e9));
+    path = [(seen.length ? seen : ok)[Math.floor(Math.random() * (seen.length || ok.length))] || bossSpot()]; }
   const e = spawnEnemy("echo", path[0].x, path[0].y); Object.assign(e, { path, pi: 0, gun: rnd(1, 2) }); fx(e.x, e.y - 14, 12, [COL.cyan, "#ffffff"], 60, .5); return e;
 }
 function updEcho(e, dt) {
   const p = G.p; e.pi = (e.pi + dt * 10) % e.path.length; const q = e.path[Math.floor(e.pi)]; if (q) { e.face = q.x < e.x ? -1 : q.x > e.x ? 1 : e.face; e.x = q.x; e.y = q.y; }
   e.gun -= dt; if (e.gun <= 0) { shoot(e.x + e.face * 10, e.y - BODY - 2, Math.atan2(p.y - BODY - (e.y - BODY - 2), p.x - e.x - e.face * 10), 115, "e", { by: "echo" }); AU.sfx("shotE", panOf(e.x)); e.gun = rnd(1.4, 2.2); }
+  e.hid = los(p.x, p.y - 12, e.x, e.y - 10, 1e9) ? 0 : (e.hid || 0) + dt; // out of sight too long: step back into view so the shield can always come down
+  if (e.hid > 8) { const q = floorSpots(60).filter(q => Math.hypot(q.x - p.x, q.y - p.y) < 180 && los(p.x, p.y - 12, q.x, q.y - 10, 1e9)).sort(() => Math.random() - .5)[0]; if (q) { e.path = [q]; e.pi = 0; e.hid = 0; fx(q.x, q.y - 14, 12, [COL.cyan, "#ffffff"], 60, .5); } }
   if (!G.en.some(a => a.alive && a.type === "archivist")) e.alive = false;
 }
 function updArchivist(e, dt) {
@@ -260,7 +265,9 @@ function updArchivist(e, dt) {
   const echoes = G.en.filter(x => x.alive && x.type === "echo").length;
   if (e.state === "summon") { if (e.t <= 0) { for (let i = 0; i < 2 + (3 - e.hp); i++) spawnEcho(); e.state = "shielded"; AU.sfx("hexer"); } }
   else if (e.state === "shielded") { e.ring -= dt; if (e.ring <= 0) { for (let i = 0; i < 10; i++) shoot(e.x, e.y - 24, i / 10 * TAU + (e.anim || 0), 70, "e", { by: "archivist" }); AU.sfx("shotE", panOf(e.x)); e.ring = 3.2; }
-    if (!echoes) { e.state = "exposed"; e.t = 4; AU.sfx("ocSnap"); pop(e.x, e.y - 56, "EXPOSED", COL.cyan); } }
+    const dx = p.x - e.x, dy = p.y - e.y, dd = Math.hypot(dx, dy) || 1; if (dd > 110) { const nx = Math.min(MW * TS - 40, Math.max(40, e.x + dx / dd * 16 * dt)), ny = Math.min(MH * TS - 40, Math.max(70, e.y + dy / dd * 16 * dt)); // drifts in so it's in reach when exposed
+      if ([[0, -10], [-12, -10], [12, -10], [0, 0]].every(([ox, oy]) => !SHOT_BLOCK.has(tileOf(nx + ox, ny + oy - e.alt)))) { e.x = nx; e.y = ny; } } // never over a wall, where shots can't reach it
+    if (!echoes) { e.state = "exposed"; e.t = 5; AU.sfx("ocSnap"); pop(e.x, e.y - 56, "EXPOSED", COL.cyan); } }
   else if (e.state === "exposed") { if (e.t <= 0) { e.state = "summon"; e.t = .8; } }
 }
 function hurtArchivist(e) {
@@ -469,12 +476,14 @@ function spawnChoir() {
 }
 function updChoir(e, dt, d) {
   const p = G.p, fast = G.choirRounds === 1; e.face = p.x < e.x ? -1 : 1;
-  if (e.state === "down") { if (e.t <= 0) { e.state = "sing"; e.gun = 1; fx(e.x, e.y - 16, 18, [COL.magenta, "#ffffff"], 70, .6); pop(e.x, e.y - 40, "BACK UP", COL.magenta); AU.sfx("hexer", panOf(e.x)); } return; }
+  if (e.state === "down") { if (e.t <= 0) { e.state = "sing"; e.gun = 1; fx(e.x, e.y - 16, 18, [COL.magenta, "#ffffff"], 70, .6); choirPop(e, "BACK UP", COL.magenta); AU.sfx("hexer", panOf(e.x)); } return; }
   if (d > 90) walk(e, 22, dt); else if (d < 60) moveBody(e, -(p.x - e.x) / d * 30 * dt, -(p.y - e.y) / d * 30 * dt);
   e.gun -= dt; if (e.gun <= 0) { for (let k = 0; k < 5; k++) shoot(e.x, e.y - 20, e.spin + k / 5 * TAU, fast ? 85 : 70, "e", { by: "choir" }); e.spin += .45; e.gun = fast ? .7 : 1.05; }
 }
+// One status label per singer: a new one replaces the old so DOWN and BACK UP never stack.
+function choirPop(e, t, col) { for (let i = G.texts.length - 1; i >= 0; i--) { const q = G.texts[i]; if (Math.abs(q.x - e.x) < 14 && Math.abs(q.y - (e.y - 40)) < 24) G.texts.splice(i, 1); } pop(e.x, e.y - 40, t, col); }
 function hurtChoir(e) {
-  if (e.state === "down") return; const fast = G.choirRounds === 1; e.state = "down"; e.t = fast ? 3 : 3.6; fx(e.x, e.y - 16, 20, [COL.magenta, "#2a2440", "#ffffff"], 80, .6); pop(e.x, e.y - 40, "DOWN", COL.cyan); AU.sfx("kill", panOf(e.x));
+  if (e.state === "down") return; const fast = G.choirRounds === 1; e.state = "down"; e.t = fast ? 3 : 3.6; fx(e.x, e.y - 16, 20, [COL.magenta, "#2a2440", "#ffffff"], 80, .6); choirPop(e, "DOWN", COL.cyan); AU.sfx("kill", panOf(e.x));
   const all = G.en.filter(x => x.alive && x.type === "choir"); if (!all.every(x => x.state === "down")) return;
   G.choirRounds--; G.shake = 6; rumble(1, .8, 300);
   if (G.choirRounds <= 0) { all.forEach(x => { x.hp = 1; }); all.forEach(x => killEnemy(x, "shot")); return; }
@@ -641,7 +650,9 @@ function gateProgress(g, k) {
   if (g.prog >= 1) { g.done = true; const n = G.gates.filter(q => q.done).length, gg = gateGoal(); G.banner = { txt: `${gg.noun} ${n}/${G.gates.length} ${gg.done}`, col: COL.cyan, life: 2 }; AU.sfx("milestone"); fx(g.x, g.y - 8, 24, ["#7fd3ff", "#ffffff", COL.cyan], 90, .7);
     G.heatBase = Math.min(3, G.heatBase + 1); doors().sort(() => Math.random() - .5).slice(0, 2).forEach(dd => { G.pending.push({ type: "shrike", x: dd.x, y: dd.y, t: .9, door: dd }); AU.sfx("door", panOf(dd.x)); }); }
 }
-function placeShard() { const s = floorSpots(110).filter(q => tileOf(q.x, q.y) !== "o")[Math.random() * 40 | 0] || floorSpots(60)[0]; if (s) G.shard = { x: s.x, y: s.y }; }
+// Anywhere on the map you can walk to, a good distance from you (not just the top rows).
+function placeShard() { buildFlow(); const reach = q => tileOf(q.x, q.y) !== "o" && G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0;
+  const pool = floorSpots(110).filter(reach), s = pool[Math.random() * pool.length | 0] || floorSpots(60).filter(reach)[0]; if (s) G.shard = { x: s.x, y: s.y }; }
 
 /* ---- Triggers for radio lines and the datashard ---- */
 function trig(on) {

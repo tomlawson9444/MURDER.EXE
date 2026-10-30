@@ -32,14 +32,15 @@
   function step(rdt, t) {
     if (G.mode === "play" || G.mode === "shop" || G.mode === "intro" || G.mode === "body" || G.mode === "talk") G.menuMode = null; // menus always reopen on their first option
     const wantStart = hit("lmb") || hit("r") || hit(" ");
+    if (G.titleMsg && G.mode !== "title" && G.mode !== "body") G.titleMsg = null; // a title notice never outlives the title screen
     if (G.mode === "title") {
       if (G.titleMsg) { G.titleMsg.life -= rdt; if (G.titleMsg.life <= 0) G.titleMsg = null; }
       // Four clear choices. Story and Arcade go through the BODYSHOP first if there is no operative yet.
       const made = SAVE.char.created, need = "CREATE YOUR OPERATIVE FIRST", S = SAVE.camp, begun = Object.keys(S.done).length > 0;
-      const next = CHAPTERS[nextChapter()];
+      const next = CHAPTERS[nextChapter()], finished = !!S.done[maxChapter()] && !!S.ending, found = Object.keys(S.endings || {}).length;
       G.menu = layoutMenu([
-        { label: begun ? `STORY · CONTINUE ${chLabel(nextChapter())}` : "STORY · NEW CAMPAIGN", col: COL.amber, act: () => made ? openCamp() : openBodyshop("create"),
-          desc: made ? (begun ? `ACT ${actOf(nextChapter()).n} · ${actOf(nextChapter()).name} · NEXT: ${next.title}` : "NINE NIGHTS OF RAIN · ACT 1 · YOUR CHOICES CHANGE THE STORY") : need },
+        { label: finished ? "STORY · COMPLETE" : begun ? `STORY · CONTINUE ${chLabel(nextChapter())}` : "STORY · NEW CAMPAIGN", col: COL.amber, act: () => made ? openCamp() : openBodyshop("create"),
+          desc: !made ? need : finished ? `ENDINGS FOUND ${found}/3 · REPLAY ANY CHAPTER OR CHASE ANOTHER ENDING` : begun ? `ACT ${actOf(nextChapter()).n} · ${actOf(nextChapter()).name} · NEXT: ${next.title}` : "NINE NIGHTS OF RAIN · ACT 1 · YOUR CHOICES CHANGE THE STORY" },
         { label: "ARCADE", act: () => made ? openArcade() : openBodyshop("create"), desc: made ? "PICK A DISTRICT · KILL 100 · BEAT THE BOSS · GO DEEPER" : need },
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
         { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" }], 176, 13); runMenu(G.menu); return; }
