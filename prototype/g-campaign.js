@@ -662,6 +662,7 @@ function assignRaiders(dt) {
     if (G.stalls && (g.type === "stall" || g.type === "escort" || g.type === "guard")) { const live = G.stalls.filter(S => !S.dead); if (!live.length) continue; R = { S: live[Math.random() * live.length | 0] }; }
     else if (g.type === "gates") R = { kind: "gate" }; else if (g.type === "hold") R = { kind: "zone" }; else if (g.type === "extract") R = { kind: "van" };
     if (!R) continue;
+    R.peel = Math.random() < .6 ? rnd(85, 130) : 0; // most raiders break off to chase you when you come into view; the rest stay committed
     if (e.type === "carrion" && R.S) { e.hunt = R.S; e.huntSet = true; } else e.raid = R;
     if ((C.raidCallT || 0) <= 0 && R.S) { C.raidCallT = 9; const nm = { stall: "my stall", cargo: "the cargo", rack: "rack " + R.S.id }[R.S.kind]; radio("magpie", nm ? `They're going for ${nm}! Cut them off!` : "They're going for the objective!"); }
   }
@@ -672,7 +673,11 @@ function assignRaiders(dt) {
 function raidMove(e, spd, dt) {
   const R = e.raid, T = raidPoint(R); if (!T) { e.raid = null; return false; }
   // How close you have to be before a raider turns on you: cargo and ring raiders keep shoving in until you're right on them.
-  const p = G.p, turn = R.S ? (R.S.kind === "cargo" ? 26 : 54) : R.kind === "zone" ? 22 : R.kind === "van" ? 30 : 54; if (Math.hypot(p.x - e.x, p.y - e.y) < turn) return false;
+  const p = G.p, turn = R.S ? (R.S.kind === "cargo" ? 26 : 54) : R.kind === "zone" ? 22 : R.kind === "van" ? 30 : 54, dp = Math.hypot(p.x - e.x, p.y - e.y); if (dp < turn) return false;
+  // Peelers chase you while they can see you nearby, then go back to the objective once you've lost them for a moment.
+  if (R.peel) { const seen = dp < (R.chase ? R.peel + 70 : R.peel) && los(e.x, e.y - BODY, p.x, p.y - BODY, 1e9); R.lost = seen ? 0 : (R.lost || 0) + dt;
+    if (seen && !R.chase) { R.chase = true; pop(e.x, e.y - 30, "!", COL.red); } else if (R.chase && R.lost > 1.5) R.chase = false;
+    if (R.chase) return false; }
   const reach = R.S ? (e.type === "rook" ? 70 : 14) : R.kind === "zone" ? 18 : 26, d = Math.hypot(T.x - e.x, T.y - e.y);
   if (e.type === "rook" && R.S && d < reach && !los(e.x, e.y - BODY, T.x, T.y - 12, 1e9)) { stepAlong(fieldFor(T.x, T.y), e, spd, dt); return true; } // keep closing until it has a clear shot
   if (d > reach) { stepAlong(fieldFor(T.x, T.y), e, spd, dt); return true; }
@@ -899,7 +904,7 @@ function campDrawObjects(c, t) {
     if (e.type === "vanexo" && e.state === "aim") { c.save(); c.globalAlpha = e.t > .3 ? .4 : .9; pline(c, e.x, e.y - 20, e.x + Math.cos(e.la) * 300, e.y - 20 + Math.sin(e.la) * 300, COL.amber, 3); c.restore(); }
     if (e.type === "vanexo" && e.state === "overheat") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24, 16, "#ffffff", .5 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "OVERHEATING", e.x, e.y - 60, COL.amber, 8, "center"); }
     if (["wrenc", "scarecrow", "vanexo"].includes(e.type) && e.hurt > 0) { const s2 = sprOf(e.type, e.face); c.save(); c.globalAlpha = e.hurt * 2; c.drawImage(tinted(s2, "#ffffff"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2)); c.restore(); } }
-  for (const e of G.en) { if (!e.alive || !e.raid || !e.raid.S || e.raid.S.dead || Math.hypot(e.x - e.raid.S.x, e.y - e.raid.S.y) < 20) continue; const S = e.raid.S; c.save(); c.globalAlpha = .3 + .2 * Math.sin(t * .02); c.setLineDash([2, 4]); c.strokeStyle = COL.red; c.beginPath(); c.moveTo(e.x, e.y - 6); c.lineTo(S.x, S.y - 12); c.stroke(); c.restore(); }
+  for (const e of G.en) { if (!e.alive || !e.raid || e.raid.chase || !e.raid.S || e.raid.S.dead || Math.hypot(e.x - e.raid.S.x, e.y - e.raid.S.y) < 20) continue; const S = e.raid.S; c.save(); c.globalAlpha = .3 + .2 * Math.sin(t * .02); c.setLineDash([2, 4]); c.strokeStyle = COL.red; c.beginPath(); c.moveTo(e.x, e.y - 6); c.lineTo(S.x, S.y - 12); c.stroke(); c.restore(); }
   for (const e of G.en) { if (!e.alive || !e.hunt || e.hunt.dead) continue; const S = e.hunt; c.save(); c.globalAlpha = .45 + .25 * Math.sin(t * .02); c.setLineDash([3, 3]); c.strokeStyle = COL.red; c.beginPath(); c.moveTo(e.x, e.y - 6); c.lineTo(S.x, S.y - 12); c.stroke(); c.restore(); }
   for (const e of G.en) { if (!e.alive || (e.type !== "widow" && e.type !== "archivist")) continue; const s2 = sprOf(e.type, e.face);
     if (e.type === "widow" && e.state === "cab") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 26, 14, COL.cyan, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "CAB OPEN", e.x, e.y - 58, rgba(COL.cyan, .9), 8, "center"); }

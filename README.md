@@ -96,7 +96,7 @@ The story campaign is complete: **30 chapters across 10 districts in five acts, 
   - **Floodgates, beacons, relays, furnaces and index nodes:** guards gather at the terminal, and an enemy standing at it blocks your progress (CONTESTED).
   - **Hold rings:** raiders shove into the ring to contest it.
   - **Extraction:** when the van arrives, raiders rush it.
-  - **Close range:** any raider turns on you when you get close, so defending means meeting them at the objective.
+  - **Peelers and committed raiders:** most raiders break off to chase you when they spot you nearby (a red "!" pops up) and head back to the objective once they've lost sight of you. The rest stay committed and only turn on you at close range. Either way, defending means fighting them at the objective.
 - **Hold and extract objectives:** stand in a ring to fill it (enemies inside stop the clock), or survive until a van arrives and then reach it. Trace pauses while you hold a ring.
 - **Wren, if you abandoned the sleepers:** in Chapter 19 Wren comes at you as a crow-masked cultist. Two hits kill them; a quickhack on the implant frees them, and they rejoin your side.
 - **SCARECROW:** plants drone Nests on the walls, calls Corvid swarms and sweeps a cone of shots. He can only be hurt while his arms are raised. Taking his mask unlocks a Scarecrow's Mask cosmetic.
