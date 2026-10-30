@@ -244,7 +244,7 @@ function updArchivist(e, dt) {
   const echoes = G.en.filter(x => x.alive && x.type === "echo").length;
   if (e.state === "summon") { if (e.t <= 0) { for (let i = 0; i < 2 + (3 - e.hp); i++) spawnEcho(); e.state = "shielded"; AU.sfx("hexer"); } }
   else if (e.state === "shielded") { e.ring -= dt; if (e.ring <= 0) { for (let i = 0; i < 10; i++) shoot(e.x, e.y - 24, i / 10 * TAU + (e.anim || 0), 70, "e", { by: "archivist" }); AU.sfx("shotE", panOf(e.x)); e.ring = 3.2; }
-    if (!echoes) { e.state = "exposed"; e.t = 3; AU.sfx("ocSnap"); pop(e.x, e.y - 56, "EXPOSED", COL.cyan); } }
+    if (!echoes) { e.state = "exposed"; e.t = 4; AU.sfx("ocSnap"); pop(e.x, e.y - 56, "EXPOSED", COL.cyan); } }
   else if (e.state === "exposed") { if (e.t <= 0) { e.state = "summon"; e.t = .8; } }
 }
 function hurtArchivist(e) {
@@ -289,7 +289,7 @@ function updateFlood(dt) {
 // Guarded objects: Magpie's stall (one), server racks (several) or a cargo crane that moves along a path.
 function guardSpots(n, minGap) {
   const ok = s2 => { const tx = Math.floor(s2.x / TS), ty = Math.floor(s2.y / TS); for (let j = ty - 1; j <= ty; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === null || WALK_BLOCK.has(ch) || ch === "o") return false; } return true; };
-  const S = floorSpots(50).filter(ok).sort((a, b) => Math.hypot(a.x - GW / 2, a.y - GH / 2 - 10) - Math.hypot(b.x - GW / 2, b.y - GH / 2 - 10)), out = [];
+  const S = floorSpots(50).filter(ok).filter(q => doors().every(d => Math.hypot(d.x - q.x, d.y - q.y) > 72)).sort((a, b) => Math.hypot(a.x - GW / 2, a.y - GH / 2 - 10) - Math.hypot(b.x - GW / 2, b.y - GH / 2 - 10)), out = [];
   for (const q of S) { if (out.every(o => Math.hypot(o.x - q.x, o.y - q.y) > minGap)) out.push(q); if (out.length === n) break; }
   return out.length ? out : [{ x: GW / 2, y: GH / 2 }];
 }
@@ -314,7 +314,7 @@ function placeStalls() {
 const STALL_FAIL = { stall: "STALL DESTROYED", cargo: "CARGO DESTROYED", rack: "A RACK WENT DARK" };
 function hurtStall(S, n) { if (!S || G.camp.won) return; S.hp = Math.max(0, S.hp - n); S.hurtT = .25; fx(S.x + rnd(-12, 12), S.y - 12, 5, [COL.magenta, "#c08d1a", "#ffffff"], 50, .4); AU.sfx("crate", panOf(S.x)); if (S.hp <= 0) campFail(STALL_FAIL[S.kind]); }
 const stallHit = b => (G.stalls || []).find(S => Math.abs(b.x - S.x) < 15 && b.y > S.y - 26 && b.y < S.y + 1);
-function blastStalls(x, y, r) { (G.stalls || []).forEach(S => { if (Math.hypot(S.x - x, S.y - 8 - y) < r + 10) hurtStall(S, 30); }); }
+function blastStalls(x, y, r) { (G.stalls || []).forEach(S => { if (Math.hypot(S.x - x, S.y - 8 - y) < r + 10) hurtStall(S, S.kind === "rack" ? 20 : 30); }); }
 const stallPct = () => G.stalls ? Math.min(...G.stalls.map(S => S.hp / S.max)) * 100 : 100;
 
 // Objective terminals: floodgates, beacons, relays or furnaces, set by the chapter's goal.
@@ -373,9 +373,9 @@ function campTick(dt) {
   if (R.vents) { G.ventT -= dt; if (G.ventT <= 0) { G.ventT = R.vents * rnd(.8, 1.2); randomVent(); } } updateVents(dt);
   if (R.flood) { G.floodT -= dt; if (G.floodT <= 0) { G.floodT = R.flood; floodStage(false); } updateFlood(dt); }
   for (const S of G.stalls || []) { S.hurtT = Math.max(0, S.hurtT - dt); let contested = false;
-    for (const e of G.en) { if (!e.alive || BOSSY.has(e.type)) continue; const d = Math.hypot(e.x - S.x, e.y - S.y); if (d < 36) contested = true;
+    for (const e of G.en) { if (!e.alive || BOSSY.has(e.type)) continue; const d = Math.hypot(e.x - S.x, e.y - S.y); if (d < 24) contested = true;
       if (e.type === "corvid") { if (e.state === "dive" && !e.dv) { e.dv = true; if (Math.random() < .35) e.la = Math.atan2(S.y - 10 - e.y, S.x - e.x); } if (e.state !== "dive") e.dv = false; if (e.state === "dive" && d < 14) { hurtStall(S, 12); killEnemy(e, "blast"); } }
-      else if (d < 16) hurtStall(S, 14 * dt); }
+      else if (d < 16 && S.kind !== "rack") hurtStall(S, 14 * dt); } // racks only take stray shots and blasts
     // The cargo crane only rolls while you're beside it and nothing is on top of it.
     if (S.path) { S.moving = !contested && Math.hypot(p.x - S.x, p.y - S.y) < 56 && S.idx < S.path.length - 1;
       if (S.moving) { const tg = S.path[S.idx + 1], dx = tg.x - S.x, dy = tg.y - S.y, l = Math.hypot(dx, dy), st = 15 * dt; if (l <= st) { S.x = tg.x; S.y = tg.y; S.idx++; } else { S.x += dx / l * st; S.y += dy / l * st; } }
