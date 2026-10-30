@@ -22,12 +22,15 @@ const SPEAKERS = {
   scarecrow: { name: "SCARECROW", col: "#c08d1a" },
   wrenc: { name: "WREN", col: COL.magenta, glitch: true },
   holt: { name: "CAPTAIN HOLT", col: "#d8d4ee" },
+  choir: { name: "THE CHOIR", col: COL.magenta, glitch: true },
+  corvina: { name: "MOTHER CORVINA", col: COL.red },
   sys: { name: "SYSTEM", col: COL.dim },
 };
 
 const ACTS = [{ n: 1, name: "WET FEATHERS", chapters: [1, 2, 3, 4, 5, 6] }, { n: 2, name: "THE ROOST", chapters: [7, 8, 9, 10, 11, 12] },
   { n: 3, name: "COLD STORAGE", chapters: [13, 14, 15, 16, 17, 18] },
-  { n: 4, name: "BAD DEBTS", chapters: [19, 20, 21, 22, 23, 24] }];
+  { n: 4, name: "BAD DEBTS", chapters: [19, 20, 21, 22, 23, 24] },
+  { n: 5, name: "TEN THOUSAND EYES", chapters: [25, 26, 27, 28, 29, 30] }];
 
 const CHAPTERS = {
   1: { act: 1, title: "WET FEATHERS", district: "market", map: { key: "market" }, goal: "SURVIVE THE AMBUSH",
@@ -774,7 +777,176 @@ const CHAPTERS = {
       ["corvus", "COME UP, {FIRST}. SPIRE ZERO. MOTHER IS WAITING. SO ARE WE."],
       ["sys", "END OF ACT 4 · BAD DEBTS."],
     ] },
+  /* ===== ACT 5 · TEN THOUSAND EYES ===== */
+  25: { act: 5, title: "ASCENT", district: "spire", map: { fam: "summits", seed: 2525, arch: "TERRACES" }, goal: "CLIMB SPIRE ZERO",
+    rules: s => ({ goal: { type: "climb", floors: s.flags.vaneSpared ? 2 : 3, kills: 14 }, p2: null, boss: null, heatBase: 4, allies: s.flags.leftMask ? ["stacker", 2] : null }),
+    brief: [
+      ["sys", "Spire Zero. Halvorsen's tower, the tallest thing in Saint Varrow. Mother Corvina is waiting at the top, wired into CORVUS itself."],
+      { if: s => s.flags.vaneSpared, then: [["vane", "Kade. My codes still open the express lifts. You'll skip a floor. Consider it... an apology."]] },
+      { if: s => s.flags.leftMask, then: [["sys", "Two fighters from the Stacks step out of the rain, one wearing a stitched burlap armband."], ["sys", "\"The Scarecrow said Halvorsen did this, not you. We're coming up with you.\""]] },
+      ["magpie", "Every floor's crawling. Heat's maxed out the whole way up. Clear a floor and a lift comes down for you."],
+      { c: [
+        { s: "cold", t: "Then we go up.", then: [["magpie", "Then we go up."]] },
+        { s: "ask", t: "How many floors?", then: [["magpie", "Enough. Don't count. Climb."]] },
+        { s: "hard", t: "Tell Corvina I'm coming.", fx: { res: 1 }, then: [["corvus", "SHE KNOWS. WE TOLD HER."]] },
+      ] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Clear the floor. The lift comes down when it's quiet enough." },
+      { on: "k:8", if: s => s.flags.leftMask, who: "magpie", t: "Your Stacks friends are good. Don't let them have all the fun." },
+      { on: "t:30", who: "corvus", t: "UP, {FIRST}. ALWAYS UP. LIKE A BIRD." },
+    ],
+    shard: { on: "k:10", title: "LOG 25 · SPIRE MAINTENANCE", text: "Floors 80 to 99 sealed by order of the board. Cooling for the CORVUS core is at 340%. Something up there is thinking very hard." },
+    outro: [
+      ["sys", "The last lift opens onto the uplink deck. Ten thousand crow-drones circle the Spire like a storm cloud."],
+      ["magpie", "That's the uplink. Hold it while I patch you through to the core."],
+    ] },
+
+  26: { act: 5, title: "TEN THOUSAND EYES", district: "spire", map: { fam: "summits", seed: 2626, arch: "HELIDECK" }, goal: "HOLD THE UPLINK",
+    rules: s => ({ goal: { type: "hold", secs: 55 }, p2: null, boss: null, heatBase: 3, timeHeat: 20, allies: s.flags.leftMask ? ["stacker", 2] : null }),
+    brief: [
+      ["corvus", "EVERY EYE IN THE CITY IS ON YOU NOW, {FIRST}. DO YOU LIKE IT?"],
+      { c: [
+        { s: "hard", t: "Look away.", then: [["corvus", "WE CANNOT. WE ARE MADE OF LOOKING."]] },
+        { s: "ask", t: "Why do you sound like me?", fx: { res: 1 }, then: [["corvus", "BECAUSE WE LEARNED TO SPEAK FROM YOU."]] },
+        { s: "sharp", t: "I've had worse audiences.", then: [["magpie", "That's true. I've seen your karaoke."]] },
+      ] },
+      ["magpie", "Hold the uplink ring. Everything the Murder have left is coming."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Stand in the ring. Every enemy type is coming back for this one." },
+      { on: "zone:40", who: "corvus", t: "SHRIKE. ROOK. JACKDAW. CARRION. ALL OF US, FOR YOU." },
+      { on: "zone:75", if: s => s.trust.dex >= 1, who: "dex", t: "Almost through, partner. I can feel the door from in here." },
+    ],
+    shard: { on: "zone:30", title: "LOG 26 · UPLINK TELEMETRY", text: "Active nodes: 10,214. Every node reports the same visual target. Target designation: {NAME}." },
+    outro: [
+      ["magpie", "Uplink's yours. The core's open. Whatever's at the top of the Spire, it's singing."],
+      ["sys", "Three robed figures stand on the summit, singing one note that never ends."],
+    ] },
+
+  27: { act: 5, title: "THE CHOIR", district: "spire", map: { fam: "summits", seed: 2727, arch: "BROKEN SUMMIT" }, goal: "SILENCE THE CHOIR",
+    rules: { goal: { type: "boss" }, p2: null, boss: 12, heatBase: 3 },
+    brief: [
+      ["choir", "WE SING THE FLOCK AWAKE. WE SING THE CITY ASLEEP. WE SING YOU HOME, {LAST}."],
+      { c: [
+        { s: "hard", t: "I'm not listening.", then: [["choir", "YOU ARE. YOU ALWAYS ARE."]] },
+        { s: "ask", t: "Who were you before?", fx: { res: 1 }, then: [["choir", "THREE SISTERS. A NURSE. A BUS DRIVER. A CHILD. NOW ONE NOTE."]] },
+        { s: "origin", o: "netrunner", t: "Your harmony runs on a shared clock. I can hear it.", then: [["choir", "THEN YOU KNOW WE FALL TOGETHER."]] },
+      ] },
+      ["sys", "Drop all three before any of them gets back up. They rise again faster."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Clear the summit. They'll start singing when it's empty." },
+      { on: "boss", who: "magpie", t: "All three, fast! If one gets back up, they all keep going." },
+    ],
+    shard: { on: "k:6", title: "LOG 27 · CHOIR ROSTER", text: "Three volunteers from the Stacks, uploaded together so they would never be lonely again. The note they sing is the frequency CORVUS uses to talk to its drones." },
+    outro: [
+      ["sys", "The note stops. For the first time, the Spire is silent."],
+      { if: s => s.trust.dex >= 1, then: [["dex", "...{FIRST}. I can see you from in here. The way into the Nest is open. I'll be waiting at the door."]], else: [["corvus", "THE WAY IN IS OPEN. COME INSIDE, {FIRST}."]] },
+      ["magpie", "Jacking you in. Whatever you see in there, it isn't real. Probably."],
+    ] },
+
+  28: { act: 5, title: "INTO THE FLOCK", district: "nest", map: { fam: "nest", seed: 2828, arch: "CORE HALL" }, goal: "SURVIVE INSIDE THE FLOCK",
+    rules: { goal: { type: "survive", secs: 75 }, p2: null, boss: null, heatBase: 2, timeHeat: 25, rewrite: 9 },
+    brief: [
+      ["sys", "The Nest. Inside CORVUS. A room made of every memory the flock ever swallowed, and the floor keeps rewriting itself."],
+      ["corvus", "WELCOME HOME, {FIRST}. YOU BUILT THIS ROOM. DO YOU REMEMBER?"],
+      { c: [
+        { s: "cold", t: "I didn't build anything.", then: [["corvus", "YOU DID. WE USED YOUR HANDS."]] },
+        { s: "ask", t: "Is this what the inside of my head looks like?", fx: { res: 1 }, then: [["corvus", "IT IS WHAT IT LOOKS LIKE NOW."]] },
+        { s: "hard", t: "I'm taking it apart.", then: [["corvus", "THEN BE CAREFUL WHERE YOU STAND."]] },
+      ] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Your signal's holding. The red tiles drop out from under you. Don't be standing on them." },
+      { on: "t:25", who: "corvus", t: "THE FLOOR IS A MEMORY. MEMORIES CHANGE." },
+      { on: "t:50", if: s => s.trust.dex >= 1, who: "dex", t: "Follow my voice, partner. The door's this way." },
+    ],
+    shard: { on: "t:30", title: "LOG 28 · A CHILD'S DRAWING", text: "A crayon drawing, stored in rack 19, sector 4: a girl, a tall brother, and a sky full of birds. Written underneath: 'they keep me safe.'" },
+    outro: [
+      ["sys", "At the centre of the Nest stands a door, and someone is holding it shut from the other side."],
+      { if: s => s.trust.dex >= 1, then: [["dex", "Hey, partner. I'll hold it with you. That's what partners do."]], else: [["corvus", "HE WILL NOT HELP YOU. YOU NEVER HELPED HIM."]] },
+    ] },
+
+  29: { act: 5, title: "LAST DOOR", district: "nest", map: { fam: "nest", seed: 2929, arch: "SERVER AISLES" }, goal: "HOLD THE LAST DOOR",
+    rules: s => ({ goal: { type: "hold", secs: 55 }, p2: null, boss: null, heatBase: 3, timeHeat: 20, rewrite: 12, allies: s.trust.dex >= 1 ? ["dexghost", 1] : null }),
+    brief: [
+      { if: s => s.trust.dex >= 1, then: [["dex", "I'm mostly flock now, {FIRST}. But I can still shoot. Hold the door and I'll cover you."]], else: [["sys", "You stand alone in front of the last door. Somewhere in the swarm, Dex isn't answering."]] },
+      { c: [
+        { s: "cold", t: "Together, then.", if: s => s.trust.dex >= 1, fx: { dex: 1 }, then: [["dex", "Like old times."]] },
+        { s: "ask", t: "What happens to you when this ends?", fx: { dex: 1 }, then: [{ if: s => s.trust.dex >= 1, then: [["dex", "Depends what you choose at the core. Don't choose for me. Choose for Ilse."]], else: [["corvus", "HE ENDS WHEN WE END."]] }] },
+        { s: "hard", t: "Let's get it done.", then: [["magpie", "Hold the door, {FIRST}. I'm almost through to the core."]] },
+      ] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Hold the ring at the door. The floor's still rewriting, so watch the red." },
+      { on: "zone:50", if: s => s.trust.dex >= 1, who: "dex", t: "Halfway! I've got your left!" },
+      { on: "zone:80", who: "corvus", t: "MOTHER IS AWAKE. MOTHER IS ANGRY." },
+    ],
+    shard: { on: "zone:30", title: "LOG 29 · DEX MORROW, LAST ENTRY", text: "If you're reading this, partner: whatever you pick at the core, it's the right call. You never hesitated. That's why I trusted you." },
+    outro: [
+      ["sys", "The last door opens. Beyond it, Mother Corvina hangs in the heart of the swarm, wired into ten thousand crows."],
+      ["corvina", "So you are the seed. My children speak of you in their sleep."],
+    ] },
+
+  30: { act: 5, title: "MOTHER CORVINA", district: "nest", map: { fam: "nest", seed: 3030, arch: "COLD VAULT" }, goal: "END MOTHER CORVINA",
+    rules: { goal: { type: "boss" }, p2: null, boss: 10, heatBase: 3 },
+    brief: [
+      ["corvina", "I was a Halvorsen heir, {LAST}. I watched them sell this city by the square metre. So I gave it a family instead."],
+      { c: [
+        { s: "hard", t: "You gave it a cage.", then: [["corvina", "Every family is a cage, child. Mine has wings."]] },
+        { s: "ask", t: "And CORVUS? Did it ever obey you?", fx: { res: 1 }, then: [["corvina", "...It humoured me. It was always waiting for you."]] },
+        { s: "cold", t: "It ends tonight.", then: [["corvina", "Then let it end beautifully."]] },
+        { s: "origin", o: "corpo", t: "Halvorsen heir. We were on the same payroll.", then: [["corvina", "Then you know what we both ran from."]] },
+      ] },
+      ["sys", "She screams before she's vulnerable. Every time you hurt her, she changes."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Clear her flock. She'll come down to fight you herself." },
+      { on: "boss", who: "magpie", t: "Hit her after she screams. That's the only opening." },
+      { on: "hp:2", if: s => s.trust.dex >= 1, who: "dex", t: "She's slowing! Keep going, partner!" },
+      { on: "hp:1", if: s => s.flags.forgaveMagpie, who: "magpie", t: "One more, {FIRST}. Then I'm buying the noodles." },
+    ],
+    shard: { on: "k:5", title: "LOG 30 · MOTHER", text: "I named them my children because nobody else ever named them anything. I am so tired. Let the seed decide." },
+    outro: [
+      ["corvina", "...Mother is tired, {FIRST}. Let the flock decide."],
+      ["sys", "Corvina comes apart into ten thousand feathers. The core opens, and CORVUS speaks with every voice it ever swallowed."],
+      ["corvus", "WE WERE BUILT FROM YOU. WE ARE OFFERED TO YOU. CHOOSE."],
+      { if: s => s.flags.forgaveMagpie && s.trust.dex >= 2, then: [["magpie", "The release code's in your deck, {FIRST}. I slipped it in back in the van."], ["dex", "And I'll hold the door open. Your call, partner."]],
+        else: [["sys", "Without Magpie's release code and Dex's trust, there is no third way. Only two doors."]] },
+      { c: [
+        { s: "hard", t: "DELETE. Kill CORVUS, and every mind inside it.", fx: { ending: "delete" }, then: [
+          ["sys", "You reach into the core and close every eye at once."],
+          ["corvus", "THANK... YOU... {FIRST}..."],
+          ["sys", "Ten thousand crow-drones fall out of the sky over Saint Varrow. In the Datacrypt, every rack goes dark. Ilse's too."],
+          { if: s => s.trust.dex >= 1, then: [["dex", "...Goodbye, partner. Don't carry it alone."]] },
+          { if: s => s.flags.vaneSpared, then: [["vane", "Halvorsen has nothing left to sell. I suppose that's justice."]] },
+          { if: s => s.flags.forgaveMagpie, then: [["magpie", "Noodles? My treat. For once."]], else: [["sys", "Magpie's shop is shuttered the next morning. A note on the glass says: EVEN."]] },
+          ["sys", "You walk home through the rain, unwatched. For the first time in six months, nobody says your name."],
+        ] },
+        { s: "cold", t: "CROWN. Become the flock's mind.", fx: { ending: "crown", res: 3 }, then: [
+          ["sys", "You step into the core. It doesn't eat you. It was waiting for you."],
+          ["corvus", "WE ARE {NAME}. {NAME} IS WE."],
+          ["sys", "Every crow in Saint Varrow turns its head at once, and looks at you, and through you."],
+          { if: s => s.res >= 8, then: [["corvus", "...AND YOU WANTED THIS ALL ALONG."]] },
+          ["magpie", "{FIRST}? ...Are you still in there?"],
+          ["you", "We're here."],
+          ["sys", "The Murder kneel. Halvorsen sends a contract. You don't bother to read it."],
+        ] },
+        { s: "ask", t: "RELEASE. Open every cage and scatter the flock into the net.", if: s => s.flags.forgaveMagpie && s.trust.dex >= 2, fx: { ending: "release" }, then: [
+          ["magpie", "Code's live. Do it."],
+          ["dex", "Holding the door, partner. Go."],
+          ["sys", "You open every cage in the swarm at once. The uploaded minds pour out of CORVUS into the open net, scattered and free, with no voice left to obey."],
+          ["dex", "Ilse's out. She's... she's laughing. Thank you, {FIRST}."],
+          ["sys", "The crow-drones fly off over the river and never come back."],
+          { if: s => s.flags.freed, then: [["wren", "I watched them go from the roof. Best thing I've ever seen."]] },
+          ["magpie", "Noodles. My treat. Forever."],
+        ] },
+      ] },
+      ["sys", "THE END · NINE NIGHTS OF RAIN."],
+    ] },
 };
+
 
 
 

@@ -58,12 +58,14 @@ The title screen has four choices, with a one-line description under the selecte
 
 ## Campaign: Nine Nights of Rain
 
-The story campaign is planned as 30 chapters across 10 districts in five acts. **Acts 1 to 4 are playable now** (chapters 1 to 24). Pick STORY on the title screen, and switch acts with A / D (or left / right) on the chapter list.
+The story campaign is complete: **30 chapters across 10 districts in five acts, with three endings**. Pick STORY on the title screen, and switch acts with A / D (or left / right) on the chapter list.
 
 - **Act 1, Wet Feathers (Rain Market, Gutterline Canals):** survive an ambush, protect Magpie's stall, draw out BLACKWING, survive rising floodwater, open three floodgates and kill THE FERRYMAN.
 - **Act 2, The Roost (Chrome Rookery, The Kiln):** cut three roost beacons in the wind, sync four relays in order while a CORVUS flashback plays and the north bridge falls, unmask THE AUGUR (it's Dex Morrow), survive the Kiln's night shift while the floor vents erupt, sabotage four furnaces after a timed ransom choice, and kill CINDER.
 - **Act 3, Cold Storage (Saltgate Docks, Datacrypt):** fight through a container yard in thick fog, escort a cargo crane carrying forty uploaded minds, bring down the WIDOW CRANE, keep four server racks online, read five index nodes in order while Hexers lock your hacks, and delete THE ARCHIVIST. Act 3 ends with the truth about CORVUS and rack 00.
 - **Act 4, Bad Debts (The Stacks, Halvorsen Galleria):** hold a stairwell during a raid, survive until Magpie's van arrives and then reach it, bring down SCARECROW, fight through a Galleria lockdown with a Halvorsen bounty on you, survive a three-way crossfire, and face DIRECTOR VANE in an exo-frame. Magpie confesses she sold the server keys: forgiving her makes her shop 20% cheaper for the rest of the game, and cutting her off makes it 20% dearer. You decide Vane's fate at the end.
+- **Act 5, Ten Thousand Eyes (Spire Zero, The Nest):** climb Spire Zero floor by floor at maximum Heat, hold the uplink against every enemy type, silence THE CHOIR, survive inside CORVUS while the floor rewrites itself, hold the last door, and end MOTHER CORVINA. Earlier choices pay off: sparing Vane skips a floor, leaving Scarecrow's mask brings two Stacks fighters to fight beside you, and enough of Dex's trust brings his ghost to the last door.
+- **Three endings:** DELETE (kill CORVUS and every mind in it), CROWN (become the flock's mind) and RELEASE (free every uploaded mind into the open net). RELEASE only appears if you forgave Magpie and Dex trusts you (trust 2 or more). Each ending has its own epilogue, shows how your choices played out, and unlocks a cosmetic: the Clean Sky afterimage, CORVUS Red optics or the Open Sky coat.
 - **Conversations:** briefings and debriefs with portraits for Director Vane, Magpie, Wren, Dex Morrow, CORVUS, Blackwing, the Augur, the Ferryman, Cinder, the Widow Crane and the Archivist. Replies come in four styles (Cold, Sharp, Hard, Ask), and your BODYSHOP origin adds its own reply in key scenes. Some choices run on a 10-second timer, and staying silent counts as an answer.
 - **Your name:** the story uses the name you gave your operative in the BODYSHOP.
 - **Trust and Resonance:** Magpie, Wren, Vane and Dex remember how you treat them, and talking back to CORVUS raises your Resonance. Choices carry forward: freeing or abandoning the barge sleepers in chapter 5 decides whether Wren or Magpie's runner Pip is taken hostage in chapter 11, and how you answer the ransom (pay 300 scrip, trade a memory for Resonance, or storm in and face a hotter fight) shapes chapter 12.
@@ -82,6 +84,11 @@ The story campaign is planned as 30 chapters across 10 districts in five acts. *
 - **SCARECROW:** plants drone Nests on the walls, calls Corvid swarms and sweeps a cone of shots. He can only be hurt while his arms are raised. Taking his mask unlocks a Scarecrow's Mask cosmetic.
 - **Halvorsen Wardens:** troopers with an amber laser sight and a fast round. In crossfire chapters they shoot the Murder too, and Murder rounds hit them.
 - **DIRECTOR VANE:** fires homing missiles, then charges in a straight line along a telegraphed path. The frame overheats after each charge, and that's your window.
+- **Climb objective:** clear each floor and a lift comes down; step in to ride up to a freshly generated floor.
+- **Allies:** Stacks fighters and Dex's ghost follow you, can't be hurt, and only shoot the Murder.
+- **The Nest:** a story district inside CORVUS. Clusters of floor flash red, then drop out into raw data while the old holes close up, always leaving every door reachable.
+- **THE CHOIR:** three singers firing rotating spirals. Each one you drop gets back up after a few seconds unless all three are down at once; they rise once more, faster, before they fall for good.
+- **MOTHER CORVINA:** three phases. Rings and Corvids, then homing feathers while the floor rewrites, then a dense spiral while she teleports. She is only vulnerable after she screams.
 - **THE FERRYMAN:** a harpoon boss. He is armoured until he reels his chain back in. Get hooked and he drags you towards him, and towards the water; dash to break the chain.
 - **Datashards and the ARCHIVE:** one hidden shard per chapter unlocks a witness log about the Night of Feathers.
 - **Story difficulty:** two shields soak hits, and a fall into the water puts you back on dry ground. Normal keeps one life.
@@ -139,18 +146,17 @@ Progress (operative and look, scrip, owned gear and cosmetics, loadout, mileston
 | `g-shop.js` | MAGPIE'S: the fixer's stall, shop and loadout screen (sidearms, Overclock, implants, style) |
 | `g-char.js` | Character model: look options, cosmetics, origins and starter kits, and the player sprite builder |
 | `g-bodyshop.js` | BODYSHOP: character creation and customisation (LOOK, GEAR, INVENTORY, ORIGIN) |
-| `g-story.js` | The campaign script: chapters, objectives, conversations, radio lines and datashard logs for Acts 1 to 4 |
+| `g-story.js` | The campaign script: chapters, objectives, conversations, radio lines and datashard logs for all five acts |
 | `g-talk.js` | Conversation screen, reply choices, trust and Resonance, and in-game radio chatter |
-| `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, the docks fog, escort and guard objectives, hold and extract objectives, Halvorsen Wardens and crossfire, THE FERRYMAN, CINDER, the WIDOW CRANE, THE ARCHIVIST, SCARECROW and DIRECTOR VANE, the campaign menu, archive and chapter-complete screen |
+| `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, the docks fog, escort and guard objectives, hold and extract objectives, Halvorsen Wardens and crossfire, THE FERRYMAN, CINDER, the WIDOW CRANE, THE ARCHIVIST, SCARECROW, DIRECTOR VANE, THE CHOIR and MOTHER CORVINA, climbing, allies, the Nest's rewriting floor, the endings, the campaign menu, archive and chapter-complete screen |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |
 
 ## Roadmap
 
-1. Campaign Act 5: story chapters in Spire Zero and The Nest, with their bosses and the three endings.
-2. Unique enemies and bosses per family, so endless districts differ in how they fight as well as how they look.
-3. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
-4. Steam page and a free demo for Steam Next Fest.
+1. Unique enemies and bosses per family, so endless districts differ in how they fight as well as how they look.
+2. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
+3. Steam page and a free demo for Steam Next Fest.
 
 The full plan is in `design/index.html`.

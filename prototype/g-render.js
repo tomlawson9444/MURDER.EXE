@@ -4,7 +4,7 @@ let SP = {}, SPF = {};
 function flipSpr(s) { const cv = mk(s.w, s.h), c = cv.getContext("2d"); c.translate(s.w, 0); c.scale(-1, 1); c.drawImage(s.cv, 0, 0); const gc = mk(s.gc.width, s.gc.height), g = gc.getContext("2d"); g.translate(gc.width, 0); g.scale(-1, 1); g.drawImage(s.gc, 0, 0); return { cv, gc, G: s.G, w: s.w, h: s.h }; }
 function buildSprites() {
   const rim = { rimR: COL.cyan, rimL: "#7f74c9" }, er = { rimL: COL.magenta, rimR: "#6f66b0" };
-  ["corvid", "shrike", "rook", "jackdaw", "carrion", "bulwark", "hexer", "nest", "blackwing", "augur", "ferryman", "cinder", "widow", "archivist", "scarecrow", "vanexo"].forEach(k => SP[k] = sprite(DEFS[k], er));
+  ["corvid", "shrike", "rook", "jackdaw", "carrion", "bulwark", "hexer", "nest", "blackwing", "augur", "ferryman", "cinder", "widow", "archivist", "scarecrow", "vanexo", "corvina", "choir"].forEach(k => SP[k] = sprite(DEFS[k], er));
   for (const k in SP) SPF[k] = flipSpr(SP[k]);
   SP.corvus = sprite(DEFS.corvus, { rimL: COL.red, rimR: COL.magenta });
   applyLook(); // the player is drawn from the character's saved look (g-char.js)
@@ -56,7 +56,7 @@ function drawWorld(c, t) {
   for (const e of G.en) if (e.alive && e.type === "blackwing" && e.state === "rise") { c.globalAlpha = .7; drawSpr(c, sprOf("blackwing", e.face), e.x - 25, e.y - 48 - e.alt); c.globalAlpha = 1; }
   if (G.tram && G.tram.state === "run") { const em = []; OBJ.T(c, Math.round(G.tram.x), G.tram.row * TS, 288, TS, { em, light: () => {} }); em.forEach(f => f(c)); }
   // bullets
-  for (const b of G.bul) { const col = b.owner === "p" ? COL.cyan : b.rail || b.owner === "w" ? COL.amber : COL.magenta, sp = Math.hypot(b.vx, b.vy), ux = b.vx / sp, uy = b.vy / sp;
+  for (const b of G.bul) { const col = b.owner === "p" ? COL.cyan : b.owner === "a" ? "#9dff4a" : b.rail || b.owner === "w" ? COL.amber : COL.magenta, sp = Math.hypot(b.vx, b.vy), ux = b.vx / sp, uy = b.vy / sp;
     if (b.owner === "e" && !b.rail) { c.save(); c.globalCompositeOperation = "lighter"; glow(c, b.x, b.y, 7, col, .55); c.restore(); c.fillStyle = col; c.fillRect(Math.round(b.x) - 1, Math.round(b.y) - 1, 3, 3); c.fillStyle = "#ffd1e6"; c.fillRect(Math.round(b.x), Math.round(b.y), 1, 1); }
     else { const L = b.rail ? 18 : 14; for (let k = 0; k < L; k++) { c.fillStyle = rgba(col, (1 - k / L) * .9); c.fillRect(Math.round(b.x - ux * k), Math.round(b.y - uy * k), 1, 1); } c.fillStyle = "#ffffff"; c.fillRect(Math.round(b.x), Math.round(b.y), 1, 1); c.save(); c.globalCompositeOperation = "lighter"; glow(c, b.x, b.y, 6, col, .5); c.restore(); } }
   for (const z of G.zaps) { c.strokeStyle = rgba(COL.magenta, z.life * 5); c.beginPath(); c.moveTo(z.x0, z.y0); for (let i = 1; i < 6; i++) c.lineTo(z.x0 + (z.x1 - z.x0) * i / 6 + rnd(-4, 4), z.y0 + (z.y1 - z.y0) * i / 6 + rnd(-4, 4)); c.lineTo(z.x1, z.y1); c.stroke(); }

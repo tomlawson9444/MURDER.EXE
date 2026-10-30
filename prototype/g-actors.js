@@ -101,7 +101,7 @@ function updateOC(rdt) {
 function hackTarget() {
   let best = null, bd = 22;
   for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0), d = Math.hypot(e.x - mouse.x, ey - mouse.y);
-    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !(["ferryman", "cinder", "widow", "archivist", "scarecrow", "vanexo"].includes(e.type) && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
+    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !(["ferryman", "cinder", "widow", "archivist", "scarecrow", "vanexo", "choir", "corvina"].includes(e.type) && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
   if (best) return best;
   for (const S of G.stalls || []) { const d = Math.hypot(S.x - mouse.x, S.y - 14 - mouse.y); if (S.kind === "rack" && !S.dead && S.hp < S.max && d < 16) return { kind: "rack", S, x: S.x, y: S.y - 14, r: 11 }; }
   for (const g of G.gates || []) { const d = Math.hypot(g.x - mouse.x, g.y - 13 - mouse.y); if (!g.done && d < 18) return { kind: "gate", g, x: g.x, y: g.y - 13, r: 9 }; }
@@ -201,6 +201,8 @@ function updateEnemy(e, dt) {
     case "wrenc": updWrenc(e, dt, d); break;
     case "scarecrow": updScarecrow(e, dt, d); break;
     case "vanexo": updVane(e, dt, d); break;
+    case "choir": updChoir(e, dt, d); break;
+    case "corvina": updCorvina(e, dt, d); break;
   }
 }
 
@@ -233,8 +235,8 @@ function updateBullets(dt) {
         fx(b.x - b.vx * .01, b.y - b.vy * .01, 4, [b.owner === "p" ? COL.cyan : COL.magenta, "#ffffff"], 40, .25); b.life = 0; break;
       }
       if (G.tram && G.tram.state === "run" && b.y > G.tram.row * TS - 10 && b.y < (G.tram.row + 1) * TS && b.x > G.tram.x && b.x < G.tram.x + 288) { b.life = 0; break; }
-      if (b.owner === "p") {
-        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman" || e.type === "cinder" || e.type === "widow" || e.type === "archivist" || e.type === "scarecrow" || e.type === "vanexo", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
+      if (b.owner === "p" || b.owner === "a") { // your rounds and your allies' rounds
+        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman" || e.type === "cinder" || e.type === "widow" || e.type === "archivist" || e.type === "scarecrow" || e.type === "vanexo" || e.type === "corvina", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
           if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
           if (e.hp > 1) { hurtBoss(e); b.life = 0; break; }

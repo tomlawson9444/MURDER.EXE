@@ -4,7 +4,7 @@
 const RUN = {}; // reset and music, filled in by g-main.js
 
 /* ---- Save data ---- */
-SAVE.camp = Object.assign({ cur: 1, done: {}, res: 0, flags: {}, shards: {}, log: {}, paid: {}, diff: "normal", met: {} }, SAVE.camp || {});
+SAVE.camp = Object.assign({ cur: 1, done: {}, res: 0, flags: {}, shards: {}, log: {}, paid: {}, diff: "normal", met: {}, endings: {} }, SAVE.camp || {});
 SAVE.camp.trust = Object.assign({ magpie: 0, wren: 0, vane: 0, dex: 0 }, SAVE.camp.trust || {});
 
 /* ---- District 2 of the story: the Gutterline Canals ---- */
@@ -17,6 +17,8 @@ DIST.kiln = { n: 4, name: "THE KILN", code: "C-04", amb: "datacrypt", next: null
 // Story districts are built by the map generator from a fixed style and seed, so every player gets the same chapter maps.
 const STORY_STYLES = {
   canals: { family: "canals", mood: "neon", hue: 192, weather: "heavy", floor: "tiles", backdrop: "docks", hole: "water", name: "GUTTERLINE CANALS", signs: ["NOODLE", "PAWN", "CAW//24H", "LOANS", "SOBA", "CORVUS"] },
+  summits: { family: "summits", mood: "ice", hue: 210, weather: "heavy", floor: "glass", backdrop: "stormGlass", hole: "void", name: "SPIRE ZERO", signs: ["HALVORSEN", "SPIRE", "FLOOR 88", "NO ENTRY", "EXEC", "CORVUS"] },
+  nest: { family: "serverhalls", mood: "blood", hue: 350, weather: "ash", floor: "grid", backdrop: "serverWall", hole: "data", name: "THE NEST", signs: ["MOTHER", "WE ARE", "HOME", "FLOCK", "YOU", "CORVUS"] },
   slums: { family: "slums", mood: "toxic", hue: 95, weather: "acid", floor: "gravel", backdrop: "shanty", hole: "toxic", name: "THE STACKS", signs: ["SLEEP POD", "LOANS", "CLINIC", "IMPLANTS", "FREE CHROME", "CORVUS"] },
   galleria: { family: "galleria", mood: "neon", hue: 320, weather: "clear", floor: "marble", backdrop: "mall", hole: "void", name: "HALVORSEN GALLERIA", signs: ["HALVORSEN", "LUXE", "CLOSED", "LOCKDOWN", "SALE", "CORVUS"] },
   docks: { family: "docks", mood: "ice", hue: 205, weather: "smog", floor: "plate", backdrop: "docks", hole: "water", name: "SALTGATE DOCKS", signs: ["SALTGATE", "BERTH 7", "CUSTOMS", "NO ENTRY", "HALVORSEN", "CORVUS"] },
@@ -33,7 +35,13 @@ DIST.stacks = { n: 7, name: "THE STACKS", code: "C-07", amb: "market", next: nul
 DIST.galleria = { n: 8, name: "HALVORSEN GALLERIA", code: "C-08", amb: "spire", next: null,
   pool: [["warden", 0, 4], ["shrike", 0, 2], ["rook", 0, 2], ["bulwark", 1, 1], ["corvid", 1, 2], ["carrion", 2, 1]],
   boss: "vanexo", bossName: "DIRECTOR VANE", bossLine: "WEAK POINT · THE EXO-FRAME WHILE IT OVERHEATS", bossTip: "SIDESTEP THE CHARGE. THE MISSILES FOLLOW YOU.", phaseTxt: "" };
-const HAZARDS = { stacks: ["THE PIT", "toxic"], galleria: ["THE ATRIUM", "void"], canals: ["THE CANAL", "water"], kiln: ["THE SLAG", "molten"], docks: ["THE HARBOUR", "water"], datacrypt: ["THE DATA", "data"] };
+DIST.spire = { n: 9, name: "SPIRE ZERO", code: "C-09", amb: "spire", next: null,
+  pool: [["shrike", 0, 3], ["rook", 0, 3], ["corvid", 0, 2], ["carrion", 0, 2], ["hexer", 0, 2], ["jackdaw", 0, 1], ["bulwark", 0, 2], ["warden", 0, 2]],
+  boss: "choir", bossName: "THE CHOIR", bossLine: "WEAK POINT · ALL THREE AT ONCE", bossTip: "DROP ALL THREE BEFORE ANY OF THEM GETS BACK UP.", phaseTxt: "" };
+DIST.nest = { n: 10, name: "THE NEST", code: "C-10", amb: "datacrypt", next: null,
+  pool: [["corvid", 0, 4], ["shrike", 0, 3], ["hexer", 0, 2], ["rook", 0, 2], ["carrion", 1, 2], ["bulwark", 2, 1]],
+  boss: "corvina", bossName: "MOTHER CORVINA", bossLine: "WEAK POINT · AFTER SHE SCREAMS", bossTip: "SHE CHANGES EVERY TIME YOU HURT HER.", phaseTxt: "" };
+const HAZARDS = { spire: ["THE DROP", "void"], nest: ["THE DATA", "data"], stacks: ["THE PIT", "toxic"], galleria: ["THE ATRIUM", "void"], canals: ["THE CANAL", "water"], kiln: ["THE SLAG", "molten"], docks: ["THE HARBOUR", "water"], datacrypt: ["THE DATA", "data"] };
 DIST.docks = { n: 5, name: "SALTGATE DOCKS", code: "C-05", amb: "rookery", next: null,
   pool: [["shrike", 0, 3], ["rook", 0, 3], ["corvid", 0, 2], ["carrion", 1, 2], ["jackdaw", 1, 1], ["bulwark", 2, 2]],
   boss: "widow", bossName: "WIDOW CRANE", bossLine: "WEAK POINT · THE CAB WHILE IT'S OPEN AFTER A DROP", bossTip: "A SHADOW ON THE FLOOR MEANS A CONTAINER IS COMING.", phaseTxt: "" };
@@ -88,8 +96,8 @@ function updFerry(e, dt, d) {
   }
 }
 // Story bosses take three hits. Each hit sends adds through the doors and stirs up the district hazard.
-function hurtBoss(e) { if (e.type === "wrenc") return hurtWrenc(e); if (e.type === "scarecrow") return hurtScarecrow(e); if (e.type === "vanexo") return hurtVane(e); if (e.type === "cinder") return hurtCinder(e); if (e.type === "widow") return hurtWidow(e); if (e.type === "archivist") return hurtArchivist(e); return hurtFerry(e); }
-const STORY_BOSSES = { scarecrow: () => spawnScarecrow(), vanexo: () => spawnVane(), ferryman: () => spawnFerryman(), cinder: () => spawnCinder(), widow: () => spawnWidow(), archivist: () => spawnArchivist() };
+function hurtBoss(e) { if (e.type === "choir") return hurtChoir(e); if (e.type === "corvina") return hurtCorvina(e); if (e.type === "wrenc") return hurtWrenc(e); if (e.type === "scarecrow") return hurtScarecrow(e); if (e.type === "vanexo") return hurtVane(e); if (e.type === "cinder") return hurtCinder(e); if (e.type === "widow") return hurtWidow(e); if (e.type === "archivist") return hurtArchivist(e); return hurtFerry(e); }
+const STORY_BOSSES = { choir: () => spawnChoir(), corvina: () => spawnCorvina(), scarecrow: () => spawnScarecrow(), vanexo: () => spawnVane(), ferryman: () => spawnFerryman(), cinder: () => spawnCinder(), widow: () => spawnWidow(), archivist: () => spawnArchivist() };
 function bossSpot() { buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0; return floorSpots(120).filter(reach).sort(() => Math.random() - .5)[0] || { x: GW / 2, y: 90 }; }
 // A hit while he reels the chain in costs him one of three hits. He calls the water up each time.
 function hurtFerry(e) {
@@ -316,8 +324,8 @@ function placeExit() { buildFlow(); const reach = q => G.flow[Math.floor(q.y / T
   const fromLeft = q.x < GW / 2; G.exit = { x: q.x, y: q.y, vx: fromLeft ? -60 : GW + 60, face: fromLeft ? 1 : -1, arriveT: 1.4, open: false };
   G.banner = { txt: "MAGPIE'S VAN IS PULLING IN", col: COL.cyan, life: 2 }; AU.sfx("tramRun"); }
 function updateVan(dt) {
-  const V = G.exit; if (!V || V.open) return; V.arriveT -= dt; const k = Math.max(0, V.arriveT / 1.4), e = k * k; V.dx = (V.vx - V.x) * e;
-  if (V.arriveT <= 0) { V.open = true; V.dx = 0; G.banner = { txt: "THE VAN IS HERE · GET IN", col: COL.cyan, life: 2.2 }; AU.sfx("milestone"); fx(V.x, V.y - 4, 16, ["#9aa4c8", "#2a2440"], 50, .5); }
+  const V = G.exit; if (!V || V.open) return; V.arriveT -= dt; const k = Math.max(0, V.arriveT / 1.4), e = k * k; V.dx = V.kind === "lift" ? 0 : (V.vx - V.x) * e;
+  if (V.arriveT <= 0) { V.open = true; V.dx = 0; G.banner = V.kind === "lift" ? { txt: "LIFT OPEN · GET IN", col: COL.cyan, life: 2 } : { txt: "THE VAN IS HERE · GET IN", col: COL.cyan, life: 2.2 }; AU.sfx("milestone"); fx(V.x, V.y - 4, 16, ["#9aa4c8", "#2a2440"], 50, .5); }
 }
 
 /* ---- SCARECROW: plants drone nests on the walls and calls the flock ---- */
@@ -391,6 +399,119 @@ DEFS.stall = { w: 40, h: 38, parts: [
 DEFS.shard = { w: 9, h: 15, parts: [ Pl("magE", [[4, 0], [8, 6], [6, 11], [4, 14], [2, 11], [0, 6]]), L("bone", 4, 1, 4, 14), Px("cyanE", [[4, 3], [4, 6]]) ] };
 const TERMINAL = { FLOODGATE: "t_floodgate", BEACON: "t_beacon", RELAY: "t_relay", FURNACE: "t_furnace", NODE: "t_node" };
 function propSprites() { ["t_floodgate", "t_beacon", "t_relay", "t_furnace", "t_node", "rack", "trolley", "stall", "shard"].forEach(k => { if (!SP[k]) SP[k] = sprite(DEFS[k], { rimR: COL.cyan, rimL: "#7f74c9" }); }); }
+
+/* ---- Act 5: climbing Spire Zero floor by floor ---- */
+DEFS.lift = { w: 34, h: 40, parts: [ R("armor", 0, 0, 34, 40), R("chrome", 0, 0, 34, 2), R("chrome", 0, 0, 2, 40), R("chrome", 32, 0, 2, 40), R("gun", 4, 8, 26, 32),
+  R("chrome", 4, 8, 12, 32), R("chrome", 18, 8, 12, 32), L("armor", 17, 8, 17, 39), Pl("cyanE", [[13, 2], [17, 5], [21, 2], [21, 4], [17, 7], [13, 4]]), Px("cyanE", [[6, 24], [27, 24]]) ] };
+function placeLift() {
+  buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0;
+  const roomy = q => { const tx = Math.floor(q.x / TS), ty = Math.floor(q.y / TS); for (let j = ty - 1; j <= ty; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === null || WALK_BLOCK.has(ch) || ch === "o") return false; } return q.y > 80; };
+  const all = floorSpots(0).filter(reach), far = (a, b) => Math.hypot(b.x - G.p.x, b.y - G.p.y) - Math.hypot(a.x - G.p.x, a.y - G.p.y), q = all.filter(roomy).sort(far)[0] || all.sort(far)[0];
+  if (!SP.lift) SP.lift = sprite(DEFS.lift, { rimR: COL.cyan, rimL: "#7f74c9" });
+  G.exit = { x: q.x, y: q.y, kind: "lift", face: 1, vx: q.x, arriveT: 1, open: false }; G.banner = { txt: "THE LIFT IS COMING DOWN", col: COL.cyan, life: 2 }; AU.sfx("bell");
+}
+function nextFloor() {
+  const C = G.camp, g = G.rules.goal; C.floor++; G.exit = null; G.chapMap = Object.assign({}, G.chapMap, { seed: G.chapMap.seed + 37 * C.floor });
+  RUN.enter(C.ch.district); G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; buildFlow(); G.flood = null; G.vents = null;
+  (G.allies || []).forEach((a, i) => { a.x = G.p.x + (i ? 16 : -16); a.y = G.p.y + 8; });
+  G.banner = { txt: `FLOOR ${C.floor}/${g.floors}` + (C.floor === g.floors ? " · THE TOP" : ""), col: COL.cyan, life: 2.4 }; AU.sfx("milestone"); fx(G.p.x, G.p.y - 12, 24, [COL.cyan, "#ffffff"], 80, .6);
+}
+
+/* ---- Allies: Stacks fighters on the Spire, Dex's ghost in the Nest. They can't be hurt, and their rounds only hit the Murder. ---- */
+NPC_LOOKS.stacker = { coat: "jacket", coatCol: "olive", lining: "amber", hair: "long", hairCol: "red", skin: "s5", eyes: "goggles", arm: "chrome", glow: "amber", trail: "glow", gun: "steel", extra: "scarf" };
+function allySprite(k) {
+  if (SP[k]) return SP[k];
+  if (k === "stacker") { const v = previewSprite(NPC_LOOKS.stacker); SP.stacker = v; SPF.stacker = flipSpr(v); }
+  else { const v = previewSprite(NPC_LOOKS.dex), t2 = mk(v.w, v.h), x = t2.getContext("2d"); x.globalAlpha = .8; x.drawImage(v.cv, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(201,182,255,.5)"; x.fillRect(0, 0, v.w, v.h);
+    SP.dexghost = { cv: t2, gc: v.gc, G: v.G, w: v.w, h: v.h }; SPF.dexghost = flipSpr(SP.dexghost); }
+  return SP[k];
+}
+function spawnAllies(kind, n) { G.allies = Array.from({ length: n }, (_, i) => { allySprite(kind); return { kind, x: G.p.x + (i ? 16 : -16), y: G.p.y + 8, face: 1, gun: rnd(.5, 1.2), r: 4, slot: i }; }); }
+function updateAllies(dt) {
+  for (const a of G.allies || []) {
+    const p = G.p, off = (a.slot ? 1 : -1) * 22, tx = p.x + off, ty = p.y + 10, d = Math.hypot(tx - a.x, ty - a.y);
+    if (d > 10) { const sp = Math.min(130, d * 3); moveBody(a, (tx - a.x) / d * sp * dt, (ty - a.y) / d * sp * dt); if (d > 90) { a.x = tx; a.y = ty; } }
+    a.gun -= dt; a.moving = d > 10;
+    let best = null, bd = 175; for (const e of G.en) { if (!e.alive || armored(e) || e.type === "holo") continue; const dd = Math.hypot(e.x - a.x, e.y - a.y); if (dd < bd && los(a.x, a.y - BODY, e.x, e.y - BODY - (e.alt || 0), 1e9)) { bd = dd; best = e; } }
+    if (best) a.face = best.x < a.x ? -1 : 1; else a.face = p.face;
+    if (best && a.gun <= 0) { const gx = a.x + a.face * 10, gy = a.y - BODY - 2; shoot(gx, gy, Math.atan2(best.y - BODY - (best.alt || 0) - gy, best.x - gx) + rnd(-.05, .05), 320, "a"); AU.sfx("kestrel", panOf(a.x)); a.gun = a.kind === "dexghost" ? .55 : rnd(.9, 1.3); }
+  }
+}
+function drawAllies(c, t) {
+  for (const a of G.allies || []) { const s2 = a.face < 0 ? SPF[a.kind] : SP[a.kind]; if (!s2) continue; shadowUnder(c, a.x - s2.w / 2, a.y - s2.h + 2, s2);
+    drawSpr(c, s2, a.x - s2.w / 2, a.y - s2.h + 2 - (a.moving && Math.floor(t / 110) % 2 ? 1 : 0)); if (!a.slot) txt(c, a.kind === "dexghost" ? "DEX" : "STACKS", a.kind === "dexghost" || (G.allies.length < 2) ? a.x : (a.x + G.allies[1].x) / 2, a.y - s2.h - 8, rgba(a.kind === "dexghost" ? "#c9b6ff" : COL.amber, .75), 8, "center"); }
+}
+
+/* ---- The Nest: the floor rewrites itself ---- */
+function rewriteStage() {
+  if (!G.rw) G.rw = { live: [] }; if (G.rw.pending) return;
+  const ok = (x, y) => safeForVent(x * TS + 8, y * TS + 8) && !(G.zone && Math.hypot(x * TS + 8 - G.zone.x, y * TS + 8 - G.zone.y) < 40);
+  let pick = []; for (let k = 0; k < 4; k++) { const sp = floorSpots(50); const s2 = sp[Math.random() * sp.length | 0]; if (s2) pick = pick.concat(ventCluster(Math.floor(s2.x / TS), Math.floor(s2.y / TS), 7).filter(([x, y]) => ok(x, y))); }
+  const old = G.rw.live; old.forEach(([x, y]) => { if (G.grid[y][x] === "o") G.grid[y][x] = "."; }); const fine = stillReachable(pick); old.forEach(([x, y]) => G.grid[y][x] = "o");
+  if (!fine || !pick.length) return; G.rw.pending = { t: 1.6, tiles: pick }; AU.sfx("hexer");
+}
+function updateRewrite(dt) {
+  const W = G.rw; if (!W || !W.pending) return; W.pending.t -= dt; if (W.pending.t > 0) return;
+  W.live.forEach(([x, y]) => { if (G.grid[y][x] === "o") G.grid[y][x] = "."; });
+  W.live = W.pending.tiles.filter(([x, y]) => Math.hypot(x * TS + 8 - G.p.x, y * TS + 8 - G.p.y) > 12 && G.grid[y][x] === "."); W.live.forEach(([x, y]) => G.grid[y][x] = "o");
+  W.pending = null; G.dirty = true; G.gapTiles = gapTiles(); buildFlow(); G.shake = Math.max(G.shake, 2); AU.sfx("ocSnap");
+}
+
+/* ---- THE CHOIR: three singers. Drop all three before any gets back up. ---- */
+DEFS.choir = { w: 24, h: 34, parts: [ Pl("robe", [[7, 10], [17, 10], [22, 33], [12, 31], [2, 33]]), L("magE", 12, 12, 12, 30), Pl("robe", [[6, 2], [12, 0], [18, 2], [18, 12], [6, 12]]),
+  E("bone", 12, 7, 3.5, 4), Px("redE", [[10, 6], [14, 6]]), R("magE", 11, 9, 3, 1), S_(Pl("robe", [[7, 11], [3, 20], [5, 21], [9, 14]])), S_(Pl("robe", [[17, 11], [21, 20], [19, 21], [15, 14]])) ] };
+NAMES.choir = "THE CHOIR"; BOSSY.add("choir");
+function spawnChoir() {
+  if (!SP.choir) { SP.choir = sprite(DEFS.choir, { rimL: COL.magenta, rimR: "#6f66b0" }); SPF.choir = flipSpr(SP.choir); }
+  G.choirRounds = 2; const spots = floorSpots(80).sort(() => Math.random() - .5), out = [];
+  for (const q of spots) { if (out.every(o => Math.hypot(o.x - q.x, o.y - q.y) > 110)) out.push(q); if (out.length === 3) break; }
+  return out.map((q, i) => { const e = spawnEnemy("choir", q.x, q.y); Object.assign(e, { hp: 2, state: "sing", gun: .8 + i * .4, spin: i * 2 }); return e; })[0];
+}
+function updChoir(e, dt, d) {
+  const p = G.p, fast = G.choirRounds === 1; e.face = p.x < e.x ? -1 : 1;
+  if (e.state === "down") { if (e.t <= 0) { e.state = "sing"; e.gun = 1; fx(e.x, e.y - 16, 18, [COL.magenta, "#ffffff"], 70, .6); pop(e.x, e.y - 40, "BACK UP", COL.magenta); AU.sfx("hexer", panOf(e.x)); } return; }
+  if (d > 90) walk(e, 22, dt); else if (d < 60) moveBody(e, -(p.x - e.x) / d * 30 * dt, -(p.y - e.y) / d * 30 * dt);
+  e.gun -= dt; if (e.gun <= 0) { for (let k = 0; k < 5; k++) shoot(e.x, e.y - 20, e.spin + k / 5 * TAU, fast ? 85 : 70, "e", { by: "choir" }); e.spin += .45; e.gun = fast ? .7 : 1.05; }
+}
+function hurtChoir(e) {
+  if (e.state === "down") return; const fast = G.choirRounds === 1; e.state = "down"; e.t = fast ? 3 : 3.6; fx(e.x, e.y - 16, 20, [COL.magenta, "#2a2440", "#ffffff"], 80, .6); pop(e.x, e.y - 40, "DOWN", COL.cyan); AU.sfx("kill", panOf(e.x));
+  const all = G.en.filter(x => x.alive && x.type === "choir"); if (!all.every(x => x.state === "down")) return;
+  G.choirRounds--; G.shake = 6; rumble(1, .8, 300);
+  if (G.choirRounds <= 0) { all.forEach(x => { x.hp = 1; }); all.forEach(x => killEnemy(x, "shot")); return; }
+  G.banner = { txt: "THE CHOIR RISES AGAIN · FASTER", col: COL.magenta, life: 2.4 }; radio("corvus", "SING, CHILDREN. SING LOUDER.");
+  all.forEach(x => { x.t = 1.6; });
+}
+
+/* ---- MOTHER CORVINA: three phases, then the choice ---- */
+DEFS.corvina = { w: 48, h: 48, dither: 1, parts: [
+  Pl("wing", [[22, 14], [6, 4], [0, 16], [4, 30], [12, 26], [20, 30]]), Pl("wing", [[26, 14], [42, 4], [48, 16], [44, 30], [36, 26], [28, 30]]),
+  Px("redE", [[4, 10], [8, 8], [2, 20], [7, 24], [44, 10], [40, 8], [46, 20], [41, 24]]),
+  Pl("shield", [[17, 14], [31, 14], [38, 46], [24, 43], [10, 46]]), L("redE", 24, 18, 24, 42), R("chrome", 14, 40, 3, 8), R("chrome", 31, 40, 3, 8), R("chrome", 22, 42, 4, 6),
+  E("bone", 24, 9, 5, 6), Pl("hair", [[18, 6], [21, 1], [24, 0], [27, 1], [30, 6], [29, 14], [27, 8], [21, 8], [19, 14]]), Px("redE", [[22, 9], [26, 9]]),
+  Px("redE", [[16, 1], [20, -1], [24, -2], [28, -1], [32, 1]]) ] };
+NAMES.corvina = "MOTHER CORVINA"; FLYING.add("corvina"); BOSSY.add("corvina");
+function spawnCorvina() { const s2 = bossSpot(); const e = spawnEnemy("corvina", s2.x, s2.y); Object.assign(e, { hp: 3, state: "sing", t: 3, gun: 1, feather: 2, adds: 5, spin: 0 }); return e; }
+const corvinaPhase = e => 4 - e.hp;
+function updCorvina(e, dt, d) {
+  const p = G.p, ph = corvinaPhase(e); e.face = p.x < e.x ? -1 : 1; e.alt = 4 + Math.sin((e.anim || 0) * 2) * 2; e.hurt = Math.max(0, (e.hurt || 0) - dt);
+  if (e.state === "sing") {
+    if (ph < 3) walk(e, 18, dt);
+    e.gun -= dt; if (e.gun <= 0) { if (ph < 3) { const off = Math.random() * TAU; for (let k = 0; k < 14; k++) if (k % 7 !== 0) shoot(e.x, e.y - 24, off + k / 14 * TAU, 70, "e", { by: "corvina" }); e.gun = 1.7; }
+      else { for (let k = 0; k < 2; k++) shoot(e.x, e.y - 24, e.spin + k * Math.PI, 80, "e", { by: "corvina" }); e.spin += .33; e.gun = .16; } AU.sfx("shotE", panOf(e.x)); }
+    if (ph >= 2) { e.feather -= dt; if (e.feather <= 0) { for (let k = 0; k < 4; k++) shoot(e.x, e.y - 30, -Math.PI / 2 + (k - 1.5) * .5, 60, "e", { by: "corvina", seek: 1.3, life: 4 }); e.feather = 2.6; AU.sfx("rail", panOf(e.x)); } }
+    e.adds -= dt; if (e.adds <= 0) { for (let k = 0; k < 2; k++) spawnEnemy("corvid", e.x + rnd(-40, 40), e.y - 40); e.adds = 7; AU.sfx("caw"); }
+    if (e.t <= 0) { e.state = "scream"; e.t = .9; AU.sfx("charge", panOf(e.x)); } }
+  else if (e.state === "scream") { if (e.t <= 0) { for (let k = 0; k < 24; k++) shoot(e.x, e.y - 24, k / 24 * TAU, 95, "e", { by: "corvina" }); G.shake = 5; AU.sfx("caw");
+      if (ph === 3) { const q = floorSpots(90).sort(() => Math.random() - .5)[0]; if (q) { fx(e.x, e.y - 20, 20, [COL.red, "#2a2440"], 80, .5); e.x = q.x; e.y = q.y; } }
+      e.state = "exposed"; e.t = 2.4; } }
+  else if (e.state === "exposed") { if (e.t <= 0) { e.state = "sing"; e.t = rnd(4, 5.5) - ph * .5; } }
+}
+function hurtCorvina(e) {
+  e.hp--; e.hurt = .3; e.state = "sing"; e.t = 3; G.shake = 7; AU.sfx("land", panOf(e.x)); rumble(1, .8, 350); fx(e.x, e.y - 24, 30, [COL.red, "#ffffff", "#2a2440"], 100, .7); pop(e.x, e.y - 56, e.hp + " LEFT", COL.red);
+  const ph = corvinaPhase(e);
+  if (ph === 2) { G.banner = { txt: "PHASE 2 · THE FLOOR IS REWRITING", col: COL.red, life: 2.4 }; G.rules = Object.assign({}, G.rules, { rewrite: 7 }); G.rwT = 1; radio("corvus", "WE WILL REWRITE THE GROUND UNDER YOU."); }
+  if (ph === 3) { G.banner = { txt: "PHASE 3 · CORVUS TAKES THE WHEEL", col: COL.red, life: 2.4 }; radio("corvus", "SHE IS TIRED. WE ARE NOT."); }
+}
 
 /* ---- Rising water ---- */
 function floodCandidates() {
@@ -539,11 +660,12 @@ function startChapter(n, retry) {
   if (!retry) undoChapterFx(n);
   G.camp = { n, ch, t: 0, fired: new Set(), won: false, winT: 0, kills0: 0 }; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; G.runSeed = null; G.queuedSeed = null;
   const hz = HAZARDS[ch.district] || [null, null];
-  G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.lull = false; G.zone = null; G.exit = null; storySprites(); propSprites(); G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
+  G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.lull = false; G.zone = null; G.exit = null; G.allies = []; G.rw = null; G.choirRounds = 0; storySprites(); propSprites(); G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
   AU.init(); BANK.attach(); RUN.reset(ch.district);
   G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; G.lastHeat = G.heat;
   G.p.shield = SAVE.camp.diff === "story" ? 2 : 0;
-  const g = G.rules.goal; if (g.type === "stall" || g.type === "guard" || g.type === "escort") placeStalls(); if (g.type === "hold") placeZone(); if (g.type === "gates") placeGates(g.n);
+  const g = G.rules.goal; if (g.type === "stall" || g.type === "guard" || g.type === "escort") placeStalls(); if (g.type === "hold") placeZone();
+  G.camp.floor = 1; G.rwT = G.rules.rewrite || 0; if (G.rules.allies) spawnAllies(G.rules.allies[0], G.rules.allies[1]); if (g.type === "gates") placeGates(g.n);
   G.floodT = G.rules.flood || 0; G.ventT = G.rules.vents || 0;
   const title = `CHAPTER ${String(n).padStart(2, "0")} · ${ch.title}`, go = () => { G.mode = "play"; G.paused = false; G.banner = { txt: ch.goal, col: COL.cyan, life: 2.6 }; RUN.music(); buildFlow(); };
   AU.stop(); AU.ambience(D().amb);
@@ -586,8 +708,12 @@ function campTick(dt) {
   if (G.zone) { const Z = G.zone, inside = Math.hypot(p.x - Z.x, p.y - Z.y) < Z.r; Z.contested = inside && G.en.some(e => e.alive && !FLYING.has(e.type) && Math.hypot(e.x - Z.x, e.y - Z.y) < Z.r); Z.inside = inside;
     if (inside && !Z.contested) Z.prog = Math.min(1, Z.prog + dt / g.secs);
     if (R.wrenAt != null && SAVE.camp.flags.leftThem && !C.wrenOut && Z.prog >= R.wrenAt) { C.wrenOut = true; spawnWrenc(); } }
-  if (g.type === "extract" && !G.exit && C.t >= g.secs) placeExit(); updateVan(dt);
-  const win = (g.type === "kills" && dk() >= g.n) || (g.type === "hold" && G.zone.prog >= 1) || (g.type === "extract" && G.exit && G.exit.open && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 24) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
+  if (g.type === "extract" && !G.exit && C.t >= g.secs) placeExit();
+  if (g.type === "climb" && !G.exit && dk() >= g.kills) placeLift();
+  if (g.type === "climb" && G.exit && G.exit.open && C.floor < g.floors && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 20) nextFloor();
+  updateVan(dt); updateAllies(dt);
+  if (G.rules.rewrite) { G.rwT -= dt; if (G.rwT <= 0) { G.rwT = G.rules.rewrite; rewriteStage(); } } updateRewrite(dt);
+  const win = (g.type === "kills" && dk() >= g.n) || (g.type === "hold" && G.zone.prog >= 1) || (g.type === "climb" && C.floor >= g.floors && G.exit && G.exit.open && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 20) || (g.type === "extract" && G.exit && G.exit.open && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 24) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
   if (win) campWin();
 }
 function campWin() {
@@ -638,12 +764,18 @@ function campDrawFloor(c, t) {
   if (G.zone) { const Z = G.zone, col = Z.contested ? COL.red : Z.inside ? COL.cyan : COL.amber; c.save(); c.translate(Z.x, Z.y); c.scale(1, .62); c.strokeStyle = rgba(col, .5); c.beginPath(); c.arc(0, 0, Z.r, 0, TAU); c.stroke();
     c.fillStyle = rgba(col, .08); c.fill(); c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, Z.r, -Math.PI / 2, -Math.PI / 2 + TAU * Z.prog); c.stroke(); c.restore();
     txt(c, Z.contested ? "CONTESTED" : Z.inside ? "HOLDING" : "HOLD HERE", Z.x, Z.y - 32, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); }
-  if (G.exit && SP.van) { const V = G.exit, s2 = V.face < 0 ? SPF.van : SP.van, x = Math.round(V.x + (V.dx || 0)), y = Math.round(V.y), idle = V.open && Math.floor(t / 90) % 2 ? 1 : 0;
+  if (G.exit && G.exit.kind === "lift") { const V = G.exit, x = Math.round(V.x), y = Math.round(V.y), s2 = SP.lift, top = y - s2.h + 4;
+    if (V.open) { c.fillStyle = "#05040b"; c.fillRect(x - 13, top + 8, 26, 32); c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, top + 24, 18, COL.cyan, .5 + .2 * Math.sin(t * .01)); c.restore(); }
+    c.save(); if (V.open) { c.beginPath(); c.rect(x - 17, top, 34, 8); c.rect(x - 17, top, 4, 40); c.rect(x + 13, top, 4, 40); c.clip(); } drawSpr(c, s2, x - 17, top); c.restore();
+    txt(c, V.open ? "GET IN" : "LIFT", x, top - 10, rgba(COL.cyan, .7 + .3 * Math.sin(t * .01)), 8, "center"); }
+  else if (G.exit && SP.van) { const V = G.exit, s2 = V.face < 0 ? SPF.van : SP.van, x = Math.round(V.x + (V.dx || 0)), y = Math.round(V.y), idle = V.open && Math.floor(t / 90) % 2 ? 1 : 0;
     // headlight beams, shadow, then the van; the side door glows once it has stopped
     c.save(); c.globalCompositeOperation = "lighter"; const hx = x + V.face * 24; c.fillStyle = "rgba(255,210,120,.10)"; c.beginPath(); c.moveTo(hx, y - 10); c.lineTo(hx + V.face * 70, y - 28); c.lineTo(hx + V.face * 70, y + 6); c.fill(); glow(c, hx, y - 9, 10, COL.amber, .6); c.restore();
     c.fillStyle = "rgba(0,0,0,.45)"; c.beginPath(); c.ellipse(x, y + 1, 24, 4, 0, 0, TAU); c.fill();
     drawSpr(c, s2, x - s2.w / 2, y - s2.h + 3 - idle);
     if (V.open) { const on = .5 + .5 * Math.sin(t * .01); c.save(); c.globalCompositeOperation = "lighter"; glow(c, x - V.face * 1, y - 12, 16, COL.cyan, .5 * on); c.restore(); txt(c, "GET IN", x, y - 40, rgba(COL.cyan, .7 + .3 * on), 8, "center"); } }
+  if (G.rw && G.rw.pending) { const on = Math.floor(t / 80) % 2; G.rw.pending.tiles.forEach(([x, y]) => { c.fillStyle = rgba(on ? COL.red : COL.magenta, .4); c.fillRect(x * TS + (on ? 1 : 0), y * TS, TS, TS); });
+    const ts = G.rw.pending.tiles, mx = ts.reduce((a, q) => a + q[0], 0) / ts.length, my = ts.reduce((a, q) => a + q[1], 0) / ts.length; txt(c, "REWRITE", mx * TS + 8, my * TS + 4, rgba("#ffffff", on ? 1 : .5), 8, "center"); }
   for (const d of G.drops || []) if (d.state === "warn") { const on = Math.floor(t / 90) % 2, x = d.tiles[0][0] * TS, y = d.tiles[0][1] * TS, k = 1 - d.t / 1.4;
     c.fillStyle = `rgba(0,0,0,${.25 + .4 * k})`; c.fillRect(x + 6 - 6 * k, y + 6 - 6 * k, 20 + 12 * k, 20 + 12 * k); c.strokeStyle = on ? COL.amber : rgba(COL.amber, .5); c.strokeRect(x + .5, y + .5, 31, 31); }
   for (const v of G.vents || []) { const on = Math.floor(t / 100) % 2;
@@ -682,7 +814,12 @@ function campDrawObjects(c, t) {
     c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, top + 4, live ? 10 + Math.sin(t * .01) * 2 : 7, col, (live ? .5 : q.done ? .4 : .15) * (gg.noun === "FURNACE" ? .5 : 1)); c.restore();
     if (q.done) txt(c, "OK", x, top - 10, "#9dff4a", 8, "center");
     if (live) txt(c, Math.hypot(G.p.x - x, G.p.y - y) < 18 ? gg.verb : gg.noun, x, top - 12, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); });
+  drawAllies(c, t);
   for (const e of G.en) { if (!e.alive) continue;
+    if (e.type === "choir" && e.state === "down") { const s2 = sprOf("choir", e.face); c.save(); c.globalAlpha = .6; c.drawImage(tinted(s2, "#05040b"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2)); c.restore(); txt(c, Math.ceil(e.t) + "", e.x, e.y - 44, COL.cyan, 8, "center"); }
+    if (e.type === "corvina" && e.state === "scream") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24 - e.alt, 30, COL.red, .5 + .4 * Math.sin(t * .06)); c.restore(); }
+    if (e.type === "corvina" && e.state === "exposed") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24 - e.alt, 16, "#ffffff", .5); c.restore(); txt(c, "EXPOSED", e.x, e.y - 62, COL.cyan, 8, "center"); }
+    if (e.type === "corvina" && e.hurt > 0) { const s2 = sprOf("corvina", e.face); c.save(); c.globalAlpha = e.hurt * 2; c.drawImage(tinted(s2, "#ffffff"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2 - e.alt)); c.restore(); }
     if (e.type === "warden" && e.state === "aim") { c.save(); c.globalAlpha = .55 + .3 * Math.sin(t * .05); pline(c, e.x + e.face * 10, e.y - BODY - 2, e.x + e.face * 10 + Math.cos(e.la) * 300, e.y - BODY - 2 + Math.sin(e.la) * 300, COL.amber); c.restore(); }
     if (e.type === "scarecrow" && e.state === "call") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 28, 18, COL.magenta, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "CALLING", e.x, e.y - 60, COL.magenta, 8, "center"); }
     if (e.type === "scarecrow" && e.state === "sweep") { c.save(); c.globalAlpha = .35; c.fillStyle = COL.red; c.beginPath(); c.moveTo(e.x, e.y - 20); c.arc(e.x, e.y - 20, 110, e.la - .65, e.la + .65); c.fill(); c.restore(); }
@@ -712,7 +849,9 @@ NPC_LOOKS.magpieBody = { coat: "cloak", coatCol: "midnight", lining: "magenta", 
 /* ---- HUD ---- */
 function campHudCenter(c, t) {
   const C = G.camp, g = G.rules.goal, W = GW, x = W / 2 - 54; let label = "", k = 0, col = COL.ink;
-  if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / 3 : 1; }
+  if (G.boss && D().boss === "choir") { const up = G.en.filter(e => e.alive && e.type === "choir" && e.state !== "down").length; label = `CHOIR · ${up}/3 UP`; col = COL.magenta; k = G.choirRounds / 2; }
+  else if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / 3 : 1; }
+  else if (g.type === "climb") { label = G.exit ? `FLOOR ${C.floor}/${g.floors} · LIFT` : `FLOOR ${C.floor}/${g.floors} · ${Math.min(dk(), g.kills)}/${g.kills}`; k = ((C.floor - 1) + Math.min(1, dk() / g.kills)) / g.floors; col = G.exit ? COL.cyan : COL.ink; }
   else if (g.type === "kills") { label = `${String(Math.min(dk(), g.n)).padStart(2, "0")}/${g.n} KILLS`; k = dk() / g.n; }
   else if (g.type === "survive") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `SURVIVE ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; k = C.t / g.secs; }
   else if (g.type === "stall" || g.type === "guard") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = g.type === "stall" ? `STALL ${Math.ceil(stallPct())}% · ${s}S` : (G.rules.waves ? (G.lull ? "BREAK" : `W${(C.wave || 0) + 1}`) + " · " : "") + `RACKS ${G.stalls.filter(q => !q.dead).length}/${G.stalls.length} · ${s}S`; k = C.t / g.secs; col = stallPct() < 30 ? COL.red : COL.ink; }
@@ -798,17 +937,27 @@ function updateChap(rdt, actions) {
   G.chapT += rdt; if (G.chapT < .8) return; const n = G.camp.n, next = n < maxChapter() ? n + 1 : null;
   if (hit("escape")) { actions.toCamp(); return; }
   G.menu = layoutMenu(next ? [{ label: "NEXT · " + chLabel(next) + " " + CHAPTERS[next].title, act: () => startChapter(next) }, { label: "MAGPIE'S, THEN " + chLabel(next), col: COL.magenta, act: () => openShop("campNext") }, { label: "CAMPAIGN MENU", col: COL.dim, act: actions.toCamp }]
-    : [{ label: "CAMPAIGN MENU", act: actions.toCamp }, { label: "MAGPIE'S", col: COL.magenta, act: () => { actions.toCamp(); openShop("title"); } }], 196); runMenu(G.menu);
+    : [{ label: "CAMPAIGN MENU", act: actions.toCamp }, { label: "MAGPIE'S", col: COL.magenta, act: () => { actions.toCamp(); openShop("title"); } }], next ? 196 : 206); runMenu(G.menu);
 }
 function drawChap(c, t) {
   drawCampBG(c, t); const C = G.camp, S = SAVE.camp, A = actOf(C.n), actEnd = A.chapters[A.chapters.length - 1] === C.n, last = C.n === maxChapter();
-  txt(c, actEnd ? `ACT ${A.n} COMPLETE` : "CHAPTER COMPLETE", GW / 2, 40, COL.cyan, 24, "center");
+  txt(c, last ? "THE END" : actEnd ? `ACT ${A.n} COMPLETE` : "CHAPTER COMPLETE", GW / 2, 40, last && SAVE.camp.ending === "crown" ? COL.red : COL.cyan, 24, "center");
   txt(c, `${chLabel(C.n)} · ${C.ch.title}`, GW / 2, 72, COL.amber, 8, "center");
   txt(c, `TIME ${Math.floor(G.time / 60)}:${String(Math.floor(G.time % 60)).padStart(2, "0")}   ·   KILLS ${G.kills}   ·   +${G.runScrip || 0} SCRIP   ·   ${SAVE.scrip} BANKED`, GW / 2, 92, COL.ink, 8, "center");
   txt(c, S.shards[C.n] ? (C.gotShard ? "DATASHARD RECOVERED: " : "DATASHARD: ") + C.ch.shard.title : "DATASHARD MISSED · REPLAY THE CHAPTER TO FIND IT", GW / 2, 106, S.shards[C.n] ? COL.magenta : COL.dim, 8, "center");
   const shown = TRUSTS.filter(([k]) => k !== "dex" || S.flags.metDex); let x = GW / 2 - shown.length * 46;
   shown.forEach(([k, nm]) => { txt(c, nm, x, 126, COL.dim); trustPips(c, x + 40, 128, S.trust[k]); x += 92; });
   txt(c, "CORVUS RESONANCE " + S.res, GW / 2, 142, COL.red, 8, "center");
-  if (last) txt(c, `ACT ${A.n + 1} ARRIVES IN THE NEXT BUILD`, GW / 2, 162, COL.magenta, 8, "center");
+  if (last) drawEnding(c, t);
   if (G.chapT > .8) drawMenu(c, G.menu, t);
+}
+
+/* ---- The ending card after Chapter 30 ---- */
+const ENDINGS = { delete: ["DELETE · CLEAN SKY", "CORVUS IS GONE. THE CITY WAKES UP UNWATCHED.", "CLEAN SKY AFTERIMAGE"], crown: ["CROWN · MURDER OF ONE", "YOU ARE THE FLOCK NOW. SAINT VARROW BELONGS TO YOU.", "CORVUS RED OPTICS"],
+  release: ["RELEASE · OPEN SKY", "THE MINDS SCATTER INTO THE NET, FREE. DEX SENDS ONE LAST MESSAGE.", "OPEN SKY COAT"] };
+function drawEnding(c, t) {
+  const S = SAVE.camp, E = ENDINGS[S.ending] || ENDINGS.delete, f = S.flags;
+  txt(c, E[0], GW / 2, 156, S.ending === "crown" ? COL.red : COL.cyan, 8, "center"); txt(c, E[1], GW / 2, 166, rgba(COL.ink, .85), 8, "center");
+  const fates = [f.forgaveMagpie ? "MAGPIE: FORGIVEN" : "MAGPIE: BEHIND GLASS", f.wrenDead ? "WREN: LOST" : f.freed ? "WREN: FREE" : "WREN: GONE", f.vaneKilled ? "VANE: DEAD" : f.vaneStacks ? "VANE: THE STACKS" : "VANE: SPARED", "RESONANCE " + S.res];
+  txt(c, fates.join("   ·   "), GW / 2, 178, COL.dim, 8, "center"); txt(c, "UNLOCKED IN MAGPIE'S STYLE TAB: " + E[2], GW / 2, 188, COL.amber, 8, "center");
 }

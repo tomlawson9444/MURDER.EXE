@@ -43,7 +43,7 @@ function floorSpots(minFromPlayer) {
   return out;
 }
 // Enemies that a hit can't hurt right now.
-function armored(e) { return (e.type === "blackwing" && e.state !== "vuln") || (e.type === "augur" && e.state === "appear") || (e.type === "nest" && e.state !== "open") || (e.type === "ferryman" && e.state !== "reel" && e.state !== "stuck") || (e.type === "cinder" && e.state !== "vent") || (e.type === "widow" && e.state !== "cab") || (e.type === "archivist" && e.state !== "exposed") || (e.type === "scarecrow" && e.state !== "call") || (e.type === "vanexo" && e.state !== "overheat"); }
+function armored(e) { return (e.type === "blackwing" && e.state !== "vuln") || (e.type === "augur" && e.state === "appear") || (e.type === "nest" && e.state !== "open") || (e.type === "ferryman" && e.state !== "reel" && e.state !== "stuck") || (e.type === "cinder" && e.state !== "vent") || (e.type === "widow" && e.state !== "cab") || (e.type === "archivist" && e.state !== "exposed") || (e.type === "scarecrow" && e.state !== "call") || (e.type === "vanexo" && e.state !== "overheat") || (e.type === "choir" && e.state === "down") || (e.type === "corvina" && e.state !== "exposed"); }
 
 /* Trace: stand still near the same spot for 4s and the Murder sends a flusher to the nearest door. */
 function updateTrace(dt) {

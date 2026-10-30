@@ -28,6 +28,7 @@ function applyFx(fx) {
   const C = SAVE.camp, T = G.talk, note = (txt, col) => T && T.notes.push({ txt, col, life: 2.6 }), log = C.log[C.cur] || (C.log[C.cur] = []);
   TRUSTS.forEach(([k, nm]) => { if (!fx[k]) return; const was = C.trust[k]; C.trust[k] = Math.max(-3, Math.min(3, was + fx[k])); log.push({ trust: k, d: C.trust[k] - was }); note(`${nm} TRUST ${fx[k] > 0 ? "+" : ""}${fx[k]}`, fx[k] > 0 ? COL.cyan : COL.red); });
   if (fx.res) { C.res += fx.res; log.push({ res: fx.res }); note("CORVUS RESONANCE +" + fx.res, COL.red); }
+  if (fx.ending) { C.endings = C.endings || {}; C.endings[fx.ending] = true; C.ending = fx.ending; }
   if (fx.flag) { C.flags[fx.flag] = true; if (FLAG_PAIRS[fx.flag]) delete C.flags[FLAG_PAIRS[fx.flag]]; log.push({ flag: fx.flag }); }
   // Scrip from a conversation is paid once per chapter, so replays can't farm it.
   if (fx.scrip < 0) { SAVE.scrip = Math.max(0, SAVE.scrip + fx.scrip); note(fx.scrip + " SCRIP", COL.red); }
@@ -53,7 +54,7 @@ function talkNext() {
     const n = top.nodes[top.i++];
     if (Array.isArray(n)) { T.cur = { who: n[0], text: fillName(typeof n[1] === "function" ? n[1]() : n[1]).toUpperCase() }; T.shown = 0; AU.sfx("lock", 0); return; }
     if (n.if) { const br = n.if(SAVE.camp) ? n.then : n.else; if (br) T.stack.push({ nodes: br, i: 0 }); continue; }
-    if (n.c) { const opts = n.c.filter(op => op.s !== "origin" || op.o === SAVE.char.origin); if (n.silent) opts.push(Object.assign({ silent: true }, n.silent));
+    if (n.c) { const opts = n.c.filter(op => (op.s !== "origin" || op.o === SAVE.char.origin) && (!op.if || op.if(SAVE.camp))); if (n.silent) opts.push(Object.assign({ silent: true }, n.silent));
       T.choice = { opts, timer: n.timer || 0, t: n.timer || 0 }; T.sel = 0; T.shown = 999; AU.sfx("hexer"); return; }
     if (n.fx) { applyFx(n.fx); continue; }
   }
