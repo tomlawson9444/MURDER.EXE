@@ -51,9 +51,9 @@ function openShop(from) {
   const L = SAVE.loadout; G.mode = "shop"; G.shop = { tab: 0, sel: 0, from, line: "", lineT: 0, mx: mouse.x, my: mouse.y, flash: 0 };
   G.shop.sel = Math.max(0, shopList().findIndex(i => i.id === L.gun)); const f = SAVE.camp && SAVE.camp.flags || {}; say(f.forgaveMagpie ? "warm" : f.cutMagpie ? "cold" : from === "clear" ? "between" : "greet");
 }
-const shopList = () => ITEMS.filter(i => i.cat === CATS[G.shop.tab][0]);
+const shopList = () => ITEMS.filter(i => i.cat === CATS[G.shop.tab][0] && (!i.relic || owns(i.id))); // act rewards only show up here once you have them
 const equipped = id => { const L = SAVE.loadout, it3 = ITEM[id]; if (it3 && it3.cat === "style") return SAVE.char.look[it3.slot] === it3.value; return L.gun === id || L.oc === id || L.imp.includes(id); };
-function shopStatus(i) { if (equipped(i.id)) return ["EQUIPPED", COL.cyan]; if (owns(i.id)) return ["OWNED", COL.dim]; if (!available(i)) return ["LOCKED", COL.magenta]; return [priceOf(i) + " SC", SAVE.scrip >= i.price ? COL.amber : COL.red]; }
+function shopStatus(i) { if (equipped(i.id)) return ["EQUIPPED", COL.cyan]; if (owns(i.id)) return [i.relic ? "ACT REWARD" : "OWNED", i.relic ? COL.amber : COL.dim]; if (!available(i)) return ["LOCKED", COL.magenta]; return [priceOf(i) + " SC", SAVE.scrip >= i.price ? COL.amber : COL.red]; }
 function shopConfirm() {
   const i = shopList()[G.shop.sel], L = SAVE.loadout; if (!i) return;
   if (i.cat === "style" && owns(i.id)) { // wear it, or take it off (back to the slot's first free option)
@@ -95,6 +95,7 @@ function updateShop(rdt, actions) {
 
 /* ---- Drawing ---- */
 function itemIcon(c, i, x, y) {
+  if (i.relic) { c.fillStyle = COL.amber; poly(c, [[x + 20, y - 1], [x + 23, y + 2], [x + 20, y + 5], [x + 17, y + 2]]); c.fill(); } // gold diamond: an act reward
   if (i.cat === "style") { c.fillStyle = "#0b0912"; c.fillRect(x + 4, y + 1, 15, 13); c.strokeStyle = COL.amber; c.strokeRect(x + 4.5, y + 1.5, 14, 12);
     if (i.col) { c.fillStyle = i.col; c.fillRect(x + 6, y + 3, 11, 9); } else txt(c, SLOT[i.slot].label[0], x + 12, y + 4, COL.amber, 8, "center"); return; }
   if (i.cat === "gun") { const s = SP[i.id]; c.save(); c.translate(x + 11 - s.w * .3, y + 7 - s.h * .3); c.scale(.6, .6); c.drawImage(s.cv, 0, 0); c.restore(); return; }

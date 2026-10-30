@@ -428,23 +428,28 @@ function nextFloor() {
 NPC_LOOKS.stacker = { coat: "jacket", coatCol: "olive", lining: "amber", hair: "long", hairCol: "red", skin: "s5", eyes: "goggles", arm: "chrome", glow: "amber", trail: "glow", gun: "steel", extra: "scarf" };
 function allySprite(k) {
   if (SP[k]) return SP[k];
+  if (k === "echoally") { echoSprites(); SP.echoally = SP.echo; SPF.echoally = SPF.echo; return SP.echoally; }
   if (k === "stacker") { const v = previewSprite(NPC_LOOKS.stacker); SP.stacker = v; SPF.stacker = flipSpr(v); }
   else { const v = previewSprite(NPC_LOOKS.dex), t2 = mk(v.w, v.h), x = t2.getContext("2d"); x.globalAlpha = .8; x.drawImage(v.cv, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(201,182,255,.5)"; x.fillRect(0, 0, v.w, v.h);
     SP.dexghost = { cv: t2, gc: v.gc, G: v.G, w: v.w, h: v.h }; SPF.dexghost = flipSpr(SP.dexghost); }
   return SP[k];
 }
 function spawnAllies(kind, n) { G.allies = Array.from({ length: n }, (_, i) => { allySprite(kind); return { kind, x: G.p.x + (i ? 16 : -16), y: G.p.y + 8, face: 1, gun: rnd(.5, 1.2), r: 4, slot: i }; }); }
+// Echo Shell (Act 3 reward): a copy of you that walks behind you and shoots, in the story and in Arcade.
+function placeEchoAlly() { G.echoAlly = null; if (!hasImp("echo")) return; allySprite("echoally"); G.echoAlly = { kind: "echoally", x: G.p.x - 14, y: G.p.y + 12, face: 1, gun: 1, r: 4, slot: 2 }; }
+const allyList = () => (G.allies || []).concat(G.echoAlly ? [G.echoAlly] : []);
 function updateAllies(dt) {
-  for (const a of G.allies || []) {
-    const p = G.p, off = (a.slot ? 1 : -1) * 22, tx = p.x + off, ty = p.y + 10, d = Math.hypot(tx - a.x, ty - a.y);
+  for (const a of allyList()) {
+    const p = G.p, off = (a.slot ? 1 : -1) * 22, tx = a.slot === 2 ? p.x - p.face * 16 : p.x + off, ty = p.y + (a.slot === 2 ? 14 : 10), d = Math.hypot(tx - a.x, ty - a.y);
     if (d > 10) { const sp = Math.min(130, d * 3); moveBody(a, (tx - a.x) / d * sp * dt, (ty - a.y) / d * sp * dt); if (d > 90) { a.x = tx; a.y = ty; } }
     a.gun -= dt; a.moving = d > 10;
     let best = null, bd = 175; for (const e of G.en) { if (!e.alive || armored(e) || e.type === "holo") continue; const dd = Math.hypot(e.x - a.x, e.y - a.y); if (dd < bd && los(a.x, a.y - BODY, e.x, e.y - BODY - (e.alt || 0), 1e9)) { bd = dd; best = e; } }
     if (best) a.face = best.x < a.x ? -1 : 1; else a.face = p.face;
-    if (best && a.gun <= 0) { const gx = a.x + a.face * 10, gy = a.y - BODY - 2; shoot(gx, gy, Math.atan2(best.y - BODY - (best.alt || 0) - gy, best.x - gx) + rnd(-.05, .05), 320, "a"); AU.sfx("kestrel", panOf(a.x)); a.gun = a.kind === "dexghost" ? .55 : rnd(.9, 1.3); }
+    if (best && a.gun <= 0) { const gx = a.x + a.face * 10, gy = a.y - BODY - 2; shoot(gx, gy, Math.atan2(best.y - BODY - (best.alt || 0) - gy, best.x - gx) + rnd(-.05, .05), 320, "a"); AU.sfx("kestrel", panOf(a.x)); a.gun = a.kind === "dexghost" ? .55 : a.kind === "echoally" ? rnd(.8, 1.1) : rnd(.9, 1.3); }
   }
 }
 function drawAllies(c, t) {
+  if (G.echoAlly) { const a = G.echoAlly, s2 = a.face < 0 ? SPF.echoally : SP.echoally; if (s2) { c.save(); c.globalAlpha = .85; drawSpr(c, s2, a.x - s2.w / 2, a.y - s2.h + 2 - (a.moving && Math.floor(t / 110) % 2 ? 1 : 0)); c.restore(); } }
   for (const a of G.allies || []) { const s2 = a.face < 0 ? SPF[a.kind] : SP[a.kind]; if (!s2) continue; shadowUnder(c, a.x - s2.w / 2, a.y - s2.h + 2, s2);
     drawSpr(c, s2, a.x - s2.w / 2, a.y - s2.h + 2 - (a.moving && Math.floor(t / 110) % 2 ? 1 : 0)); if (!a.slot) txt(c, a.kind === "dexghost" ? "DEX" : "STACKS", a.kind === "dexghost" || (G.allies.length < 2) ? a.x : (a.x + G.allies[1].x) / 2, a.y - s2.h - 8, rgba(a.kind === "dexghost" ? "#c9b6ff" : COL.amber, .75), 8, "center"); }
 }
@@ -733,9 +738,19 @@ function campWin() {
   for (const e of G.en) if (e.alive && e.type !== "nest") { e.alive = false; fx(e.x, e.y - 10, 8, ["#2a2440", COL.magenta], 50, .5); }
   G.pending = []; G.bul = []; G.banner = { txt: "OBJECTIVE COMPLETE", col: COL.cyan, life: 1.6 }; AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best;
 }
+// Finishing an act pays out once: its reward item (never sold) and a pile of scrip.
+const actReward = A => ITEMS.find(i => i.relic === A.n);
+const actDone = A => A.chapters.every(n => SAVE.camp.done[n]);
+function grantActRewards() {
+  const S = SAVE.camp, got = []; S.actPaid = S.actPaid || {};
+  ACTS.forEach(A => { if (S.actPaid[A.n] || !actDone(A)) return; const R = actReward(A), L = SAVE.loadout; S.actPaid[A.n] = true; SAVE.scrip += ACT_SCRIP[A.n] || 0;
+    let on = false; if (R && !owns(R.id)) { SAVE.owned.push(R.id); if (R.cat === "imp" && L.imp.length < 2) { L.imp.push(R.id); on = true; } }
+    got.push({ act: A.n, item: R, scrip: ACT_SCRIP[A.n] || 0, on }); });
+  if (got.length) persist(); return got;
+}
 function chapterDone() {
   const C = G.camp, S = SAVE.camp; earn(150); S.done[C.n] = true; if (S.paidNow) S.paid[C.n] = true; S.paidNow = false;
-  S.cur = Math.max(S.cur, Math.min(C.n + 1, maxChapter())); if (C.ch.district === "market" && G.rules.goal.type === "boss") track("clear", "market");
+  S.cur = Math.max(S.cur, Math.min(C.n + 1, maxChapter())); C.reward = grantActRewards().find(r => r.act === actOf(C.n).n) || null; if (C.ch.district === "market" && G.rules.goal.type === "boss") track("clear", "market");
   if (C.ch.district === "rookery" && G.rules.goal.type === "boss") track("clear", "rookery");
   persist(); G.god = false; G.mode = "chap"; G.chapT = 0; G.menuMode = null; AU.ambience(D().amb);
 }
@@ -877,13 +892,15 @@ function campHudCenter(c, t) {
 }
 
 /* ---- Campaign menu and archive ---- */
+const actOpen = A => A.chapters[0] <= SAVE.camp.cur;
 function openCamp() { G.mode = "camp"; G.campView = "list"; G.camp = null; G.rules = null; G.chapMap = null; shopSprites();
+  const late = grantActRewards(); G.campNote = late.length ? { txt: "ACT REWARDS CLAIMED: " + late.map(r => (r.item ? r.item.name.toUpperCase() : "") + " +" + r.scrip).join(" · "), life: 6 } : null; // acts finished before rewards existed
   // Open on the act and chapter you play next.
   const nx = nextChapter(), A = actOf(nx); G.campAct = ACTS.indexOf(A);
   G.menuMode = "camp"; G.menuSel = A.chapters.indexOf(nx); G.menuMx = mouse.x; G.menuMy = mouse.y; }
 function campMenuItems() {
   const S = SAVE.camp, items = [], A = ACTS[G.campAct || 0];
-  A.chapters.forEach((n, i) => { const open = n <= S.cur; items.push({ label: n, ch: n, y: 52 + i * 15, box: [20, 50 + i * 15, 236, 13], act: () => open ? startChapter(n) : AU.sfx("hackFail") }); });
+  A.chapters.forEach((n, i) => { const open = n <= S.cur && actOpen(A); items.push({ label: n, ch: n, y: 52 + i * 15, box: [20, 50 + i * 15, 236, 13], act: () => open ? startChapter(n) : AU.sfx("hackFail") }); });
   const y = 52 + A.chapters.length * 15 + 8;
   items.push({ label: "DIFFICULTY", y, box: [20, y - 2, 236, 13], act: () => { S.diff = S.diff === "story" ? "normal" : "story"; persist(); AU.sfx("lock", 2); } });
   items.push({ label: "ARCHIVE", y: y + 15, box: [20, y + 13, 236, 13], act: () => { G.campView = "archive"; G.menuMode = null; G.archSel = 0; } });
@@ -911,22 +928,26 @@ function drawCamp(c, t) {
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, "NINE NIGHTS OF RAIN", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 10, col, 16, "center"));
   if (G.campView === "archive") { txt(c, "ARCHIVE", GW / 2, 32, COL.magenta, 8, "center"); return drawArchive(c, t); }
   const on2 = Math.floor(t / 400) % 2;
-  txt(c, `ACT ${A.n} · ${A.name}`, GW / 2, 32, COL.amber, 8, "center");
+  const aOpen = actOpen(A); txt(c, aOpen ? `ACT ${A.n} · ${A.name}` : `ACT ${A.n} · LOCKED`, GW / 2, 32, aOpen ? COL.amber : "#5a5276", 8, "center");
   if (ACTS.length > 1) { txt(c, "<", GW / 2 - 92, 32, ai > 0 ? (on2 ? COL.cyan : rgba(COL.cyan, .6)) : "#2a2640", 8, "center"); txt(c, ">", GW / 2 + 92, 32, ai < ACTS.length - 1 ? (on2 ? COL.cyan : rgba(COL.cyan, .6)) : "#2a2640", 8, "center"); }
   const items = G.menu || campMenuItems(), sel = G.menuMode === G.mode ? G.menuSel : -1;
   items.forEach((it, i) => { const on = i === sel, [bx, by, bw, bh] = it.box; if (on) { c.fillStyle = rgba(COL.cyan, .14); c.fillRect(bx, by, bw, bh); c.fillStyle = COL.cyan; c.fillRect(bx, by, 2, bh); }
-    if (it.ch) { const n = it.ch, open = n <= S.cur, done = S.done[n], ch = CHAPTERS[n];
+    if (it.ch) { const n = it.ch, open = n <= S.cur && actOpen(A), done = S.done[n], ch = CHAPTERS[n];
       txt(c, String(n).padStart(2, "0"), bx + 8, it.y, open ? COL.amber : "#3a3456"); txt(c, open ? ch.title : "LOCKED", bx + 28, it.y, open ? (on ? COL.ink : rgba(COL.ink, .8)) : "#3a3456");
       txt(c, done ? "CLEAR" : open ? "NEW" : "", bx + bw - 22, it.y, done ? COL.cyan : COL.amber, 8, "right");
       if (S.shards[n]) { c.fillStyle = COL.magenta; poly(c, [[bx + bw - 10, it.y], [bx + bw - 7, it.y + 3], [bx + bw - 10, it.y + 6], [bx + bw - 13, it.y + 3]]); c.fill(); } }
     else { const lab2 = it.label === "DIFFICULTY" ? "DIFFICULTY: " + (S.diff === "story" ? "STORY · 2 SHIELDS" : "NORMAL · ONE LIFE") : it.label === "ARCHIVE" ? `ARCHIVE · ${Object.keys(S.shards).length}/${allChapters().length} LOGS` : it.label;
       txt(c, lab2, bx + 8, it.y, on ? COL.cyan : COL.dim); } });
   // Right column: the chapter under the cursor, then trust.
-  const hov = items[sel] && items[sel].ch ? items[sel].ch : A.chapters.includes(nextChapter()) ? nextChapter() : A.chapters[0], ch = CHAPTERS[hov], open = hov <= S.cur;
+  const hov = items[sel] && items[sel].ch ? items[sel].ch : A.chapters.includes(nextChapter()) ? nextChapter() : A.chapters[0], ch = CHAPTERS[hov], open = hov <= S.cur && aOpen;
   panel(c, 268, 46, 196, 70, "#3a3456");
-  txt(c, `${chLabel(hov)} · ${DIST[ch.district].name}`, 276, 52, COL.amber);
+  txt(c, aOpen ? `${chLabel(hov)} · ${DIST[ch.district].name}` : chLabel(hov), 276, 52, aOpen ? COL.amber : "#5a5276");
   if (open) { wrapText(c, ch.goal, 180).forEach((l, i) => txt(c, l, 276, 64 + i * 10, COL.ink)); txt(c, S.done[hov] ? "CLEARED" + (S.shards[hov] ? " · DATASHARD FOUND" : " · DATASHARD MISSING") : "NOT CLEARED YET", 276, 102, S.done[hov] ? COL.cyan : COL.dim); }
-  else txt(c, "CLEAR THE CHAPTER BEFORE IT", 276, 64, COL.dim);
+  else txt(c, aOpen ? "CLEAR THE CHAPTER BEFORE IT" : `FINISH ACT ${A.n - 1} TO UNLOCK`, 276, 64, COL.dim);
+  const R = actReward(A), paid = (S.actPaid || {})[A.n]; // what finishing this act gets you
+  txt(c, paid ? "ACT REWARD CLAIMED: " : "ACT REWARD: ", 20, 214, COL.dim); c.font = "8px Silkscreen"; const rx = 20 + c.measureText(paid ? "ACT REWARD CLAIMED: " : "ACT REWARD: ").width;
+  txt(c, `${R ? R.name.toUpperCase() : ""} + ${ACT_SCRIP[A.n]} SCRIP`, rx, 214, paid ? COL.dim : COL.amber);
+  if (G.campNote) { G.campNote.life -= 1 / 60; txt(c, G.campNote.txt, GW / 2, 228, COL.amber, 8, "center"); if (G.campNote.life <= 0) G.campNote = null; }
   panel(c, 268, 122, 196, 84, "#3a3456"); txt(c, "WHO TRUSTS YOU", 276, 128, COL.dim);
   const metOf = { magpie: S.done[1] || S.cur >= 2, wren: S.flags.freed || S.flags.leftThem, vane: true, dex: S.done[9] || S.flags.metDex };
   TRUSTS.forEach(([k, nm], i) => { const met = metOf[k], y = 142 + i * 12; txt(c, met ? nm : "???", 276, y, met ? COL.ink : "#3a3456"); if (met) trustPips(c, 340, y + 2, S.trust[k]); });
@@ -934,12 +955,12 @@ function drawCamp(c, t) {
   txt(c, PAD.active ? "LEFT / RIGHT: ACT · UP / DOWN + " + lab().confirm + " · B: BACK" : "A / D: ACT · W / S + ENTER OR CLICK · ESC: BACK", GW / 2, GH - 14, rgba(COL.dim, .7), 8, "center");
 }
 function drawArchive(c, t) {
-  const S = SAVE.camp, A = ACTS[G.campAct || 0], all = A.chapters; G.archSel = Math.max(0, Math.min(G.archSel || 0, all.length - 1)); txt(c, `< ACT ${A.n} · ${A.name} >`, GW / 2, 42, COL.dim, 8, "center");
+  const S = SAVE.camp, A = ACTS[G.campAct || 0], all = A.chapters; G.archSel = Math.max(0, Math.min(G.archSel || 0, all.length - 1)); txt(c, `< ACT ${A.n} · ${actOpen(A) ? A.name : "LOCKED"} >`, GW / 2, 42, COL.dim, 8, "center");
   all.forEach((n, i) => { const got = S.shards[n], on = i === G.archSel, y = 56 + i * 13; if (on) { c.fillStyle = rgba(COL.magenta, .14); c.fillRect(20, y - 2, 150, 11); }
     txt(c, got ? CHAPTERS[n].shard.title.split(" · ")[0] : "LOG " + String(n).padStart(2, "0"), 28, y, got ? (on ? COL.magenta : COL.ink) : "#3a3456"); txt(c, got ? "" : "MISSING", 164, y, "#3a3456", 8, "right"); });
   const n = all[G.archSel], sh = CHAPTERS[n].shard; panel(c, 180, 52, 284, 170, COL.magenta);
   if (S.shards[n]) { txt(c, sh.title, 190, 60, COL.magenta); wrapText(c, fillName(sh.text).toUpperCase(), 264).forEach((l, i) => txt(c, l, 190, 76 + i * 11, COL.ink)); }
-  else { txt(c, "NOT RECOVERED", 190, 60, COL.dim); wrapText(c, `FIND THE GLOWING DATASHARD DURING ${chLabel(n)} · ${CHAPTERS[n].title}.`, 264).forEach((l, i) => txt(c, l, 190, 76 + i * 11, COL.dim)); }
+  else { txt(c, "NOT RECOVERED", 190, 60, COL.dim); wrapText(c, n <= S.cur ? `FIND THE GLOWING DATASHARD DURING ${chLabel(n)} · ${CHAPTERS[n].title}.` : `UNLOCKS WHEN YOU REACH ${chLabel(n)}.`, 264).forEach((l, i) => txt(c, l, 190, 76 + i * 11, COL.dim)); }
   txt(c, PAD.active ? "LEFT / RIGHT: ACT · UP / DOWN · B: BACK" : "A / D: ACT · W / S · ESC: BACK", GW / 2, GH - 14, rgba(COL.dim, .7), 8, "center");
 }
 
@@ -960,6 +981,10 @@ function drawChap(c, t) {
   shown.forEach(([k, nm]) => { txt(c, nm, x, 126, COL.dim); trustPips(c, x + 40, 128, S.trust[k]); x += 92; });
   txt(c, "CORVUS RESONANCE " + S.res, GW / 2, 142, COL.red, 8, "center");
   if (last) drawEnding(c, t);
+  const R = C.reward; if (R) { const pulse = .75 + .25 * Math.sin(t * .008), nm = R.item ? R.item.name.toUpperCase() : "";
+    if (last) txt(c, `ACT 5 REWARD: ${nm} · +${R.scrip} SCRIP`, GW / 2, 197, rgba(COL.amber, pulse), 8, "center");
+    else { txt(c, `ACT ${R.act} REWARD UNLOCKED: ${nm}`, GW / 2, 156, rgba(COL.amber, pulse), 8, "center"); if (R.item) txt(c, R.item.desc.toUpperCase(), GW / 2, 167, rgba(COL.ink, .85), 8, "center");
+      txt(c, `+${R.scrip} SCRIP · ` + (R.on ? "EQUIPPED · WORKS IN ARCADE TOO" : "EQUIP IT AT MAGPIE'S · WORKS IN ARCADE TOO"), GW / 2, 178, COL.amber, 8, "center"); } }
   if (G.chapT > .8) drawMenu(c, G.menu, t);
 }
 

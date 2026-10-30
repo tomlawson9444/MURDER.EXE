@@ -12,6 +12,9 @@ function playerDie(by) {
   const p = G.p; if (G.mode !== "play" || p.iframes > 0 || G.god) return;
   if (hasImp("backup") && !p.egoUsed) { p.egoUsed = true; p.iframes = 2; G.bul = G.bul.filter(b => b.owner === "p"); G.shake = 6; rumble(1, 1, 300);
     fx(p.x, p.y - BODY, 30, [COL.cyan, "#ffffff"], 90, .8); G.banner = { txt: "BACKUP EGO RESTORED · MULTIPLIER HALVED", col: COL.cyan, life: 2.4 }; AU.sfx("ocSnap"); return; }
+  if (hasImp("aegis") && p.aegis) { p.aegis = false; p.aegisK = 0; p.iframes = 1.6; G.bul = G.bul.filter(b => b.owner === "p"); G.shake = 6; rumble(1, 1, 300); AU.sfx("ocSnap");
+    if ((by === "hole" || by === "vent") && p.safe) { p.x = p.safe.x; p.y = p.safe.y; }
+    fx(p.x, p.y - BODY, 26, [COL.amber, "#ffffff"], 80, .6); G.banner = { txt: "AEGIS LATTICE BROKEN · 20 KILLS TO RECHARGE", col: COL.amber, life: 2 }; return; }
   if (campShield(by)) return;
   rumble(1, 1, 600); G.mode = "dead"; G.deadT = 0; G.killer = (by === "hole" && G.dropName) || NAMES[by] || by; fx(p.x, p.y - BODY, 30, [COL.cyan, COL.magenta, "#ffffff"], 90, .9);
   AU.sfx("flatline"); AU.stop(); AU.setOC(false); G.oc = null; G.shake = 6;
@@ -26,6 +29,8 @@ function killEnemy(e, how) {
   if (how === "fall") pop(e.x, e.y - 20, "FELL", COL.amber);
   if (e.type === "carrion" && how !== "blast") { explode(e.x, e.y - 6, 34, "carrion"); }
   const pts = Math.round((e.type === D().boss ? 5000 : e.type === "nest" ? 500 : 100) * G.mult); G.score += pts; G.kills += e.type === "corvid" || e.type === "blackwing" ? 1 : 1;
+  if (hasImp("aegis") && !G.p.aegis && ++G.p.aegisK >= 20) { G.p.aegis = true; pop(G.p.x, G.p.y - 34, "AEGIS READY", COL.amber); AU.sfx("lock", 4); }
+  if (how === "oc" && G.p.ocId === "crown") G.p.ocRefund = (G.p.ocRefund || 0) + 6;
   G.p.oc = Math.min(G.p.ocMax, G.p.oc + 8); G.p.ram = Math.min(G.p.ramMax, G.p.ram + .5); G.p.streak = (G.p.streak || 0) + 1;
   earn(scripFor(e)); track("kill", e.type); if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
   fx(e.x, e.y - (e.alt || 0) - 8, 16, [COL.magenta, "#2a2440", "#f0ebf6"], 70, .6); pop(e.x, e.y - 26 - (e.alt || 0), "+" + pts);
@@ -40,7 +45,7 @@ function explode(x, y, r, src, safe) {
   fx(x, y, 34, [COL.amber, "#fff0c8", COL.red, "#2a2440"], 120, .8);
   for (const e of G.en) if (e.alive && Math.hypot(e.x - x, e.y - y) < r && !BOSSY.has(e.type)) killEnemy(e, "blast");
   if (!safe && Math.hypot(G.p.x - x, G.p.y - y) < r) playerDie("blast");
-  blastStalls(x, y, r);
+  if (src !== "kiln") blastStalls(x, y, r); // your own Kiln Rounds never hurt what you are guarding
   if (outer) { track("blast", G.blastCount); G.blastCount = null; }
   const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
   for (let j = ty - 1; j <= ty + 1; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === "c") breakTile(i, j); if (ch === "b" && !(i === tx && j === ty)) setTimeout(() => G.grid.at(i, j) === "b" && detonateBarrel(i, j), 120); }
@@ -54,7 +59,7 @@ function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a)
 
 /* ---- Player ---- */
 function updatePlayer(dt, rdt) {
-  const p = G.p; p.iframes = Math.max(0, p.iframes - dt); p.fireCd -= dt; p.dashCd -= dt;
+  const p = G.p; p.iframes = Math.max(0, p.iframes - dt); p.fireCd -= dt; p.dashCd -= dt; p.tollCd = (p.tollCd || 0) - dt;
   p.ram = Math.min(p.ramMax, p.ram + dt * .25);
   if (hasImp("redline") && p.oc > 0) p.oc = Math.max(0, p.oc - dt * 1.5);
   if (G.oc) return;
@@ -64,6 +69,7 @@ function updatePlayer(dt, rdt) {
   p.face = mouse.x < p.x ? -1 : 1;
   if ((hit(" ") || hit("shift")) && p.dashCd <= 0 && p.dash <= 0) { const dx = ml ? mx / ml : p.face, dy = ml ? my / ml : 0; p.dash = .16; p.dx = dx; p.dy = dy; p.dashCd = hasImp("reflex") ? .28 : .4; p.iframes = .22; AU.sfx("dash"); track("dash"); rumble(0, .35, 120); }
   if (p.dash > 0) { p.dash -= dt; const s = (hasImp("reflex") ? 315 : 370) * dt; moveBody(p, p.dx * s, p.dy * s, true); p.trail.push({ x: p.x, y: p.y, life: .2 }); G.parts.push({ x: p.x + rnd(-6, 6), y: p.y - rnd(2, 26), vx: -p.dx * 120, vy: -p.dy * 120, life: .18, max: .18, col: COL.cyan, g: 0 });
+    if (hasImp("toll") && (p.tollCd || 0) <= 0) { const v = G.en.find(e => e.alive && !BOSSY.has(e.type) && !armored(e) && e.type !== "holo" && e.type !== "echo" && Math.hypot(e.x - p.x, e.y - p.y) < 13); if (v) { p.tollCd = 1; killEnemy(v, "dash"); fx(v.x, v.y - 10, 14, [COL.amber, "#ffffff"], 80, .4); AU.sfx("impactMetal", panOf(v.x)); } }
     if (p.dash <= 0) { let n = 0; while (boxBlocked(p.x, p.y, p.r, false) && n++ < 20) { p.x += p.dx * 2; p.y += p.dy * 2; } if (boxBlocked(p.x, p.y, p.r, false)) { p.x -= p.dx * 40; p.y -= p.dy * 40; } } }
   else { const od = hasImp("overdrive") ? 1 + Math.min(.25, Math.floor((p.streak || 0) / 10) * .05) : 1; moveBody(p, mx * 112 * od * dt, my * 112 * od * dt); }
   if (ml > 0 || p.dash > 0) p.still = 0; else { p.still = (p.still || 0) + dt; if (p.still > 2) p.streak = 0; }
@@ -88,12 +94,15 @@ function updateOC(rdt) {
   if (!ocHeld() || o.t > 3) {
     const p = G.p, gx = p.x + p.face * 12, gy = p.y - BODY - 2; G.tracers = [];
     const prog = p.ocId; if (o.locks.length >= 6) { SAVE.stats.ocFull++; checkMilestones(); }
-    o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 }); if (armored(e)) { AU.sfx("bulwark"); return; }
+    p.ocRefund = 0;
+    o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 });
+      if (prog === "crown" && e.alive && e.hp > 1) { hurtBoss(e); return; } // the crown cracks a story boss's armour; the last hit is still yours to land
+      if (armored(e)) { AU.sfx("bulwark"); return; }
       if (prog === "swarm") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 30, "swarm"); } // every lock detonates, even if a neighbour's blast got it first
       else if (prog === "arc") { killEnemy(e, "oc"); arcFrom(e, 2, "oc"); }
       else killEnemy(e, "oc"); });
     if (prog === "ghost" && o.locks.length) { const t = o.locks[o.locks.length - 1]; if (!boxBlocked(t.x, t.y, p.r, false) && tileOf(t.x, t.y) !== "o") { fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); p.trail.push({ x: p.x, y: p.y, life: .3 }); p.x = t.x; p.y = t.y; p.iframes = .6; fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); } }
-    AU.sfx("ocFire", o.locks.length); rumble(.8, .8, 220); if (!o.locks.length) p.oc = Math.min(p.ocMax, p.oc + 50);
+    AU.sfx("ocFire", o.locks.length); rumble(.8, .8, 220); if (!o.locks.length) p.oc = Math.min(p.ocMax, p.oc + 50); else if (p.ocRefund) { p.oc = Math.min(p.ocMax, p.oc + p.ocRefund); pop(p.x, p.y - 34, "+" + p.ocRefund + " OC", COL.red); p.ocRefund = 0; }
     p.ammo = p.gun.mag; p.reload = 0; G.oc = null; AU.setOC(false); G.shake = 3;
   }
 }
@@ -240,7 +249,8 @@ function updateBullets(dt) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
           if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
           if (e.hp > 1) { hurtBoss(e); b.life = 0; break; }
-          killEnemy(e, "shot"); if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
+          { const kx = e.x, ky = e.y - 6; killEnemy(e, "shot"); if (b.owner === "p" && hasImp("kiln")) explode(kx, ky, 26, "kiln", true); }
+          if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;
       } else {
         // Crossfire: Warden rounds hit the Murder, and Murder rounds hit Wardens.

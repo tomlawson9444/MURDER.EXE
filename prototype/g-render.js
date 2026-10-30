@@ -91,6 +91,7 @@ function drawHUD(c, t) {
   panel(c, W - 108, 6, 102, 24, "#3a3456"); txt(c, String(G.score).padStart(7, "0"), W - 100, 9, COL.ink); txt(c, "x" + G.mult.toFixed(1), W - 12, 9, COL.cyan, 8, "right");
   for (let i = 0; i < 5; i++) { c.fillStyle = i < G.heat ? COL.amber : "#2a2640"; c.fillRect(W - 100 + i * 7, 21, 5, 3); } txt(c, "HEAT", W - 12, 19, COL.dim, 8, "right");
   txt(c, "+" + (G.runScrip || 0) + " SCRIP", W - 8, 34, rgba(COL.amber, .85), 8, "right");
+  if (hasImp("aegis")) { const y = G.camp && (p.shield > 0 || SAVE.camp.diff === "story") ? H - 48 : H - 58; txt(c, "AEGIS", 168, y, COL.dim); if (p.aegis) { c.fillStyle = COL.amber; c.fillRect(206, y + 2, 14, 4); } else { c.fillStyle = "#2a2640"; c.fillRect(206, y + 2, 20, 4); c.fillStyle = rgba(COL.amber, .6); c.fillRect(206, y + 2, 20 * (p.aegisK || 0) / 20, 4); } }
   panel(c, 6, H - 42, 156, 36, "#3a3456");
   const mag = p.gun.mag, big = mag > 8;
   for (let i = 0; i < mag; i++) { const a = i / mag * TAU - Math.PI / 2, rr = big ? 10 : 9, x = 24 + Math.cos(a) * rr, y = H - 24 + Math.sin(a) * rr, sz = big ? 2 : 4;

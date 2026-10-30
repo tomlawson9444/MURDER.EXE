@@ -7,7 +7,7 @@
   // Load a district into the current run. Score, kills and Overclock carry across a breach.
   function enterDistrict(key) {
     G.district = key; G.mapKey = chooseMap(key); G.grid = buildGrid(MAPS[G.mapKey], false); G.base = renderMap(G.mapKey, false, SP, G.grid); G.dirty = false; G.perch = perchSpot(); G.gapTiles = gapTiles();
-    const ps = playerStart(); if (!G.p) { G.p = newPlayer(ps.x, ps.y); applyLoadout(G.p, true); } else { Object.assign(G.p, { x: ps.x, y: ps.y, trail: [], dash: 0, iframes: .5 }); applyLoadout(G.p, false); }
+    const ps = playerStart(); if (!G.p) { G.p = newPlayer(ps.x, ps.y); applyLoadout(G.p, true); } else { Object.assign(G.p, { x: ps.x, y: ps.y, trail: [], dash: 0, iframes: .5 }); applyLoadout(G.p, false); } placeEchoAlly();
     Object.assign(G, { en: [], bul: [], pending: [], parts: [], blasts: [], zaps: [], tracers: [], pings: [], dStart: G.kills, phase2: false, tram: null, wind: null, collapse: null,
       boss: false, oc: null, hexed: 0, trace: 0, anchor: null, crateHp: {}, spawnT: 1.5 });
     G.heat = G.heatBase; G.lastHeat = G.heat; G.mult = 1 + G.heat * .5;
@@ -81,7 +81,7 @@
     }
     const dt = G.oc ? rdt * .12 : rdt;
     if (G.mode === "play") { G.time += rdt; updatePlayer(dt, rdt); if (G.oc) updateOC(rdt); G.flowT -= dt; if (G.flowT <= 0) { buildFlow(); G.flowT = .25; }
-      updateDirector(dt); campTick(dt); updateRadio(rdt); updateTram(dt); updateWind(dt); updateCollapse(dt); updateTrace(dt); G.hexed = Math.max(0, G.hexed - dt); }
+      updateDirector(dt); campTick(dt); if (!G.camp) updateAllies(dt); updateRadio(rdt); updateTram(dt); updateWind(dt); updateCollapse(dt); updateTrace(dt); G.hexed = Math.max(0, G.hexed - dt); }
     for (const e of G.en) if (e.alive) updateEnemy(e, dt);
     G.en = G.en.filter(e => e.alive);
     updateBullets(dt);

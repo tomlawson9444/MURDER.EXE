@@ -7,7 +7,7 @@ const GUNS = {
   hornet: { name: "HORNET SMG", mag: 16, reload: 1.4, cd: .065, speed: 700, pellets: 1, spread: .09, pierce: 0, bounce: 0, life: 2.5, sfx: "kestrel", auto: true },
   rail: { name: "RAILPIERCER", mag: 3, reload: 1.5, cd: .35, speed: 1150, pellets: 1, spread: 0, pierce: 3, bounce: 0, life: 2.5, sfx: "rail", kick: 4 },
 };
-const OCP = { deadlink: { locks: 6 }, arc: { locks: 3 }, swarm: { locks: 4 }, ghost: { locks: 5 } };
+const OCP = { deadlink: { locks: 6 }, arc: { locks: 3 }, swarm: { locks: 4 }, ghost: { locks: 5 }, crown: { locks: 8 } };
 const it = (id, cat, name, price, req, reqText, desc, stats = []) => ({ id, cat, name, price, req, reqText, desc, stats });
 const ITEMS = [
   it("kestrel", "gun", "Kestrel .44", 0, null, "", "Your smart revolver. Accurate, reliable, six rounds.", ["MAG 6", "RELOAD 1.1S", "FAST TRAVEL"]),
@@ -27,7 +27,15 @@ const ITEMS = [
   it("overdrive", "imp", "Overdrive Heart", 450, s => s.falls >= 5, "Knock 5 enemies into the chasm", "+5% speed for every 10-kill streak. Stand still for 2 seconds and it resets.", ["SPEED UP TO +25%"]),
   it("redline", "imp", "Redline Cache", 600, s => s.ocCount >= 15, "Use Overclock 15 times", "Overclock holds three charges, but the meter slowly drains.", ["3 OC CHARGES", "DRAINS"]),
   it("backup", "imp", "Backup Ego", 1200, s => !!s.clears.rookery, "Clear the Chrome Rookery", "Flatline once and come back. Your score multiplier is halved after.", ["1 REVIVE / RUN"]),
+  // Act rewards: never sold. Each one is earned by finishing an act of the story, then works in the story and in Arcade.
+  Object.assign(it("toll", "imp", "Toll Chain", 0, null, "Finish Act 1 of the story", "The Ferryman's chain. Dash through an enemy to kill it, once a second.", ["DASH KILLS", "ACT 1 REWARD"]), { relic: 1 }),
+  Object.assign(it("kiln", "imp", "Kiln Rounds", 0, null, "Finish Act 2 of the story", "Cinder's slag in your bullets. Every shot kill bursts in a blast that can't hurt you.", ["KILLS EXPLODE", "ACT 2 REWARD"]), { relic: 2 }),
+  Object.assign(it("echo", "imp", "Echo Shell", 0, null, "Finish Act 3 of the story", "The Archivist kept a copy of you. Now it fights beside you.", ["ECHO ALLY", "ACT 3 REWARD"]), { relic: 3 }),
+  Object.assign(it("aegis", "imp", "Aegis Lattice", 0, null, "Finish Act 4 of the story", "Halvorsen's prototype. Shrugs off one hit, then recharges after 20 kills.", ["1 SHIELD", "RECHARGES", "ACT 4 REWARD"]), { relic: 4 }),
+  Object.assign(it("crown", "oc", "CORVUS//CROWN", 0, null, "Finish the story", "Eight locks. Locks crack boss armour, and every kill gives Overclock back.", ["8 LOCKS", "HITS BOSSES", "ACT 5"]), { relic: 5 }),
 ];
+// Scrip for finishing each act, paid once.
+const ACT_SCRIP = { 1: 1000, 2: 1500, 3: 2000, 4: 2500, 5: 4000 };
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const CATS = [["gun", "SIDEARMS"], ["oc", "OVERCLOCK"], ["imp", "IMPLANTS"]];
 
@@ -48,7 +56,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 const owns = id => SAVE.owned.includes(id);
 // Magpie's prices: 20% off if you forgave her in the campaign, 20% more if you cut her off.
 const priceOf = i => { const f = SAVE.camp && SAVE.camp.flags || {}; return Math.round(i.price * (f.forgaveMagpie ? .8 : f.cutMagpie ? 1.2 : 1)); };
-const available = i => !i.req || i.req(SAVE.stats);
+const available = i => !i.relic && (!i.req || i.req(SAVE.stats));
 const hasImp = id => !!(G.p && G.p.imps && G.p.imps.includes(id));
 
 function earn(n) { n = Math.round(n); G.runScrip = (G.runScrip || 0) + n; SAVE.scrip += n; }
@@ -69,6 +77,6 @@ function checkMilestones() {
 function applyLoadout(p, fresh) {
   const L = SAVE.loadout; p.gunId = L.gun; p.gun = GUNS[L.gun]; p.ocId = L.oc; p.maxLocks = OCP[L.oc].locks; p.imps = L.imp.slice();
   p.ocMax = p.imps.includes("redline") ? 150 : 100; p.ramMax = p.imps.includes("deck") ? 9 : 6; p.hitR = p.imps.includes("graze") ? 5.5 : 4.5;
-  p.ammo = p.gun.mag; p.reload = 0; p.ram = p.ramMax; if (fresh) { p.egoUsed = false; p.streak = 0; p.oc = 50; } p.oc = Math.min(p.oc, p.ocMax); p.still = 0;
+  p.ammo = p.gun.mag; p.reload = 0; p.ram = p.ramMax; if (fresh) { p.egoUsed = false; p.streak = 0; p.oc = 50; p.aegis = true; p.aegisK = 0; } p.oc = Math.min(p.oc, p.ocMax); p.still = 0;
 }
 const tellK = () => hasImp("prism") ? 1.35 : 1;

@@ -60,6 +60,15 @@ The title screen has four choices, with a one-line description under the selecte
 
 The story campaign is complete: **30 chapters across 10 districts in five acts, with three endings**. Pick STORY on the title screen, and switch acts with A / D (or left / right) on the chapter list.
 
+- **Locked progression:** chapters open one at a time, and each act stays locked (no name, no chapter titles) until you finish the act before it.
+- **Act rewards:** finishing an act pays out once: a pile of scrip and a piece of gear Magpie never sells. Implants go straight into a free slot. Every reward works in the story and in Arcade, and the BODYSHOP inventory shows the ones still to earn.
+  - **Act 1 · Toll Chain** (implant, +1000 scrip): dash through an enemy to kill it, once a second.
+  - **Act 2 · Kiln Rounds** (implant, +1500 scrip): every shot kill bursts in a blast that can't hurt you or anything you're guarding.
+  - **Act 3 · Echo Shell** (implant, +2000 scrip): a copy of you walks behind you and shoots the Murder.
+  - **Act 4 · Aegis Lattice** (implant, +2500 scrip): shrugs off one hit, then recharges after 20 kills (shown on the HUD).
+  - **Act 5 · CORVUS//CROWN** (Overclock, +4000 scrip): eight locks; a lock on a story boss lands a hit through its armour (the final hit is still yours), and every kill in the volley gives Overclock back.
+  - Saves that already finished acts get their rewards the next time the campaign menu opens.
+
 - **Act 1, Wet Feathers (Rain Market, Gutterline Canals):** survive an ambush, protect Magpie's stall, draw out BLACKWING, survive rising floodwater, open three floodgates and kill THE FERRYMAN.
 - **Act 2, The Roost (Chrome Rookery, The Kiln):** cut three roost beacons in the wind, sync four relays in order while a CORVUS flashback plays and the north bridge falls, unmask THE AUGUR (it's Dex Morrow), survive the Kiln's night shift while the floor vents erupt, sabotage four furnaces after a timed ransom choice, and kill CINDER.
 - **Act 3, Cold Storage (Saltgate Docks, Datacrypt):** fight through a container yard in thick fog, escort a cargo crane carrying forty uploaded minds, bring down the WIDOW CRANE, keep four server racks online, read five index nodes in order while Hexers lock your hacks, and delete THE ARCHIVIST. Act 3 ends with the truth about CORVUS and rack 00.
@@ -78,7 +87,7 @@ The story campaign is complete: **30 chapters across 10 districts in five acts, 
 - **WIDOW CRANE:** a crane-mech that drops shipping containers where you stand. A shadow marks each drop for 1.4 seconds; the containers crush anything under them, stand as cover for 9 seconds, then lift away (a drop never seals off a door). Her cab opens after each drop, and that's the only time she can be hurt.
 - **Datacrypt:** a story server-hall district under the river.
 - **Rack defence (Cold Storage):** four numbered racks, placed away from the enemies' main routes. The fight comes in three waves with short breaks, and the last wave is the hardest. Most Carrions hunt a rack (a red dashed line shows which) and blow up on it. Stand beside a damaged rack to reboot it, or quickhack it for a quick +30. Trace pauses while you reboot. A rack under attack flashes and Magpie calls out its number. You can lose one rack; a second ends the chapter. Saving all four pays 200 scrip and changes lines from Magpie, Vane and Dex.
-- **THE ARCHIVIST:** hides inside a shield while echoes of you walk paths you really took earlier in the chapter, firing as they go. Break every echo and it's exposed for 3 seconds.
+- **THE ARCHIVIST:** hides inside a shield while echoes of you walk paths you really took earlier in the chapter, firing as they go. Break every echo and it's exposed for 5 seconds; it drifts towards you while shielded, and an echo that stays out of sight for 8 seconds steps back into view.
 - **Hold and extract objectives:** stand in a ring to fill it (enemies inside stop the clock), or survive until a van arrives and then reach it. Trace pauses while you hold a ring.
 - **Wren, if you abandoned the sleepers:** in Chapter 19 Wren comes at you as a crow-masked cultist. Two hits kill them; a quickhack on the implant frees them, and they rejoin your side.
 - **SCARECROW:** plants drone Nests on the walls, calls Corvid swarms and sweeps a cone of shots. He can only be hurt while his arms are raised. Taking his mask unlocks a Scarecrow's Mask cosmetic.
