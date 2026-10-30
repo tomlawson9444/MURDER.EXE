@@ -4,10 +4,9 @@ let SP = {}, SPF = {};
 function flipSpr(s) { const cv = mk(s.w, s.h), c = cv.getContext("2d"); c.translate(s.w, 0); c.scale(-1, 1); c.drawImage(s.cv, 0, 0); const gc = mk(s.gc.width, s.gc.height), g = gc.getContext("2d"); g.translate(gc.width, 0); g.scale(-1, 1); g.drawImage(s.gc, 0, 0); return { cv, gc, G: s.G, w: s.w, h: s.h }; }
 function buildSprites() {
   const rim = { rimR: COL.cyan, rimL: "#7f74c9" }, er = { rimL: COL.magenta, rimR: "#6f66b0" };
-  SP.vesper = sprite(vesperDef(), rim); SP.vesperB = sprite(vesperDef({ bob: -1 }), rim); SP.run1 = sprite(vesperDef({ la: -1, ra: 1, bob: -1 }), rim); SP.run2 = sprite(vesperDef({ la: 1, ra: -1, bob: -1 }), rim);
   ["corvid", "shrike", "rook", "jackdaw", "carrion", "bulwark", "hexer", "nest", "blackwing", "augur"].forEach(k => SP[k] = sprite(DEFS[k], er));
   for (const k in SP) SPF[k] = flipSpr(SP[k]);
-  SP.vesperT = tinted(SP.vesper, COL.cyan); SPF.vesperT = tinted(SPF.vesper, COL.cyan);
+  applyLook(); // the player is drawn from the character's saved look (g-char.js)
 }
 const sprOf = (k, face) => face < 0 ? SPF[k] : SP[k];
 function txt(c, s, x, y, col, size = 8, align = "left") { c.font = `${size}px Silkscreen`; c.textBaseline = "top"; c.textAlign = align; c.fillStyle = col; c.fillText(s, Math.round(x), Math.round(y)); c.textAlign = "left"; }
@@ -38,7 +37,7 @@ function drawWorld(c, t) {
   // sprites, sorted by feet
   const list = G.en.filter(e => e.alive && e.type !== "nest" && !(e.type === "blackwing" && (e.state === "air" || e.state === "target" || e.state === "lock"))).map(e => ({ e, y: e.y }));
   if (G.mode !== "dead") list.push({ e: p, y: p.y, me: 1 }); list.sort((a, b) => a.y - b.y);
-  p.trail.forEach(tr => { c.globalAlpha = tr.life * 2.5; c.drawImage(p.face < 0 ? SPF.vesperT : SP.vesperT, Math.round(tr.x - 14), Math.round(tr.y - 33)); c.globalAlpha = 1; });
+  p.trail.forEach((tr, i) => { const tl = p.face < 0 ? SPF.trails : SP.trails; c.globalAlpha = tr.life * 2.5; c.drawImage(tl[i % tl.length], Math.round(tr.x - 14), Math.round(tr.y - 33)); c.globalAlpha = 1; });
   for (const { e, me } of list) {
     if (me) { const k = p.moving ? (Math.floor(t / 110) % 2 ? "run1" : "run2") : (Math.floor(t / 400) % 2 ? "vesperB" : "vesper"); const s = sprOf(k, p.face); shadowUnder(c, p.x - s.w / 2, p.y - s.h + 2, s);
       if (p.iframes > 0 && p.dash <= 0 && Math.floor(t / 50) % 2) continue; drawSpr(c, s, p.x - s.w / 2, p.y - s.h + 2); continue; }
@@ -112,13 +111,16 @@ function drawLogo(c, x, y, size) { c.font = `700 ${size}px "Chakra Petch", sans-
 function veil(c, a) { c.fillStyle = `rgba(5,4,11,${a})`; c.fillRect(0, 0, GW, GH); }
 function drawTitle(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .72);
-  drawLogo(c, GW / 2 - 18, 92, 44); txt(c, "ONE BULLET. ONE LIFE.", GW / 2, 104, COL.dim, 8, "center");
-  const L = lab(); const rows = [[L.move, "MOVE"], [L.aim, "AIM"], [L.fire, "SHOOT"], [L.dash, "PHASE DASH (OVER LOW COVER)"], [L.oc, "OVERCLOCK · SWEEP TO LOCK"], [L.hack, "SHORT CIRCUIT"], [L.reload, "RELOAD"]];
-  rows.forEach(([k, v], i) => { txt(c, k, GW / 2 - 8, 111 + i * 9, COL.cyan, 8, "right"); txt(c, v, GW / 2 + 4, 111 + i * 9, COL.ink); });
-  const k = DIST[DORDER[G.sel || 0]]; txt(c, (G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`, GW / 2, 178, COL.amber, 8, "center");
+  drawLogo(c, GW / 2 - 18, 62, 44); txt(c, "ONE BULLET. ONE LIFE.", GW / 2, 72, COL.dim, 8, "center");
+  const L = lab(), s = Math.floor(t / 400) % 2 ? SP.vesperB : SP.vesper, gl = optOf(SAVE.char.look, "glow")[3];
+  c.save(); c.globalCompositeOperation = "lighter"; glow(c, GW / 2, 140, 40, gl, .18); c.restore(); c.fillStyle = "rgba(0,0,0,.5)"; c.beginPath(); c.ellipse(GW / 2, 152, 18, 4, 0, 0, TAU); c.fill();
+  c.save(); c.imageSmoothingEnabled = false; c.translate(GW / 2 - s.w, 152 - s.h * 2 + 4); c.scale(2, 2); c.drawImage(s.cv, 0, 0); c.globalCompositeOperation = "lighter"; c.drawImage(s.gc, -s.G, -s.G); c.restore();
+  txt(c, SAVE.char.created ? SAVE.char.name + " · " + ORIGIN[SAVE.char.origin].name : "NO OPERATIVE YET", GW / 2, 158, SAVE.char.created ? COL.ink : COL.magenta, 8, "center");
+  txt(c, loadoutLine(), GW / 2, 168, rgba(COL.cyan, .75), 8, "center");
+  const k = DIST[DORDER[G.sel || 0]]; txt(c, (G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`, GW / 2, 181, COL.amber, 8, "center");
   drawMenu(c, G.menu, t);
-  txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 226, rgba(COL.cyan, .75), 8, "center");
-  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED"), GW / 2, 237, COL.dim, 8, "center");
+  if (G.titleMsg) txt(c, G.titleMsg.txt, GW / 2, 86, rgba(COL.amber, Math.min(1, G.titleMsg.life * 2)), 8, "center");
+  txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED"), GW / 2, 241, COL.dim, 8, "center");
   txt(c, ((G.unlocked || 1) > 1 ? (PAD.active ? "LEFT / RIGHT: DISTRICT · " : "A / D: DISTRICT · ") : "CLEAR THE RAIN MARKET TO UNLOCK D-02 · ") + (PAD.active ? "UP / DOWN + " + L.confirm : "W / S + ENTER OR CLICK"), GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
 function drawDead(c, t) {

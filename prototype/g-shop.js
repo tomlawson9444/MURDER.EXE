@@ -50,10 +50,12 @@ function openShop(from) {
   G.shop.sel = Math.max(0, shopList().findIndex(i => i.id === L.gun)); say(from === "clear" ? "between" : "greet");
 }
 const shopList = () => ITEMS.filter(i => i.cat === CATS[G.shop.tab][0]);
-const equipped = id => { const L = SAVE.loadout; return L.gun === id || L.oc === id || L.imp.includes(id); };
+const equipped = id => { const L = SAVE.loadout, it3 = ITEM[id]; if (it3 && it3.cat === "style") return SAVE.char.look[it3.slot] === it3.value; return L.gun === id || L.oc === id || L.imp.includes(id); };
 function shopStatus(i) { if (equipped(i.id)) return ["EQUIPPED", COL.cyan]; if (owns(i.id)) return ["OWNED", COL.dim]; if (!available(i)) return ["LOCKED", COL.magenta]; return [i.price + " SC", SAVE.scrip >= i.price ? COL.amber : COL.red]; }
 function shopConfirm() {
   const i = shopList()[G.shop.sel], L = SAVE.loadout; if (!i) return;
+  if (i.cat === "style" && owns(i.id)) { // wear it, or take it off (back to the slot's first free option)
+    const look = SAVE.char.look; look[i.slot] = look[i.slot] === i.value ? SLOT[i.slot].opts[0][0] : i.value; applyLook(); persist(); say(look[i.slot] === i.value ? "equip" : "unequip"); AU.sfx("lock", 3); return; }
   if (owns(i.id)) {
     if (i.cat === "gun") L.gun = i.id; else if (i.cat === "oc") L.oc = i.id;
     else if (L.imp.includes(i.id)) { L.imp = L.imp.filter(x => x !== i.id); say("unequip"); AU.sfx("lock", 0); persist(); return; }
@@ -63,23 +65,25 @@ function shopConfirm() {
   if (!available(i)) { say("locked"); AU.sfx("hackFail"); return; }
   if (SAVE.scrip < i.price) { say("poor"); AU.sfx("hackFail"); G.shop.flash = .4; return; }
   SAVE.scrip -= i.price; SAVE.owned.push(i.id); say("buy"); AU.sfx("milestone"); AU.sfx("reload"); G.shop.pop = { txt: "-" + i.price, life: 1 };
-  if (i.cat === "gun") L.gun = i.id; else if (i.cat === "oc") L.oc = i.id; else { if (L.imp.length >= 2) L.imp.shift(); L.imp.push(i.id); }
+  if (i.cat === "style") { SAVE.char.look[i.slot] = i.value; applyLook(); }
+  else if (i.cat === "gun") L.gun = i.id; else if (i.cat === "oc") L.oc = i.id; else { if (L.imp.length >= 2) L.imp.shift(); L.imp.push(i.id); }
   persist();
 }
-const ROW_Y = 42, ROW_H = 17, LIST_X = 198, TAB_W = 92;
+const ROW_Y = 42, ROW_H = 17, LIST_X = 198, TAB_W = 69, VIS = 8; // 8 rows visible; longer lists scroll
 const BTN_IN = [376, 244, 94, 18], BTN_BACK = [198, 244, 60, 18];
 const inBox = (b, x, y) => x >= b[0] && x < b[0] + b[2] && y >= b[1] && y < b[1] + b[3];
 function updateShop(rdt, actions) {
   const S = G.shop, n = shopList().length; S.lineT += rdt; S.flash = Math.max(0, S.flash - rdt); if (S.pop) { S.pop.life -= rdt; if (S.pop.life <= 0) S.pop = null; }
-  const tab = d => { S.tab = (S.tab + d + CATS.length) % CATS.length; S.sel = 0; AU.sfx("lock", 1); };
+  const tab = d => { S.tab = (S.tab + d + CATS.length) % CATS.length; S.sel = 0; S.scroll = 0; AU.sfx("lock", 1); };
+  S.scroll = Math.max(0, Math.min(S.scroll || 0, n - VIS)); if (S.sel < S.scroll) S.scroll = S.sel; if (S.sel >= S.scroll + VIS) S.scroll = S.sel - VIS + 1;
   if (hit("q") || hit("arrowleft")) tab(-1); if (hit("e") || hit("arrowright") || hit("tab")) tab(1);
   if (hit("arrowup") || hit("w")) { S.sel = (S.sel - 1 + n) % n; AU.sfx("lock", 0); } if (hit("arrowdown") || hit("s")) { S.sel = (S.sel + 1) % n; AU.sfx("lock", 0); }
   if (hit("enter")) shopConfirm();
-  if (Math.hypot(mouse.x - S.mx, mouse.y - S.my) > .5) { S.mx = mouse.x; S.my = mouse.y; const row = Math.floor((mouse.y - ROW_Y) / ROW_H); if (mouse.x > LIST_X && mouse.y >= ROW_Y && row >= 0 && row < n) S.sel = row; }
+  if (Math.hypot(mouse.x - S.mx, mouse.y - S.my) > .5) { S.mx = mouse.x; S.my = mouse.y; const row = Math.floor((mouse.y - ROW_Y) / ROW_H); if (mouse.x > LIST_X && mouse.y >= ROW_Y && row >= 0 && row < VIS && S.scroll + row < n) S.sel = S.scroll + row; }
   if (hit("lmb")) {
-    const x = mouse.x, y = mouse.y, row = Math.floor((y - ROW_Y) / ROW_H);
-    if (y >= 20 && y < 36 && x > 196) { const t = Math.min(2, Math.floor((x - 198) / TAB_W)); if (t !== S.tab) { S.tab = t; S.sel = 0; AU.sfx("lock", 1); } }
-    else if (x > LIST_X && y >= ROW_Y && row >= 0 && row < n) { if (row === S.sel) shopConfirm(); else S.sel = row; }
+    const x = mouse.x, y = mouse.y, row = Math.floor((y - ROW_Y) / ROW_H), idx = (S.scroll || 0) + row;
+    if (y >= 20 && y < 36 && x > 196) { const t = Math.min(CATS.length - 1, Math.floor((x - 198) / TAB_W)); if (t !== S.tab) { S.tab = t; S.sel = 0; S.scroll = 0; AU.sfx("lock", 1); } }
+    else if (x > LIST_X && y >= ROW_Y && row >= 0 && row < VIS && idx < n) { if (idx === S.sel) shopConfirm(); else S.sel = idx; }
     else if (inBox(BTN_IN, x, y)) actions.jackIn();
     else if (inBox(BTN_BACK, x, y)) actions.back();
   }
@@ -89,6 +93,8 @@ function updateShop(rdt, actions) {
 
 /* ---- Drawing ---- */
 function itemIcon(c, i, x, y) {
+  if (i.cat === "style") { c.fillStyle = "#0b0912"; c.fillRect(x + 4, y + 1, 15, 13); c.strokeStyle = COL.amber; c.strokeRect(x + 4.5, y + 1.5, 14, 12);
+    if (i.col) { c.fillStyle = i.col; c.fillRect(x + 6, y + 3, 11, 9); } else txt(c, SLOT[i.slot].label[0], x + 12, y + 4, COL.amber, 8, "center"); return; }
   if (i.cat === "gun") { const s = SP[i.id]; c.save(); c.translate(x + 11 - s.w * .3, y + 7 - s.h * .3); c.scale(.6, .6); c.drawImage(s.cv, 0, 0); c.restore(); return; }
   const col = i.cat === "oc" ? COL.cyan : COL.magenta; c.strokeStyle = col; c.fillStyle = col;
   if (i.cat === "oc") { c.beginPath(); c.arc(x + 11.5, y + 7.5, 5, 0, TAU); c.stroke(); c.fillRect(x + 11, y + 1, 1, 3); c.fillRect(x + 11, y + 11, 1, 3); c.fillRect(x + 5, y + 7, 3, 1); c.fillRect(x + 15, y + 7, 3, 1); }
@@ -108,9 +114,10 @@ function drawShop(c, t) {
   txt(c, SAVE.scrip + " SCRIP", 470, 8, S.flash > 0 && Math.floor(t / 80) % 2 ? COL.red : COL.amber, 8, "right");
   if (S.pop) txt(c, S.pop.txt, 470, 16 - (1 - S.pop.life) * 8, rgba(COL.red, S.pop.life), 8, "right");
   CATS.forEach(([k, name], i) => { const x = 198 + i * TAB_W, on = i === S.tab; c.fillStyle = on ? COL.cyan : "#16121f"; c.fillRect(x, 20, TAB_W - 4, 15);
-    txt(c, name + (k === "imp" ? ` ${L.imp.length}/2` : ""), x + (TAB_W - 4) / 2, 24, on ? "#05040b" : COL.dim, 8, "center"); });
-  list.forEach((i, k) => {
-    const y = ROW_Y + k * ROW_H, sel = k === S.sel, [st, col] = shopStatus(i);
+    txt(c, name, x + (TAB_W - 4) / 2, 24, on ? "#05040b" : COL.dim, 8, "center"); });
+  const sc = S.scroll || 0; if (list.length > VIS) { const h = 136 * VIS / list.length; c.fillStyle = "#2a2640"; c.fillRect(473, ROW_Y, 2, 136); c.fillStyle = COL.cyan; c.fillRect(473, ROW_Y + 136 * sc / list.length, 2, h); }
+  list.slice(sc, sc + VIS).forEach((i, kk) => { const k = kk + sc;
+    const y = ROW_Y + kk * ROW_H, sel = k === S.sel, [st, col] = shopStatus(i);
     if (sel) { c.fillStyle = "rgba(43,228,255,.12)"; c.fillRect(LIST_X - 2, y - 1, 274, ROW_H - 1); c.fillStyle = COL.cyan; c.fillRect(LIST_X - 2, y - 1, 1, ROW_H - 1); }
     c.globalAlpha = available(i) || owns(i.id) ? 1 : .45; itemIcon(c, i, LIST_X, y); c.globalAlpha = 1;
     txt(c, i.name.toUpperCase(), LIST_X + 28, y + 4, available(i) || owns(i.id) ? COL.ink : COL.dim); txt(c, st, 470, y + 4, col, 8, "right");
@@ -118,9 +125,10 @@ function drawShop(c, t) {
   // details
   const i = list[S.sel]; c.fillStyle = "#3a3456"; c.fillRect(198, 182, 274, 1);
   if (i) { txt(c, i.name.toUpperCase(), 200, 186, COL.ink);
-    wrapText(c, i.desc.toUpperCase(), 268).slice(0, 2).forEach((l, k) => txt(c, l, 200, 196 + k * 9, COL.dim));
+    wrapText(c, i.desc.toUpperCase(), i.cat === "style" ? 212 : 268).slice(0, 2).forEach((l, k) => txt(c, l, 200, 196 + k * 9, COL.dim));
     if (!owns(i.id) && !available(i)) txt(c, "UNLOCK: " + i.reqText.toUpperCase(), 200, 216, COL.magenta);
-    else { let x = 200; c.font = "8px Silkscreen"; i.stats.forEach(s => { const w = c.measureText(s).width + 8; c.fillStyle = "rgba(255,178,46,.15)"; c.fillRect(x, 214, w, 11); txt(c, s, x + 4, 216, COL.amber); x += w + 4; }); } }
+    if (i.cat === "style") { const PL = Object.assign({}, SAVE.char.look, { [i.slot]: i.value }), ps = previewSprite(PL); c.save(); c.beginPath(); c.rect(420, 184, 52, 44); c.clip(); c.fillStyle = "#0b0912"; c.fillRect(420, 184, 52, 44); c.imageSmoothingEnabled = false; c.drawImage(ps.cv, 420 - 1, 184 - 4, ps.w * 2, ps.h * 2); c.restore(); c.strokeStyle = "#3a3456"; c.strokeRect(420.5, 184.5, 51, 43); }
+    if (owns(i.id) || available(i)) { let x = 200; c.font = "8px Silkscreen"; i.stats.forEach(s => { const w = c.measureText(s).width + 8; c.fillStyle = "rgba(255,178,46,.15)"; c.fillRect(x, 214, w, 11); txt(c, s, x + 4, 216, COL.amber); x += w + 4; }); } }
   // buttons
   c.fillStyle = "#16121f"; c.fillRect(...BTN_BACK); txt(c, "BACK", BTN_BACK[0] + 30, 249, COL.dim, 8, "center");
   const pulse = .75 + .25 * Math.sin(t * .006); c.fillStyle = rgba(COL.cyan, pulse); c.fillRect(...BTN_IN); txt(c, "JACK IN >", BTN_IN[0] + 47, 249, "#05040b", 8, "center");

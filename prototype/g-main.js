@@ -19,19 +19,25 @@
   function start(key, sameSeed) { if (key === "endless") key = "x3"; G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } resetEndless(); reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
   function breach() { const next = getDist(D().next); G.heatBase = Math.min(4, Math.min(2, G.heat) + Math.floor(Math.max(0, next.n - 2) / 2)); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
   function cashOut() { persist(); AU.stop(); AU.ambience("off"); G.mode = "title"; reset(DORDER[G.sel || 0]); }
+  const bodyActions = { back: () => { persist(); G.mode = "title"; G.menuMode = null; } };
   const shopActions = {
     jackIn: () => { persist(); if (G.shop.from === "clear") breach(); else start(DORDER[G.sel || 0]); },
     back: () => { persist(); if (G.shop.from === "clear") G.mode = "clear"; else { G.mode = "title"; AU.stop(); AU.ambience("off"); } },
   };
   function step(rdt, t) {
-    if (G.mode === "play" || G.mode === "shop" || G.mode === "intro") G.menuMode = null; // menus always reopen on their first option
+    if (G.mode === "play" || G.mode === "shop" || G.mode === "intro" || G.mode === "body") G.menuMode = null; // menus always reopen on their first option
     const wantStart = hit("lmb") || hit("r") || hit(" ");
     if (G.mode === "title") {
       const n = Math.min(DORDER.length, G.unlocked || 1); if (hit("arrowleft") || hit("a")) G.sel = Math.max(0, (G.sel || 0) - 1); if (hit("arrowright") || hit("d")) G.sel = Math.min(n - 1, (G.sel || 0) + 1);
       const mapLabel = SAVE.mapMode === "gen" ? (G.queuedSeed != null ? "MAP: SEED " + PG.seedName(G.queuedSeed) : "MAP: GENERATED · NEW EVERY RUN") : "MAP: CLASSIC";
-      G.menu = layoutMenu([{ label: "JACK IN", act: () => start(DORDER[G.sel || 0]) }, { label: "MAGPIE'S · CHROME & IRON", col: COL.magenta, act: () => openShop("title") },
-        { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } }], 190, 11); runMenu(G.menu); return; }
+      if (G.titleMsg) { G.titleMsg.life -= rdt; if (G.titleMsg.life <= 0) G.titleMsg = null; }
+      // First JACK IN goes through the BODYSHOP so every run has an operative.
+      G.menu = layoutMenu([{ label: "JACK IN", act: () => SAVE.char.created ? start(DORDER[G.sel || 0]) : openBodyshop("create") },
+        { label: SAVE.char.created ? "BODYSHOP · CHARACTER" : "BODYSHOP · CREATE OPERATIVE", act: () => openBodyshop(SAVE.char.created ? "title" : "create") },
+        { label: "MAGPIE'S · CHROME & IRON", col: COL.magenta, act: () => openShop("title") },
+        { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } }], 194, 11); runMenu(G.menu); return; }
     if (G.mode === "shop") { updateShop(rdt, shopActions); return; }
+    if (G.mode === "body") { updateBodyshop(rdt, bodyActions); return; }
     if (G.mode === "dead") { G.deadT += rdt; G.menu = null;
       if (G.deadT > .8) { const regear = () => { G.sel = DORDER.indexOf(/^x\d+$/.test(G.startDistrict) ? "endless" : G.startDistrict); openShop("title"); };
         const retrySame = () => start(G.startDistrict, true);
@@ -64,6 +70,7 @@
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
     if (G.mode === "title") return drawTitle(c, t);
     if (G.mode === "shop") return drawShop(c, t);
+    if (G.mode === "body") return drawBodyshop(c, t);
     drawWorld(c, t);
     if (G.oc) drawOC(c, t);
     if (G.mode === "play" || G.mode === "intro") drawHUD(c, t);
@@ -77,6 +84,7 @@
   setupInput(cv);
   G.best = SAVE.best || 0; G.unlocked = SAVE.unlocked || 1;
   const qs = location.hash.match(/district=(\w+)/);
+  if (location.hash.includes("testchar")) SAVE.char.created = true; // automated tests skip character creation
   if (location.hash.includes("classic")) SAVE.mapMode = "classic"; // e.g. #classic or #autostart-classic: play the hand-made maps
   // Shared seed links: #seed-ABC123 or #seed-ABC123-rookery queue that map for the next run.
   const sq = location.hash.match(/^#seed-([0-9a-z]{1,6})(?:-(\w+))?$/i); if (sq) { G.queuedSeed = PG.parseSeed(sq[1]); SAVE.mapMode = "gen"; if (sq[2] && DORDER.indexOf(sq[2].toLowerCase()) >= 0 && DORDER.indexOf(sq[2].toLowerCase()) < (G.unlocked || 1)) G.sel = DORDER.indexOf(sq[2].toLowerCase()); }

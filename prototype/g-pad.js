@@ -53,6 +53,12 @@ function pollPad(rdt) {
     if (press(BTN.A) || press(BTN.LB)) G.pressed.add(" "); if (press(BTN.X)) G.pressed.add("r");
     if (press(BTN.Y) || press(BTN.RB)) G.pressed.add("q"); if (press(BTN.START) || press(BTN.BACK)) G.pressed.add("p");
     if (G.paused && press(BTN.A)) G.pressed.add("lmb");
+  } else if (G.mode === "body") {
+    if (press(BTN.A)) G.pressed.add("enter"); if (press(BTN.START)) G.pressed.add(" "); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");
+    if (press(BTN.LB)) G.pressed.add("q"); if (press(BTN.RB)) G.pressed.add("e"); if (press(BTN.LEFT)) G.pressed.add("arrowleft"); if (press(BTN.RIGHT)) G.pressed.add("arrowright");
+    const fh = lx < -.6 && !PAD.flick ? -1 : lx > .6 && !PAD.flick ? 1 : 0; PAD.flick = Math.abs(lx) > .6; if (fh < 0) G.pressed.add("arrowleft"); if (fh > 0) G.pressed.add("arrowright");
+    const fv = ly < -.6 && !PAD.flickV ? -1 : ly > .6 && !PAD.flickV ? 1 : 0; PAD.flickV = Math.abs(ly) > .6;
+    if (press(BTN.UP) || fv < 0) G.pressed.add("arrowup"); if (press(BTN.DOWN) || fv > 0) G.pressed.add("arrowdown");
   } else if (G.mode === "shop") {
     if (press(BTN.A)) G.pressed.add("enter"); if (press(BTN.START)) G.pressed.add(" "); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");
     if (press(BTN.LB)) G.pressed.add("q"); if (press(BTN.RB)) G.pressed.add("e"); if (press(BTN.LEFT)) G.pressed.add("arrowleft"); if (press(BTN.RIGHT)) G.pressed.add("arrowright");

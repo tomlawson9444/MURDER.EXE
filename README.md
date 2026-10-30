@@ -42,14 +42,17 @@ Then open <http://localhost:8000/prototype/>.
 | Magpie's: switch tab | Q / E or Tab | LB / RB | L1 / R1 |
 | Magpie's: move / buy or equip | W / S or ↑ / ↓, Enter or click | D-pad, A | D-pad, ✕ |
 | Magpie's: jack in / back | Space / Esc | Start / B | Options / ○ |
+| BODYSHOP: tab / change option / done | Q/E, A/D or ←/→, Space (Enter edits the name) | LB/RB, D-pad, Start (A rolls a random name) | L1/R1, D-pad, Options |
 
 Browsers only detect a controller after you press one of its buttons. Rumble works in Chrome and Edge.
 
 ## Prototype features
 
 - One-hit kills both ways, with a small player hitbox and near-misses ("grazes") that charge Overclock.
+- **BODYSHOP (character creator):** build your operative before the first run, then come back any time from the title screen. LOOK covers coat style and colour, lining, hair and hair colour, skin tone, eyes (visor, optics, goggles, masks), cyberarm, glow colour, dash afterimage, gun finish, extras and your name, all shown on a live animated preview. GEAR equips any owned gun, Overclock program and implants. INVENTORY shows every item in the game, owned or locked, and where it comes from. ORIGIN picks your background at creation: Corpo Defector, Street Netrunner, Merc Breacher or Ghost, each with its own starter kit.
 - **MAGPIE'S · CHROME & IRON:** a back-alley fixer who is both the shop and the loadout screen. Visit her before every run, between districts, or after a death. Spend scrip on gear, then equip anything you own.
 - **Scrip:** earned from every kill (more at higher Heat), Nests, bosses, district clears and milestones. Saved between runs, even when you die. You start with 300.
+- **STYLE at Magpie's:** 22 cosmetics (cloaks, vests, coat colours, hair styles and dyes, masks, full chrome and gold arms, optics colours, gold and glitch afterimages, gun finishes, scarf and Augur's halo), each with a live preview on your operative. A few unlock through milestones.
 - **Gear:** 5 sidearms (Kestrel .44, Breacher Custom, Ricochet Coilgun, Hornet SMG, Railpiercer), 4 Overclock programs (DEADLINK, ARC//CHAIN, SWARMKEY, GHOST_PROTOCOL) and 8 implants, with 2 implant slots.
 - **Milestone unlocks:** most gear is locked until you hit a milestone (for example, the Railpiercer needs a Rain Market clear). Hitting one pays 100 scrip and Magpie restocks.
 - **Procedural maps:** every run builds a brand-new arena for each district from a seed (about 2.18 billion per district). A layout archetype, buildings pushed in from the walls, spawn doors, hand-designed cyberpunk set pieces, hazards, signage, colour tint and weather are all generated, then a validator checks the level-design rules (everything reachable, no dead ends, safe start, doors reachable, cover on both sides) and rebuilds any map that fails. Phase 2 events (tram lane, bridge collapse, barricades) come from the generated layout.
@@ -72,7 +75,7 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 
 ## Save data
 
-Progress (scrip, owned gear, loadout, milestones and best score) is saved in the browser's local storage under `murder-save-v1`. Clearing site data resets it.
+Progress (operative and look, scrip, owned gear and cosmetics, loadout, milestones and best score) is saved in the browser's local storage under `murder-save-v1`. Clearing site data resets it.
 
 ## Code map (`prototype/`)
 
@@ -92,7 +95,9 @@ Progress (scrip, owned gear, loadout, milestones and best score) is saved in the
 | `g-actors.js` | Player, enemies, bullets, explosions and hacking |
 | `g-director.js` | Wave director, Heat, the Phase 2 tram and BLACKWING |
 | `g-loadout.js` | Guns, Overclock programs, implants, Magpie's stock, scrip, milestones and the save file |
-| `g-shop.js` | MAGPIE'S: the fixer's stall, shop and loadout screen |
+| `g-shop.js` | MAGPIE'S: the fixer's stall, shop and loadout screen (sidearms, Overclock, implants, style) |
+| `g-char.js` | Character model: look options, cosmetics, origins and starter kits, and the player sprite builder |
+| `g-bodyshop.js` | BODYSHOP: character creation and customisation (LOOK, GEAR, INVENTORY, ORIGIN) |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |
