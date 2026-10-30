@@ -35,9 +35,9 @@
       if (G.titleMsg) { G.titleMsg.life -= rdt; if (G.titleMsg.life <= 0) G.titleMsg = null; }
       // Four clear choices. Story and Arcade go through the BODYSHOP first if there is no operative yet.
       const made = SAVE.char.created, need = "CREATE YOUR OPERATIVE FIRST", S = SAVE.camp, begun = Object.keys(S.done).length > 0;
-      const next = CHAPTERS[Math.min(S.cur, maxChapter())];
+      const next = CHAPTERS[nextChapter()];
       G.menu = layoutMenu([
-        { label: begun ? `STORY · CONTINUE ${chLabel(Math.min(S.cur, maxChapter()))}` : "STORY · NEW CAMPAIGN", col: COL.amber, act: () => made ? openCamp() : openBodyshop("create"),
+        { label: begun ? `STORY · CONTINUE ${chLabel(nextChapter())}` : "STORY · NEW CAMPAIGN", col: COL.amber, act: () => made ? openCamp() : openBodyshop("create"),
           desc: made ? (begun ? `NINE NIGHTS OF RAIN · NEXT: ${next.title}` : "NINE NIGHTS OF RAIN · ACT 1 · YOUR CHOICES CHANGE THE STORY") : need },
         { label: "ARCADE", act: () => made ? openArcade() : openBodyshop("create"), desc: made ? "PICK A DISTRICT · KILL 100 · BEAT THE BOSS · GO DEEPER" : need },
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
