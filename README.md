@@ -30,22 +30,24 @@ Then open <http://localhost:8000/prototype/>.
 | Action | Keyboard and mouse | Xbox / Steam Deck | PlayStation |
 |---|---|---|---|
 | Move | WASD | Left stick or D-pad | Left stick or D-pad |
-| Aim | Mouse | Right stick (with aim assist) | Right stick |
+| Aim | Mouse | Right stick (sticky aim assist, aim line) | Right stick (sticky aim assist, aim line) |
 | Shoot | Left click | RT / R2 | R2 |
 | Phase dash | Space | A or LB / L1 | ✕ or L1 |
-| Overclock (slow time, sweep to lock up to 6 targets) | Hold right click or F | Hold LT / L2 | Hold L2 |
-| Short Circuit hack | Q | Y or RB / R1 | △ or R1 |
+| Overclock (slow time, sweep to lock up to 6 targets) | Hold right click or F | Hold LT and sweep (Y / RB locks the nearest); tap LT to auto-lock | Hold L2 and sweep (△ / R1 locks the nearest); tap L2 to auto-lock |
+| Short Circuit hack | Q | Y or RB / R1 (hits what you're roughly aiming at) | △ or R1 |
 | Reload | R | X | □ |
-| Pause | P or Esc | Menu | Options |
+| Pause (and controller settings) | P or Esc | Menu | Options |
 | Cash out after a district clear | Esc | B | ○ |
 | Pick a district on the ARCADE screen | A / D or ← / → | D-pad or left stick | D-pad or left stick |
 | Magpie's: switch tab | Q / E or Tab | LB / RB | L1 / R1 |
 | Magpie's: move / buy or equip | W / S or ↑ / ↓, Enter or click | D-pad, A | D-pad, ✕ |
-| Magpie's: jack in / back | Space / Esc | Start / B | Options / ○ |
+| Magpie's: jack in / back / try in the range | Space / Esc / T | Start / B / X | Options / ○ / □ |
 | Conversations: next line / skip / reply | Enter or click / Esc / 1 to 5 or click | A / B / D-pad and A | ✕ / ○ / D-pad and ✕ |
 | BODYSHOP: tab / change option / done | Q/E, A/D or ←/→, Space (Enter edits the name; R random, X default; pad X random, Y default) | LB/RB, D-pad, Start (A rolls a random name) | L1/R1, D-pad, Options |
 
 Browsers only detect a controller after you press one of its buttons. Rumble works in Chrome and Edge.
+
+**Controller settings (pause menu):** aim assist (off, normal or strong), auto-fire when the right stick is pushed fully, the aim line, rumble, and the stick deadzone (raise it for worn or drifting sticks, such as an older Steam Deck). They save automatically. Holding the stick or D-pad in any menu keeps scrolling, and the pause menu can also quit to the title or campaign menu, or leave the firing range.
 
 ## Title screen
 

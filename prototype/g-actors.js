@@ -106,9 +106,13 @@ function updatePlayer(dt, rdt) {
 }
 function updateOC(rdt) {
   const o = G.oc; o.t += rdt;
+  // Pad quick-lock (Y / RB): the nearest unlocked enemy to the cursor.
+  if (hit("oclock") && o.locks.length < G.p.maxLocks) { const n = G.en.filter(e => e.alive && !o.locks.includes(e) && !e.dummyHidden).sort((a, b) => Math.hypot(a.x - mouse.x, a.y - mouse.y) - Math.hypot(b.x - mouse.x, b.y - mouse.y))[0]; if (n) { o.locks.push(n); AU.sfx("lock", o.locks.length - 1); mouse.x = n.x; mouse.y = n.y - (n.alt || 0) - 10; } }
   for (const e of G.en) if (e.alive && o.locks.length < G.p.maxLocks && !o.locks.includes(e) && Math.hypot(e.x - mouse.x, e.y - (e.alt || 0) - 10 - mouse.y) < 14) { o.locks.push(e); AU.sfx("lock", o.locks.length - 1); }
   if (!ocHeld() || o.t > 3) {
     const p = G.p, gx = p.x + p.face * 12, gy = p.y - BODY - 2; G.tracers = [];
+    // Pad: a quick tap of the trigger locks the nearest enemies you can see and fires at once.
+    if (PAD.active && !o.locks.length && o.t < .35) o.locks = G.en.filter(e => e.alive && los(gx, gy, e.x, e.y - BODY - (e.alt || 0), 1e9)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, p.maxLocks);
     const prog = p.ocId; if (o.locks.length >= 6) { SAVE.stats.ocFull++; checkMilestones(); }
     p.ocRefund = 0; G.scripMul = prog === "reaper" ? 3 : 1;
     o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 });
@@ -129,6 +133,8 @@ function updateOC(rdt) {
     p.ammo = p.gun.mag; p.reload = 0; G.oc = null; AU.setOC(false); G.shake = 3;
   }
 }
+// With a pad the reticle is only a point along your aim, so an enemy in the aim direction beats a barrel or sign that happens to sit under it.
+function hackPick() { const t = hackTarget(); if (!PAD.active || (t && t.kind !== "b" && t.kind !== "n")) return t; const p = G.p; return padHackTarget(p.x + p.face * 12, p.y - BODY - 2) || t; }
 // What Q would hit right now: the nearest enemy under the cursor, else a barrel or sign near it.
 function hackTarget() {
   let best = null, bd = 22;
@@ -145,7 +151,7 @@ function hackTarget() {
 function hack() {
   const p = G.p; if (G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); return; }
   if (p.ram < 3) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "NEED 3 RAM", COL.magenta); return; }
-  const tg = hackTarget(); if (!tg) { AU.sfx("hackFail"); pop(mouse.x, mouse.y - 10, "AIM AT A TARGET", COL.dim); return; }
+  const tg = hackPick(); if (!tg) { AU.sfx("hackFail"); pop(mouse.x, mouse.y - 10, "AIM AT A TARGET", COL.dim); return; }
   p.ram -= 3; AU.sfx("circuit"); G.zaps.push({ x0: p.x, y0: p.y - 14, x1: tg.x, y1: tg.y, life: .22 });
   if (tg.kind === "b") return detonateBarrel(tg.i, tg.j);
   if (tg.kind === "n") return dropSign(tg.i, tg.j);

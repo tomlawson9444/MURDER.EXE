@@ -121,7 +121,7 @@ function drawShop(c, t) {
   txt(c, "MAGPIE", 14, 212, COL.magenta);
   const shown = S.line.slice(0, Math.floor(S.lineT * 60)); wrapText(c, shown, 160).slice(0, 4).forEach((l, k) => txt(c, l, 14, 224 + k * 10, COL.ink));
   // header
-  const dist = G.shop.from === "clear" ? getDist(D().next) : DIST[DORDER[G.sel || 0]];
+  const dist = G.shop.from === "clear" && D().next ? getDist(D().next) : DIST[DORDER[G.sel || 0]];
   txt(c, (S.from === "clear" ? "BETWEEN DISTRICTS · NEXT " : "LOADOUT · ") + dist.code + " " + dist.name, 200, 8, COL.dim);
   txt(c, SAVE.scrip + " SCRIP", 470, 8, S.flash > 0 && Math.floor(t / 80) % 2 ? COL.red : COL.amber, 8, "right");
   if (S.pop) txt(c, S.pop.txt, 470, 16 - (1 - S.pop.life) * 8, rgba(COL.red, S.pop.life), 8, "right");

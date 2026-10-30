@@ -83,7 +83,7 @@ function drawOC(c, t) {
 
 // Firing range: what you're trying, kills and kills per minute, and how to leave.
 function rangeHud(c, t) { const R = G.range, W = GW; panel(c, W / 2 - 80, 6, 160, 24, COL.amber); txt(c, "FIRING RANGE · " + R.item.name.toUpperCase(), W / 2, 9, COL.amber, 8, "center");
-  txt(c, `KILLS ${R.kills} · ${R.t > 3 ? Math.round(R.kills / R.t * 60) : 0}/MIN · ${PAD.active ? "START" : "ESC"}: BACK`, W / 2, 19, COL.dim, 8, "center"); }
+  txt(c, `KILLS ${R.kills} · ${R.t > 3 ? Math.round(R.kills / R.t * 60) : 0}/MIN · ${PAD.active ? "START: MENU" : "ESC: BACK"}`, W / 2, 19, COL.dim, 8, "center"); }
 function drawHUD(c, t) {
   const p = G.p, W = GW, H = GH;
   if (G.hexed > 0) { c.save(); c.translate(Math.round(rnd(-2, 2)), Math.round(rnd(-1, 1))); }
@@ -110,7 +110,9 @@ function drawHUD(c, t) {
   const fx2 = W - 32; c.strokeStyle = p.oc >= 50 ? COL.cyan : "#3a3456"; c.strokeRect(fx2 + .5, H - 33.5, 21, 17); txt(c, lab().ocShort, fx2 + 11, H - 14, COL.dim, 8, "center"); reticle(c, fx2 + 11, H - 25, 4, p.oc >= 50 ? COL.cyan : "#3a3456");
   if (G.hexed > 0) { c.fillStyle = rgba(COL.magenta, .5); for (let i = 0; i < 6; i++) c.fillRect(6 + rnd(0, 150), H - 42 + rnd(0, 34), rnd(10, 60), 1); txt(c, "HEXED " + G.hexed.toFixed(1), 110, H - 39, COL.magenta); c.restore(); }
   if (G.trace > 1 && G.mode === "play") { const k = Math.min(1, (G.trace - 1) / 3); c.fillStyle = "#2a2640"; c.fillRect(Math.round(p.x - 12), Math.round(p.y - 40), 24, 2); c.fillStyle = k > .7 && Math.floor(t / 90) % 2 ? "#ffffff" : COL.magenta; c.fillRect(Math.round(p.x - 12), Math.round(p.y - 40), Math.round(24 * k), 2); txt(c, "TRACE", p.x, p.y - 50, rgba(COL.magenta, .5 + k * .5), 8, "center"); }
-  if (!G.oc && p.ram >= 3 && !(G.hexed > 0)) { const tg = hackTarget(); if (tg) { reticle(c, tg.x, tg.y, tg.r + Math.round(Math.sin(t * .012)), COL.magenta); txt(c, lab().hackShort, tg.x + tg.r + 3, tg.y + tg.r - 4, COL.magenta); } }
+  if (!G.oc && p.ram >= 3 && !(G.hexed > 0)) { const tg = hackPick(); if (tg) { reticle(c, tg.x, tg.y, tg.r + Math.round(Math.sin(t * .012)), COL.magenta); txt(c, lab().hackShort, tg.x + tg.r + 3, tg.y + tg.r - 4, COL.magenta); } }
+  if (!G.oc && PAD.active && padCfg().aimline && G.mode === "play") { const gx = p.x + p.face * 12, gy = p.y - BODY - 2, a = Math.atan2(mouse.y - gy, mouse.x - gx), L2 = Math.min(150, Math.hypot(mouse.x - gx, mouse.y - gy));
+    for (let k = 10; k < L2 - 6; k += 6) { c.fillStyle = rgba(COL.cyan, .65 * (1 - k / 170)); c.fillRect(Math.round(gx + Math.cos(a) * k), Math.round(gy + Math.sin(a) * k), 2, 1); } }
   if (!G.oc) { reticle(c, mouse.x, mouse.y, 5, COL.cyan); c.fillStyle = COL.cyan; c.fillRect(Math.round(mouse.x), Math.round(mouse.y), 1, 1); }
   for (const q of G.texts) txt(c, q.txt, q.x, q.y, rgba(q.col.startsWith("#") ? q.col : "#e9e6f5", Math.min(1, q.life * 2)), 8, "center");
   drawRadio(c, t);
@@ -190,4 +192,9 @@ function drawClear(c, t) {
   else txt(c, "RUN COMPLETE · DATACRYPT ARRIVES IN THE NEXT BUILD", GW / 2, 160, COL.magenta, 8, "center");
   if (G.clearT > 1) { drawMenu(c, G.menu, t); txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 220, rgba(COL.cyan, .7), 8, "center"); }
 }
-function drawPause(c) { veil(c, .7); txt(c, "PAUSED", GW / 2, 110, COL.ink, 16, "center"); txt(c, (PAD.active ? lab().pause + " OR " + lab().confirm : "CLICK OR P") + " TO RESUME", GW / 2, 136, COL.cyan, 8, "center"); }
+function drawPause(c) { veil(c, .78); txt(c, "PAUSED", GW / 2, 50, COL.ink, 16, "center"); txt(c, "CONTROLLER" + (PAD.active ? " · " + lab().name : "") + " SETTINGS SAVE AUTOMATICALLY", GW / 2, 74, COL.dim, 8, "center");
+  (G.pauseItems || []).forEach((it, i) => { const on = i === G.pauseSel, y = 92 + i * 14; if (on) { c.fillStyle = rgba(COL.cyan, .14); c.fillRect(GW / 2 - 120, y - 3, 240, 13); c.fillStyle = COL.cyan; c.fillRect(GW / 2 - 120, y - 3, 2, 13); }
+    if (it.val != null) { txt(c, it.label, GW / 2 - 112, y, on ? COL.ink : COL.dim); txt(c, on ? "< " + it.val + " >" : it.val, GW / 2 + 112, y, on ? COL.cyan : COL.ink, 8, "right"); }
+    else txt(c, it.label, GW / 2, y, on ? (it.k === "quit" ? COL.magenta : COL.cyan) : COL.dim, 8, "center"); });
+  const L = lab(); txt(c, PAD.active ? `UP / DOWN · LEFT / RIGHT CHANGE · ${L.confirm} SELECT · ${L.pause} OR B RESUME` : "W / S · A / D CHANGE · ENTER OR CLICK · P / ESC RESUME", GW / 2, 206, rgba(COL.dim, .8), 8, "center");
+  txt(c, PAD.active ? `TAP ${L.ocShort}: AUTO-LOCK THE NEAREST TARGETS · ${L.hackShort} DURING OVERCLOCK: LOCK NEAREST` : "CONTROLLER TIPS SHOW HERE WHEN ONE IS CONNECTED", GW / 2, 220, rgba(COL.amber, .7), 8, "center"); }

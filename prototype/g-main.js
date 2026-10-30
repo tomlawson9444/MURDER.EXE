@@ -37,6 +37,24 @@
   function endRange() { const b = G.range.back; G.range = null; G.tryLoadout = null; G.god = false; G.lull = false; AU.stop(); AU.ambience("off"); reset("market");
     G.camp = b.camp; openShop(b.from); Object.assign(G.shop, { tab: b.tab, sel: b.sel }); G.shop.line = "WELL? WORTH THE SCRIP?"; G.shop.lineT = 0; }
   Object.assign(RUN, { reset, music, enter: enterDistrict, startRange });
+  // Pause menu: resume, controller settings and quit. Left / right (or Enter) changes a setting.
+  function pauseItems() { const P = padCfg(), onOff = v => v ? "ON" : "OFF";
+    return [{ k: "resume", label: "RESUME" },
+      { k: "assist", label: "AIM ASSIST", val: ["OFF", "NORMAL", "STRONG"][P.assist], step: d => { P.assist = (P.assist + d + 3) % 3; } },
+      { k: "autofire", label: "AUTO-FIRE (RIGHT STICK)", val: onOff(P.autofire), step: () => { P.autofire = !P.autofire; } },
+      { k: "aimline", label: "AIM LINE", val: onOff(P.aimline), step: () => { P.aimline = !P.aimline; } },
+      { k: "rumble", label: "RUMBLE", val: onOff(P.rumble), step: () => { P.rumble = !P.rumble; if (P.rumble) rumble(.6, .6, 200); } },
+      { k: "dz", label: "STICK DEADZONE", val: ["LOW", "MEDIUM", "HIGH (WORN STICKS)"][P.dz], step: d => { P.dz = (P.dz + d + 3) % 3; } },
+      { k: "quit", label: G.range ? "LEAVE THE RANGE" : G.camp ? "QUIT TO CAMPAIGN MENU" : "QUIT TO TITLE" }]; }
+  function updatePause() {
+    const items = G.pauseItems = pauseItems(), n = items.length; G.pauseSel = Math.max(0, Math.min(n - 1, G.pauseSel || 0));
+    if (hit("arrowup") || hit("w")) { G.pauseSel = (G.pauseSel + n - 1) % n; AU.sfx("lock", 0); } if (hit("arrowdown") || hit("s")) { G.pauseSel = (G.pauseSel + 1) % n; AU.sfx("lock", 0); }
+    items.forEach((it, i) => { it.box = [GW / 2 - 120, 92 + i * 14 - 3, 240, 13]; }); const hov = items.findIndex(it => inBox(it.box, mouse.x, mouse.y));
+    if (!PAD.active && (mouse.x !== G.pmx || mouse.y !== G.pmy)) { G.pmx = mouse.x; G.pmy = mouse.y; if (hov >= 0) G.pauseSel = hov; }
+    const it = items[G.pauseSel], d = hit("arrowleft") || hit("a") ? -1 : hit("arrowright") || hit("d") ? 1 : 0;
+    if (d && it.step) { it.step(d); persist(); AU.sfx("lock", 2); }
+    if (hit("enter") || hit(" ") || (hit("lmb") && hov === G.pauseSel)) { if (it.k === "resume") G.paused = false; else if (it.k === "quit") { G.paused = false; if (G.range) endRange(); else if (G.camp) { AU.setOC(false); G.oc = null; toCamp(); } else cashOut(); } else { it.step(1); persist(); AU.sfx("lock", 2); } }
+  }
   const toCamp = () => { persist(); AU.stop(); AU.ambience("off"); openCamp(); };
   const chapActions = { toCamp };
   const bodyActions = { back: () => { persist(); G.mode = "title"; G.menuMode = null; } };
@@ -90,9 +108,9 @@
           : [{ label: "RETURN TO TITLE", act: cashOut }, { label: "MAGPIE'S", col: COL.magenta, act: () => { cashOut(); openShop("title"); } }], 176); runMenu(G.menu); }
       return; }
     if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else if (STORY_BOSSES[D().boss]) STORY_BOSSES[D().boss](); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
-    if (G.mode === "play" && G.range) { if (hit("p") || hit("escape")) { endRange(); return; } updateRange(rdt); }
+    if (G.mode === "play" && G.range && !G.paused) { if (hit("escape")) { endRange(); return; } updateRange(rdt); } // Esc leaves; P / Start opens the pause menu
     if (G.mode === "play") {
-      if (hit("p") || hit("escape")) G.paused = !G.paused; if (G.paused) { if (hit("lmb")) G.paused = false; return; }
+      if (hit("p") || hit("escape")) { G.paused = !G.paused; G.pauseSel = 0; } if (G.paused) { updatePause(); return; }
       if (G.hitstop > 0) { G.hitstop -= rdt; return; }
     }
     const dt = G.oc ? rdt * .12 : rdt;
