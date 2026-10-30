@@ -74,7 +74,10 @@ function shopConfirm() {
   persist();
 }
 const ROW_Y = 42, ROW_H = 17, LIST_X = 198, TAB_W = 69, VIS = 8; // 8 rows visible; longer lists scroll
-const BTN_IN = [376, 244, 94, 18], BTN_BACK = [198, 244, 60, 18];
+const BTN_IN = [376, 244, 94, 18], BTN_BACK = [198, 244, 60, 18], BTN_TRY = [264, 244, 106, 18];
+// TRY: the selected sidearm, Overclock or implant in the firing range. Not mid-run (between districts) and not for styles.
+const canTry = i => i && i.cat !== "style" && G.shop.from !== "clear";
+function tryItem() { const i = shopList()[G.shop.sel]; if (!canTry(i)) { say("locked"); G.shop.line = i && i.cat === "style" ? "THE MIRROR'S RIGHT THERE, SWEETHEART." : "NO TEST FIRES MID-JOB. FINISH THE RUN."; AU.sfx("hackFail"); return; } persist(); RUN.startRange(i); }
 const inBox = (b, x, y) => x >= b[0] && x < b[0] + b[2] && y >= b[1] && y < b[1] + b[3];
 function updateShop(rdt, actions) {
   const S = G.shop, n = shopList().length; S.lineT += rdt; S.flash = Math.max(0, S.flash - rdt); if (S.pop) { S.pop.life -= rdt; if (S.pop.life <= 0) S.pop = null; }
@@ -83,6 +86,8 @@ function updateShop(rdt, actions) {
   if (hit("q") || hit("arrowleft")) tab(-1); if (hit("e") || hit("arrowright") || hit("tab")) tab(1);
   if (hit("arrowup") || hit("w")) { S.sel = (S.sel - 1 + n) % n; AU.sfx("lock", 0); } if (hit("arrowdown") || hit("s")) { S.sel = (S.sel + 1) % n; AU.sfx("lock", 0); }
   if (hit("enter")) shopConfirm();
+  if (hit("t")) tryItem();
+  ["1", "2", "3"].forEach((k, i) => { if (hit(k)) { if (loadBuild(i)) { S.line = "BUILD " + (i + 1) + " LOADED. " + buildName(SAVE.builds[i]); S.lineT = 0; AU.sfx("lock", 4); } else { S.line = "BUILD " + (i + 1) + " IS EMPTY. SAVE ONE IN THE BODYSHOP."; S.lineT = 0; AU.sfx("hackFail"); } } });
   if (G.wheel) { S.sel = Math.max(0, Math.min(n - 1, S.sel + Math.sign(G.wheel) * 3)); G.wheel = 0; }
   if (Math.hypot(mouse.x - S.mx, mouse.y - S.my) > .5) { S.mx = mouse.x; S.my = mouse.y; const row = Math.floor((mouse.y - ROW_Y) / ROW_H); if (mouse.x > LIST_X && mouse.y >= ROW_Y && row >= 0 && row < VIS && S.scroll + row < n) S.sel = S.scroll + row; }
   if (hit("lmb")) {
@@ -91,6 +96,7 @@ function updateShop(rdt, actions) {
     else if (x > LIST_X && y >= ROW_Y && row >= 0 && row < VIS && idx < n) { if (idx === S.sel) shopConfirm(); else S.sel = idx; }
     else if (inBox(BTN_IN, x, y)) actions.jackIn();
     else if (inBox(BTN_BACK, x, y)) actions.back();
+    else if (inBox(BTN_TRY, x, y)) tryItem();
   }
   if (hit(" ")) actions.jackIn();
   if (hit("escape")) actions.back();
@@ -139,7 +145,9 @@ function drawShop(c, t) {
   c.fillStyle = "#16121f"; c.fillRect(...BTN_BACK); txt(c, "BACK", BTN_BACK[0] + 30, 249, COL.dim, 8, "center");
   const pulse = .75 + .25 * Math.sin(t * .006); c.fillStyle = rgba(COL.cyan, pulse); c.fillRect(...BTN_IN); txt(c, "JACK IN >", BTN_IN[0] + 47, 249, "#05040b", 8, "center");
   const confirm = PAD.active ? Lb.confirm : "ENTER/CLICK", tabs = PAD.active ? (PAD.kind === "ps" ? "L1/R1" : "LB/RB") : "Q/E", go = PAD.active ? (PAD.kind === "ps" ? "OPTIONS" : "START") : "SPACE";
-  txt(c, `${confirm} BUY/EQUIP · ${tabs} TAB · ${go} JACK IN`, 334, 232, rgba(COL.dim, .8), 8, "center");
+  const ti = list[S.sel], tryOn = canTry(ti); c.fillStyle = tryOn ? rgba(COL.amber, inBox(BTN_TRY, mouse.x, mouse.y) ? .3 : .14) : "#16121f"; c.fillRect(...BTN_TRY); c.strokeStyle = rgba(COL.amber, tryOn ? .7 : .2); c.strokeRect(BTN_TRY[0] + .5, BTN_TRY[1] + .5, BTN_TRY[2] - 1, BTN_TRY[3] - 1);
+  txt(c, PAD.active ? (PAD.kind === "ps" ? "TRY IT (□)" : "TRY IT (X)") : "TRY IT (T)", BTN_TRY[0] + BTN_TRY[2] / 2, 249, tryOn ? COL.amber : "#3a3456", 8, "center");
+  txt(c, PAD.active ? `${confirm} BUY/EQUIP · ${tabs} TAB · ${go} JACK IN` : `ENTER BUY/EQUIP · 1-3 BUILDS · ${go} JACK IN`, 334, 232, rgba(COL.dim, .8), 8, "center");
 }
 
 /* Small vertical menus for the title, district-clear and death screens. Mouse, keyboard and controller. */

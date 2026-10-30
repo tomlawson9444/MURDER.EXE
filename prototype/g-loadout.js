@@ -100,7 +100,7 @@ const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const CATS = [["gun", "SIDEARMS"], ["oc", "OVERCLOCK"], ["imp", "IMPLANTS"]];
 
 const SAVE_KEY = "murder-save-v1";
-function defaultSave() { return { scrip: 300, owned: ["kestrel", "deadlink"], loadout: { gun: "kestrel", oc: "deadlink", imp: [] }, unlocked: 1, best: 0, mapMode: "gen",
+function defaultSave() { return { scrip: 300, owned: ["kestrel", "deadlink"], loadout: { gun: "kestrel", oc: "deadlink", imp: [] }, unlocked: 1, best: 0, mapMode: "gen", builds: [null, null, null],
   stats: { kills: 0, byType: {}, hackKills: 0, grazes: 0, blastMulti: 0, falls: 0, ocCount: 0, ocFull: 0, dashes: 0, heatMax: 0, clears: {} }, seen: [] }; }
 function loadSave() {
   let s = null; try { s = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
@@ -122,6 +122,7 @@ const hasImp = id => !!(G.p && G.p.imps && G.p.imps.includes(id));
 function earn(n) { n = Math.round(n); G.runScrip = (G.runScrip || 0) + n; SAVE.scrip += n; }
 function scripFor(e) { const base = e.type === D().boss ? 300 : e.type === "nest" ? 40 : 8; return base * (1 + G.heat * .2); }
 function track(ev, a) {
+  if (G.range) return; // nothing in the firing range counts towards milestones
   const s = SAVE.stats;
   if (ev === "kill") { s.kills++; s.byType[a] = (s.byType[a] || 0) + 1; }
   else if (ev === "hack") s.hackKills++; else if (ev === "graze") s.grazes++; else if (ev === "blast") s.blastMulti = Math.max(s.blastMulti, a);
@@ -135,7 +136,7 @@ function checkMilestones() {
 }
 // Copy the equipped loadout onto the player at the start of a run or district.
 function applyLoadout(p, fresh) {
-  const L = SAVE.loadout; p.gunId = L.gun; p.ocId = L.oc; p.maxLocks = OCP[L.oc].locks; p.imps = L.imp.slice(0, IMP_SLOTS);
+  const L = G.tryLoadout || SAVE.loadout; p.gunId = L.gun; p.ocId = L.oc; p.maxLocks = OCP[L.oc].locks; p.imps = L.imp.slice(0, IMP_SLOTS);
   // Your gun with your implants applied: magazine, pierce, bounce and reload.
   const g = p.gun = Object.assign({}, GUNS[L.gun]), has = id => p.imps.includes(id);
   if (has("extmag")) g.mag = Math.max(g.mag + 1, Math.round(g.mag * 1.5)); if (has("hollow")) { g.pierce += 1; g.mag = Math.max(1, g.mag - 1); }
@@ -143,4 +144,9 @@ function applyLoadout(p, fresh) {
   p.ocMax = p.imps.includes("redline") ? 150 : 100; p.ramMax = p.imps.includes("deck") ? 9 : 6; p.hitR = p.imps.includes("graze") ? 5.5 : 4.5;
   p.ammo = p.gun.mag; p.reload = 0; p.ram = p.ramMax; if (fresh) { p.egoUsed = false; p.streak = 0; p.oc = 50; p.aegis = true; p.aegisK = 0; } p.oc = Math.min(p.oc, p.ocMax); p.still = 0;
 }
+// Saved builds: three slots holding a sidearm, an Overclock and implants.
+const buildName = B => B ? [B.gun, B.oc, ...B.imp].map(id => ITEM[id] ? ITEM[id].name.toUpperCase() : "?").join(" · ") : "EMPTY";
+function saveBuild(i) { const L = SAVE.loadout; SAVE.builds[i] = { gun: L.gun, oc: L.oc, imp: L.imp.slice() }; persist(); }
+function loadBuild(i) { const B = SAVE.builds[i]; if (!B) return false; const ok = id => owns(id) && ITEM[id];
+  SAVE.loadout = { gun: ok(B.gun) ? B.gun : SAVE.loadout.gun, oc: ok(B.oc) ? B.oc : SAVE.loadout.oc, imp: B.imp.filter(ok).slice(0, IMP_SLOTS) }; persist(); return true; }
 const tellK = () => hasImp("prism") ? 1.35 : 1;

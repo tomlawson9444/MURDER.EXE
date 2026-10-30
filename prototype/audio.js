@@ -199,6 +199,7 @@ const AU = (() => {
   A.sfx = (k, p) => { if (!ctx || !SFX[k]) return; const n = performance.now(); if (lim[k] && n - lim[k] < 45) return; lim[k] = n; SFX[k](p); };
   A.raw = () => ({ ctx, sfx });
   A.setSFX = (k, fn) => { SFX[k] = fn; };
+  A.has = k => !!SFX[k];
   A.init = init;
   A.play = k => { init(); SFX[k](); };
   A.ambience = ambience;

@@ -38,7 +38,7 @@ function killEnemy(e, how) {
   G.p.oc = Math.min(G.p.ocMax, G.p.oc + (hasImp("overcharger") ? 13 : 8));
   if (how === "hack" && hasImp("cryocore")) stunAround(e.x, e.y, 54, 2);
   if (hasImp("berserk") && (G.p.streak + 1) % 8 === 0) { G.p.berserk = 4; pop(G.p.x, G.p.y - 34, "BERSERK", COL.red); AU.sfx("charge"); } G.p.ram = Math.min(G.p.ramMax, G.p.ram + .5); G.p.streak = (G.p.streak || 0) + 1;
-  earn(scripFor(e) * (hasImp("bounty") ? 1.4 : 1) * (G.scripMul || 1)); track("kill", e.type); if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
+  if (!G.range) { earn(scripFor(e) * (hasImp("bounty") ? 1.4 : 1) * (G.scripMul || 1)); track("kill", e.type); } else G.range.kills++; /* the firing range pays nothing */ if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
   fx(e.x, e.y - (e.alt || 0) - 8, 16, [COL.magenta, "#2a2440", "#f0ebf6"], 70, .6); pop(e.x, e.y - 26 - (e.alt || 0), "+" + pts);
   AU.sfx("kill", panOf(e.x)); rumble(.4, .3, 90); if (Math.random() < .5) AU.sfx("caw", panOf(e.x)); G.hitstop = .035;
   if (e.type === D().boss && G.camp) { for (const h of G.en) if (h.type === "holo") h.alive = false; earn(200); return campWin(); }
@@ -96,7 +96,7 @@ function updatePlayer(dt, rdt) {
       if (hasImp("twin")) shoot(gx, gy, a + .12, g.speed * (focus ? 1.5 : 1), "p", shotOpts(g, focus));
       for (let k = 1; k < (g.burst || 0); k++) G.echoShots.push({ t: k * .07, a, burst: 1 });
       if (g.echo) (G.echoShots || (G.echoShots = [])).push({ t: g.echo, a }); // the Archive Repeater fires every shot again a beat later
-      p.ammo--; p.fireCd = g.cd * (p.berserk > 0 ? .5 : 1); AU.sfx(g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
+      p.ammo--; p.fireCd = g.cd * (p.berserk > 0 ? .5 : 1); const gk = "gun_" + p.gunId; AU.sfx(AU.has(gk) ? gk : g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
   }
   for (const q of G.echoShots || []) { q.t -= dt; if (q.t <= 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2; if (q.burst) shoot(gx, gy, q.a + rnd(-.03, .03), g.speed, "p", shotOpts(g)); else shoot(gx, gy, q.a, g.speed, "p", { life: g.life, col: "#9fd8ff" }); AU.sfx("kestrel", 0); fx(gx, gy, 4, [q.burst ? COL.cyan : "#9fd8ff", "#ffffff"], 50, .15); } }
   if (G.echoShots) G.echoShots = G.echoShots.filter(q => q.t > 0);
@@ -186,6 +186,7 @@ function updateEnemy(e, dt) {
   const see = () => los(e.x, e.y - BODY, p.x, p.y - BODY);
   if (!FLYING.has(e.type) && tileOf(e.x, e.y) === "o") { fx(e.x, e.y - 6, 10, ["#2a2440", COL.magenta], 40, .5); return killEnemy(e, "fall"); }
   if (e.stun > 0 && !BOSSY.has(e.type)) { e.stun -= dt; return; } // frozen solid
+  if (e.dummy) { e.face = p.x < e.x ? -1 : 1; e.dir = ang; return; } // firing-range target: stands still, never shoots
   switch (e.type) {
     case "hexer": updHexer(e, dt, d, see); break;
     case "nest": updNest(e, dt); break;

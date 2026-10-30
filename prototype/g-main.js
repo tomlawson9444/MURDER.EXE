@@ -16,12 +16,27 @@
   }
   function reset(key) { Object.assign(G, { p: null, runScrip: 0, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : /^x\d+$/.test(key) ? 2 : 0 }); enterDistrict(key); }
   function music() { AU.setOC(false); AU.start(); AU.setHeat(Math.min(5, G.heat + 2)); setTimeout(() => AU.ambience(D().amb), 60); }
-  const leaveCampaign = () => Object.assign(G, { camp: null, rules: null, chapMap: null, radioQ: [], stalls: null, gates: null, shard: null, flood: null, vents: null, drops: null, rackFlow: null, lull: false, fog: 0, hazard: null, dropName: null, god: false, allies: [], rw: null, zone: null, exit: null, choirRounds: 0 });
+  const leaveCampaign = () => Object.assign(G, { camp: null, rules: null, chapMap: null, radioQ: [], stalls: null, gates: null, shard: null, flood: null, vents: null, drops: null, rackFlow: null, lull: false, fog: 0, hazard: null, dropName: null, god: false, allies: [], rw: null, zone: null, exit: null, choirRounds: 0, range: null, tryLoadout: null });
   function start(key, sameSeed) { leaveCampaign(); if (key === "endless") key = "x3"; G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } resetEndless(); reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
   function breach() { const next = getDist(D().next); G.heatBase = Math.min(4, Math.min(2, G.heat) + Math.floor(Math.max(0, next.n - 2) / 2)); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
   // The title screen always sits on the Rain Market ("endless" is a menu entry, not a map, so it can't be rebuilt).
   function cashOut() { persist(); AU.stop(); AU.ambience("off"); leaveCampaign(); G.mode = "title"; reset("market"); }
-  Object.assign(RUN, { reset, music, enter: enterDistrict });
+  // FIRING RANGE: try any item from Magpie's (owned or not) on targets that never fight back. Nothing you do here pays or counts.
+  function startRange(item) {
+    const L = SAVE.loadout, T = { gun: L.gun, oc: L.oc, imp: L.imp.slice() }; if (item.cat === "gun") T.gun = item.id; else if (item.cat === "oc") T.oc = item.id; else if (item.cat === "imp" && !T.imp.includes(item.id)) { if (T.imp.length >= IMP_SLOTS) T.imp.shift(); T.imp.push(item.id); }
+    const back = { from: G.shop.from, tab: G.shop.tab, sel: G.shop.sel, camp: G.camp };
+    leaveCampaign(); G.tryLoadout = T; G.range = { item, back, kills: 0, t: 0, spawnT: 0 }; reset("market"); G.mode = "play"; G.paused = false; G.god = true; G.lull = true; G.rules = { p2: null, boss: null };
+    AU.init(); BANK.attach(); music(); buildFlow(); G.banner = { txt: "FIRING RANGE · " + item.name.toUpperCase(), col: COL.amber, life: 2.4 };
+  }
+  function updateRange(dt) {
+    const R = G.range, P = G.p; R.t += dt; P.oc = Math.min(P.ocMax, P.oc + 18 * dt); P.ram = Math.min(P.ramMax, P.ram + dt);
+    R.spawnT -= dt; const n = G.en.filter(e => e.alive && e.dummy).length;
+    if (n < 7 && R.spawnT <= 0) { R.spawnT = .35; const q = floorSpots(70).filter(q => Math.hypot(q.x - P.x, q.y - P.y) < 210).sort(() => Math.random() - .5)[0];
+      if (q) { const types = ["rook", "rook", "shrike", "jackdaw", "bulwark", "carrion", "rook"], e = spawnEnemy(types[Math.random() * types.length | 0], q.x, q.y); e.dummy = true; fx(q.x, q.y - 12, 8, [COL.amber, "#ffffff"], 50, .3); } }
+  }
+  function endRange() { const b = G.range.back; G.range = null; G.tryLoadout = null; G.god = false; G.lull = false; AU.stop(); AU.ambience("off"); reset("market");
+    G.camp = b.camp; openShop(b.from); Object.assign(G.shop, { tab: b.tab, sel: b.sel }); G.shop.line = "WELL? WORTH THE SCRIP?"; G.shop.lineT = 0; }
+  Object.assign(RUN, { reset, music, enter: enterDistrict, startRange });
   const toCamp = () => { persist(); AU.stop(); AU.ambience("off"); openCamp(); };
   const chapActions = { toCamp };
   const bodyActions = { back: () => { persist(); G.mode = "title"; G.menuMode = null; } };
@@ -75,6 +90,7 @@
           : [{ label: "RETURN TO TITLE", act: cashOut }, { label: "MAGPIE'S", col: COL.magenta, act: () => { cashOut(); openShop("title"); } }], 176); runMenu(G.menu); }
       return; }
     if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else if (STORY_BOSSES[D().boss]) STORY_BOSSES[D().boss](); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
+    if (G.mode === "play" && G.range) { if (hit("p") || hit("escape")) { endRange(); return; } updateRange(rdt); }
     if (G.mode === "play") {
       if (hit("p") || hit("escape")) G.paused = !G.paused; if (G.paused) { if (hit("lmb")) G.paused = false; return; }
       if (G.hitstop > 0) { G.hitstop -= rdt; return; }

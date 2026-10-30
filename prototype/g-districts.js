@@ -47,7 +47,7 @@ function armored(e) { return (e.type === "blackwing" && e.state !== "vuln") || (
 
 /* Trace: stand still near the same spot for 4s and the Murder sends a flusher to the nearest door. */
 function updateTrace(dt) {
-  const p = G.p; if (G.boss || (G.stalls && G.stalls.some(S => S.fixing)) || (G.zone && G.zone.inside)) { G.trace = 0; return; } // no Trace while you reboot a rack or hold a zone
+  const p = G.p; if (G.range || G.boss || (G.stalls && G.stalls.some(S => S.fixing)) || (G.zone && G.zone.inside)) { G.trace = 0; return; } // no Trace while you reboot a rack or hold a zone
   if (!G.anchor || Math.hypot(p.x - G.anchor.x, p.y - G.anchor.y) > 22) { G.anchor = { x: p.x, y: p.y }; G.trace = Math.max(0, (G.trace || 0) - dt * 3); return; }
   G.trace = (G.trace || 0) + dt;
   if (G.trace >= 4) {

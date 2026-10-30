@@ -116,9 +116,46 @@ const BANK = (() => {
     }),
     lock: () => render(.4, (K, o) => { const bus = K.gain(1, o); bus.connect(K.verb(.5, 3, .2, o)); K.noise(0, .006, .6, bus, { type: "highpass", f: 4000 }); K.osc("square", 1500, .003, .03, .3, K.filt("lowpass", 5000, 2, bus)); K.osc("sine", 3000, .01, .05, .2, bus); }),
     step: v => render(.25, (K, o) => { K.noise(0, .035, .5, K.shaper(2, o), { type: "lowpass", f: 800 + v * 80 }); K.noise(.008, .06, .25, o, { f: 2600 + v * 300, q: 2 }); }),
+    // Weapon families for Magpie's wider stock.
+    scatter: v => render(1.9, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(1.8, 2.6, .5, o));
+      K.noise(0, .09, 1, K.shaper(9, bus), { type: "lowpass", f: 5200, f2: 600 }); K.osc("sine", 110 + v * 8, 0, .3, 1, K.shaper(3, bus), { f2: 30, fT: .12 });
+      for (let i = 0; i < 8; i++) K.noise(.005 + Math.random() * .03, .02, rr(.2, .45), K.pan(rr(-.6, .6), bus), { f: rr(1500, 4500), q: 2 });
+      K.noise(.06, .5, .25, bus, { type: "lowpass", f: 1400, f2: 120 });
+    }),
+    smg: v => render(.8, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(.7, 3, .25, o));
+      K.noise(0, .012, .9, K.shaper(6, bus), { type: "highpass", f: 2200 + v * 300 }); K.noise(0, .035, .7, bus, { f: 1800, q: 1.2 }); K.osc("sine", 260 + v * 20, 0, .07, .6, bus, { f2: 80 });
+    }),
+    needle: v => render(.7, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(.6, 3, .2, o));
+      K.osc("sawtooth", 3800 + v * 300, 0, .06, .3, K.filt("bandpass", 4200, 4, bus), { f2: 1600 }); K.noise(0, .02, .6, bus, { type: "highpass", f: 5000 }); K.osc("sine", 900, 0, .03, .3, bus, { f2: 300 });
+    }),
+    zap: v => render(1.2, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(1, 3, .4, o));
+      for (let i = 0; i < 9; i++) K.noise(i * .012 + Math.random() * .01, .012, rr(.3, .7), K.shaper(6, bus), { f: rr(2000, 7000), q: 5 });
+      K.osc("square", 120, 0, .15, .35, K.filt("lowpass", 1800, 3, bus), { f2: 60, vib: [55, 40] }); K.osc("sawtooth", 1600 + v * 200, 0, .2, .2, K.filt("bandpass", 2000, 4, bus), { f2: 400 });
+    }),
+    cryo: v => render(1.4, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(1.6, 2.5, .55, o));
+      K.noise(0, .02, .8, K.shaper(5, bus), { type: "highpass", f: 3000 }); K.osc("sine", 180, 0, .1, .6, bus, { f2: 60 });
+      [2637, 3520, 4186].forEach((fq, i) => K.osc("sine", fq * (1 + v * .02), .01 + i * .025, .35, .12, K.pan(-.4 + i * .4, bus)));
+    }),
+    thump: v => render(1.6, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(1.2, 3, .35, o));
+      K.osc("sine", 140, 0, .18, 1, K.shaper(3, bus), { f2: 45 }); K.noise(0, .05, .7, bus, { type: "lowpass", f: 900 }); K.noise(.03, .45, .3, bus, { f: 600, f2: 2600, q: 2, a: .05 });
+    }),
+    flame: v => render(1, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(.8, 3, .3, o));
+      K.noise(0, .22, .8, K.shaper(3, bus), { type: "lowpass", f: 1800 + v * 200, f2: 500, a: .02 }); K.noise(0, .15, .3, bus, { type: "highpass", f: 3500, a: .02 }); K.osc("sine", 70, 0, .2, .4, bus);
+    }),
+    wisp: v => render(1.6, (K, o) => {
+      const bus = K.gain(1, o); bus.connect(K.verb(2.2, 2, .7, o));
+      K.osc("sine", 880 + v * 40, 0, .5, .3, bus, { f2: 1320, vib: [7, 30], a: .03 }); K.osc("triangle", 440, 0, .4, .2, bus, { f2: 660 }); K.noise(0, .3, .15, bus, { f: 3000, f2: 6000, q: 3, a: .05 });
+    }),
     crateBreak: v => render(1, (K, o) => { const bus = K.gain(1, o); bus.connect(K.verb(.8, 3, .25, o)); K.noise(0, .15, .9, K.shaper(5, bus), { f: 700, q: 1 }); for (let i = 0; i < 12; i++) K.noise(Math.random() * .3, .02, rr(.15, .4), bus, { f: rr(800, 3000), q: 3 }); K.osc("sine", 110, 0, .12, .7, bus, { f2: 50 }); }),
   };
-  const VARIANTS = { kestrel: 4, shotE: 3, rail: 1, boom: 2, impactWall: 4, impactMetal: 3, hit: 3, dash: 3, graze: 2, reload: 1, ocIn: 1, ocSnap: 1, lock: 1, step: 4, crateBreak: 2 };
+  const VARIANTS = { scatter: 2, smg: 3, needle: 2, zap: 2, cryo: 2, thump: 2, flame: 2, wisp: 2, kestrel: 4, shotE: 3, rail: 1, boom: 2, impactWall: 4, impactMetal: 3, hit: 3, dash: 3, graze: 2, reload: 1, ocIn: 1, ocSnap: 1, lock: 1, step: 4, crateBreak: 2 };
 
   function play(k, o = {}) {
     const list = B[k]; if (!list) return false; const { ctx, sfx } = AU.raw();
@@ -145,8 +182,17 @@ const BANK = (() => {
     wrap("step", p => play("step", { pan: p, vol: .16 }));
     wrap("crateBreak", p => play("crateBreak", { pan: p, vol: .5 }));
     wrap("crate", p => play("impactWall", { pan: p, vol: .3, rate: .7 }));
+    // Every sidearm gets its own voice: a sound family plus pitch and volume.
+    for (const id in GUN_SFX) { const [k, rate, vol, extra] = GUN_SFX[id]; wrap("gun_" + id, () => { play(k, { rate, vol }); if (extra) play(extra[0], { rate: extra[1], vol: extra[2], at: extra[3] || 0 }); }); }
   }
-  const ORDER = [["kestrel", "dash", "hit", "impactWall", "shotE"], ["impactMetal", "graze", "reload", "step", "lock", "ocIn", "ocSnap"], ["boom", "rail", "crateBreak"]];
+  const ORDER = [["kestrel", "dash", "hit", "impactWall", "shotE"], ["impactMetal", "graze", "reload", "step", "lock", "ocIn", "ocSnap"], ["boom", "rail", "crateBreak"], ["scatter", "smg", "needle", "zap", "cryo", "thump", "flame", "wisp"]];
+  // gun id: [sound, pitch, volume, optional extra layer [sound, pitch, volume, delay]]
+  const GUN_SFX = {
+    kestrel: ["kestrel", 1, .85], breacher: ["scatter", 1.1, .8], coil: ["kestrel", 1.25, .7, ["impactMetal", 1.6, .25]], hornet: ["smg", 1, .55], rail: ["rail", 1, .9],
+    duster: ["scatter", .85, .95], fanhammer: ["kestrel", 1.12, .6], tripletap: ["smg", .8, .7], needler: ["needle", 1, .45], cryo: ["cryo", 1, .7], magnum: ["kestrel", .72, 1, ["boom", 2.2, .25]],
+    arccaster: ["zap", 1, .7], splitter: ["kestrel", 1.2, .7, ["needle", .8, .25, .1]], pinball: ["smg", 1.25, .5, ["impactMetal", 2, .12]], longbow: ["rail", .8, 1], pipe: ["thump", 1, .9], wisp: ["wisp", 1, .6],
+    harpoon: ["rail", .62, 1, ["impactMetal", .7, .35]], bellows: ["flame", 1, .5], repeater: ["kestrel", 1.05, .75], wasp: ["thump", 1.35, .7, ["wisp", 1.6, .2]], requiem: ["kestrel", .85, .8, ["shotE", .6, .25]],
+  };
   async function build() {
     if (building) return; building = true; const t0 = performance.now();
     for (const group of ORDER) await Promise.all(group.map(async k => { const list = await Promise.all(Array.from({ length: VARIANTS[k] }, (_, v) => R[k](v))); B[k] = list; }));

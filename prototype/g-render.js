@@ -81,17 +81,20 @@ function drawOC(c, t) {
   c.fillStyle = COL.cyan; c.fillRect(GW / 2 - 60, 70, 120 * (1 - o.t / 3), 1);
 }
 
+// Firing range: what you're trying, kills and kills per minute, and how to leave.
+function rangeHud(c, t) { const R = G.range, W = GW; panel(c, W / 2 - 80, 6, 160, 24, COL.amber); txt(c, "FIRING RANGE · " + R.item.name.toUpperCase(), W / 2, 9, COL.amber, 8, "center");
+  txt(c, `KILLS ${R.kills} · ${R.t > 3 ? Math.round(R.kills / R.t * 60) : 0}/MIN · ${PAD.active ? "START" : "ESC"}: BACK`, W / 2, 19, COL.dim, 8, "center"); }
 function drawHUD(c, t) {
   const p = G.p, W = GW, H = GH;
   if (G.hexed > 0) { c.save(); c.translate(Math.round(rnd(-2, 2)), Math.round(rnd(-1, 1))); }
   const nm = mapName(); c.font = "8px Silkscreen"; const pw = Math.max(110, c.measureText(nm).width + 16);
   panel(c, 6, 6, pw, 24, "#3a3456"); txt(c, nm, 12, 9, COL.ink); if (G.camp) txt(c, chLabel(G.camp.n) + " · " + G.camp.ch.title, 12, 19, COL.amber); else txt(c, D().code + (G.runSeed != null && G.mapKey === "run" ? " · " + PG.seedName(G.runSeed) : "") + (G.phase2 ? " · PHASE 2" : ""), 12, 19, G.phase2 ? COL.red : COL.dim);
-  if (G.camp) campHudCenter(c, t); else {
+  if (G.range) rangeHud(c, t); else if (G.camp) campHudCenter(c, t); else {
   panel(c, W / 2 - 54, 6, 108, 24, "#3a3456"); txt(c, G.boss ? D().bossName : `${String(Math.min(dk(), 100)).padStart(3, "0")}/100`, W / 2, 9, G.boss ? COL.magenta : COL.ink, 8, "center");
   for (let i = 0; i < 20; i++) { c.fillStyle = i < Math.min(dk(), 100) / 5 ? COL.magenta : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); } }
   panel(c, W - 108, 6, 102, 24, "#3a3456"); txt(c, String(G.score).padStart(7, "0"), W - 100, 9, COL.ink); txt(c, "x" + G.mult.toFixed(1), W - 12, 9, COL.cyan, 8, "right");
   for (let i = 0; i < 5; i++) { c.fillStyle = i < G.heat ? COL.amber : "#2a2640"; c.fillRect(W - 100 + i * 7, 21, 5, 3); } txt(c, "HEAT", W - 12, 19, COL.dim, 8, "right");
-  txt(c, "+" + (G.runScrip || 0) + " SCRIP", W - 8, 34, rgba(COL.amber, .85), 8, "right");
+  if (!G.range) txt(c, "+" + (G.runScrip || 0) + " SCRIP", W - 8, 34, rgba(COL.amber, .85), 8, "right");
   if (hasImp("aegis")) { const y = G.camp && (p.shield > 0 || SAVE.camp.diff === "story") ? H - 48 : H - 58; txt(c, "AEGIS", 168, y, COL.dim); if (p.aegis) { c.fillStyle = COL.amber; c.fillRect(206, y + 2, 14, 4); } else { c.fillStyle = "#2a2640"; c.fillRect(206, y + 2, 20, 4); c.fillStyle = rgba(COL.amber, .6); c.fillRect(206, y + 2, 20 * (p.aegisK || 0) / 20, 4); } }
   panel(c, 6, H - 42, 156, 36, "#3a3456");
   const mag = p.gun.mag, big = mag > 8;

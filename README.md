@@ -43,7 +43,7 @@ Then open <http://localhost:8000/prototype/>.
 | Magpie's: move / buy or equip | W / S or ↑ / ↓, Enter or click | D-pad, A | D-pad, ✕ |
 | Magpie's: jack in / back | Space / Esc | Start / B | Options / ○ |
 | Conversations: next line / skip / reply | Enter or click / Esc / 1 to 5 or click | A / B / D-pad and A | ✕ / ○ / D-pad and ✕ |
-| BODYSHOP: tab / change option / done | Q/E, A/D or ←/→, Space (Enter edits the name; R random, X default) | LB/RB, D-pad, Start (A rolls a random name) | L1/R1, D-pad, Options |
+| BODYSHOP: tab / change option / done | Q/E, A/D or ←/→, Space (Enter edits the name; R random, X default; pad X random, Y default) | LB/RB, D-pad, Start (A rolls a random name) | L1/R1, D-pad, Options |
 
 Browsers only detect a controller after you press one of its buttons. Rumble works in Chrome and Edge.
 
@@ -114,6 +114,9 @@ The story campaign is complete: **30 chapters across 10 districts in five acts, 
   - **New sidearms:** Duster Double (8-pellet double barrel), Fan Hammer (full-auto revolver), Triple-Tap (3-round bursts), Needler (piercing flechettes), Cryo Pistol (kills freeze nearby enemies), Saint's Magnum (kills refund a round), Arc Caster (kills chain into two more), Splitter (rounds split in three), Pinball SMG (triple-bounce auto), Longbow (pierces six), Pipe Launcher (grenades that can't hurt you) and Wisp Launcher (slow homing ghost-lights).
   - **New Overclocks:** HYDRA.exe (2 locks, chains x4), REAPER_TAX (triple scrip), NOVA//BLOOM (safe blasts), LEECH.sys (refunds OC and RAM), BASTION (2.5s invulnerable), MIRRORSHARD (kills burst into shards) and BLACKOUT (wipes enemy bullets and freezes everyone).
   - **New implants:** Adrenal Pump, Quickloader, Ricochet Module, Focus Lens, Static Skin, Hollow Points, Cryo Core, Phase Step, Overcharger, Scavenger Chip, Extended Mags, Bounty Chip, Berserker Chip, Shockwave Dash, Chain Reaction and Twin Barrel.
+  - **Every sidearm sounds different:** eight new sound families (scatter, SMG, needle, arc zap, cryo, launcher thump, flame and wisp) plus pitch and layer changes give each of the 22 guns its own voice.
+  - **Firing range:** at Magpie's, TRY IT (T, the button, or X/□ on a pad) drops you into a range with the selected sidearm, Overclock or implant, even one you don't own or haven't unlocked yet. Targets keep respawning, you can't die, Overclock and RAM refill fast, and the HUD shows kills per minute. Nothing in the range pays scrip or counts towards milestones. Esc (Start on a pad) takes you straight back to the same item. Not available between districts mid-run.
+  - **Saved builds:** three build slots in the BODYSHOP GEAR tab (A/D picks LOAD or SAVE HERE, Enter does it). At Magpie's, keys 1-3 load a build instantly.
   - Frozen enemies stop dead (bosses can't be frozen), with an ice outline. Lists scroll with the keys, mouse wheel or pad; the BODYSHOP inventory scrolls too.
 - **Gear:** 5 sidearms (Kestrel .44, Breacher Custom, Ricochet Coilgun, Hornet SMG, Railpiercer), 4 Overclock programs (DEADLINK, ARC//CHAIN, SWARMKEY, GHOST_PROTOCOL) and 8 implants, with 2 implant slots.
 - **Milestone unlocks:** most gear is locked until you hit a milestone (for example, the Railpiercer needs a Rain Market clear). Hitting one pays 100 scrip and Magpie restocks.

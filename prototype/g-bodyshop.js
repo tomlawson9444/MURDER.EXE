@@ -6,7 +6,7 @@ const LOOK_OFF = 3, LOOK_VIS = 13;
 const BTN_RAND = [12, 244, 82, 18], BTN_DEF = [98, 244, 82, 18];
 const INV_COLS = 10, INV_W = 27, INV_H = 21, INV_ROWS = 6; // 10 x 6 grid on screen; the inventory scrolls by row
 const BTABS = ["LOOK", "GEAR", "INVENTORY", "ORIGIN"], BROW_Y = 42, BTAB_W = 69, BTN_DONE = [356, 244, 114, 18], BTN_BBACK = [198, 244, 60, 18];
-const GEAR_ROWS = [["SIDEARM", "gun"], ["OVERCLOCK", "oc"], ["IMPLANT 1", "imp", 0], ["IMPLANT 2", "imp", 1], ["IMPLANT 3", "imp", 2]];
+const GEAR_ROWS = [["SIDEARM", "gun"], ["OVERCLOCK", "oc"], ["IMPLANT 1", "imp", 0], ["IMPLANT 2", "imp", 1], ["IMPLANT 3", "imp", 2], ["BUILD 1", "build", 0], ["BUILD 2", "build", 1], ["BUILD 3", "build", 2]];
 const invItems = () => ITEMS;
 
 addEventListener("wheel", e => { if (G.mode === "body" || G.mode === "shop") G.wheel = (G.wheel || 0) + Math.sign(e.deltaY); }, { passive: true }); // scroll the LOOK list
@@ -30,6 +30,7 @@ function randomLook() { const L = SAVE.char.look, making = G.body.from === "crea
 // DEFAULT puts the look back to the standard operative (your name and origin stay).
 function defaultLook() { SAVE.char.look = Object.assign({}, DEFAULT_LOOK); applyLook(); persist(); AU.sfx("lock", 2); say2("BACK TO THE STANDARD LOOK."); }
 function cycleGear(row, d) {
+  if (row[1] === "build") { G.body.bact = G.body.bact ? 0 : 1; AU.sfx("lock", 1); return; } // LOAD <-> SAVE HERE
   const [, cat, slot] = row, L = SAVE.loadout, owned = ITEMS.filter(i => i.cat === cat && owns(i.id)).map(i => i.id);
   if (cat === "imp") { const others = L.imp.filter((x, k) => k !== slot), opts = [null].concat(owned.filter(id => !others.includes(id))); const cur = L.imp[slot] || null; const next = opts[(opts.indexOf(cur) + d + opts.length) % opts.length];
     const imp = Array.from({ length: IMP_SLOTS }, (_, k) => L.imp[k] || null); imp[slot] = next; L.imp = imp.filter(Boolean); }
@@ -42,6 +43,9 @@ function bodyConfirm(actions) {
   if (t === "LOOK" && B.sel === 1) return randomLook();
   if (t === "LOOK" && B.sel === 2) return defaultLook();
   if (t === "LOOK") return cycleLook(LOOK_SLOTS[B.sel - LOOK_OFF], 1);
+  if (t === "GEAR" && GEAR_ROWS[B.sel][1] === "build") { const i = GEAR_ROWS[B.sel][2];
+    if (B.bact) { saveBuild(i); say2("BUILD " + (i + 1) + " SAVED."); AU.sfx("lock", 4); B.bact = 0; }
+    else if (loadBuild(i)) { say2("BUILD " + (i + 1) + " LOADED."); AU.sfx("lock", 4); } else { say2("BUILD " + (i + 1) + " IS EMPTY. PICK SAVE HERE FIRST."); AU.sfx("hackFail"); } return; }
   if (t === "GEAR") return cycleGear(GEAR_ROWS[B.sel], 1);
   if (t === "ORIGIN") { const O = ORIGINS[B.sel]; if (SAVE.char.created && SAVE.char.origin !== O.id) { say2("YOUR ORIGIN IS SET. YOUR STORY STAYS YOURS."); AU.sfx("hackFail"); return; }
     SAVE.char.origin = O.id; persist(); AU.sfx("lock", 4); say2(O.name + " · STARTER KIT: " + kitNames(O)); if (B.from === "create") { B.tab = 0; B.sel = 0; } return; }
@@ -115,11 +119,16 @@ function drawBodyshop(c, t) {
       if (on && count && !(B.msg && B.msgT < 3.5)) txt(c, `${lbl} ${count}` + (more ? ` · ${more} MORE AT MAGPIE'S` : "") + " · A/D TO CHANGE", 334, 226, rgba(more ? COL.amber : COL.dim, .85), 8, "center"); });
     if (rows.length > LOOK_VIS) { const h = 182 * LOOK_VIS / rows.length; c.fillStyle = "#2a2640"; c.fillRect(473, BROW_Y - 2, 2, 182); c.fillStyle = COL.cyan; c.fillRect(473, BROW_Y - 2 + 182 * sc / rows.length, 2, h); }
   } else if (tab === "GEAR") {
-    GEAR_ROWS.forEach((row, i) => { const [lbl, cat, slot] = row, y = BROW_Y + i * 18, on = i === B.sel, id = cat === "imp" ? SAVE.loadout.imp[slot] : SAVE.loadout[cat], it2 = id && ITEM[id]; if (on) sel(y - 2, 16);
+    GEAR_ROWS.forEach((row, i) => { const [lbl, cat, slot] = row, y = BROW_Y + i * 18 + (cat === "build" ? 6 : 0), on = i === B.sel; if (on) sel(y - 2, 16);
+      if (cat === "build") { const Bd = SAVE.builds[slot]; txt(c, lbl, 230, y + 3, on ? COL.amber : rgba(COL.amber, .7)); c.fillStyle = Bd ? COL.amber : "#2a2640"; c.fillRect(204, y + 2, 14, 10);
+        const v = on ? (B.bact ? "< SAVE HERE >" : "< LOAD >") : Bd ? ITEM[Bd.gun].name.toUpperCase() + (Bd.imp.length ? " +" + Bd.imp.length : "") : "EMPTY"; txt(c, v, 470, y + 3, on ? COL.cyan : Bd ? COL.ink : COL.dim, 8, "right"); return; }
+      const id = cat === "imp" ? SAVE.loadout.imp[slot] : SAVE.loadout[cat], it2 = id && ITEM[id];
       if (it2) itemIcon(c, it2, 202, y); txt(c, lbl, 230, y + 3, on ? COL.ink : COL.dim); txt(c, on ? "< " + (it2 ? it2.name.toUpperCase() : "EMPTY") + " >" : (it2 ? it2.name.toUpperCase() : "EMPTY"), 470, y + 3, on ? COL.cyan : COL.ink, 8, "right"); });
-    const row = GEAR_ROWS[B.sel], id = row[1] === "imp" ? SAVE.loadout.imp[row[2]] : SAVE.loadout[row[1]], it2 = id && ITEM[id];
-    if (it2) { txt(c, it2.name.toUpperCase(), 202, 144, COL.ink); wrapText(c, it2.desc.toUpperCase(), 266).slice(0, 3).forEach((l, k) => txt(c, l, 202, 156 + k * 10, COL.dim)); }
-    txt(c, "ONLY GEAR YOU OWN IS LISTED. BUY MORE AT MAGPIE'S.", 202, 222, rgba(COL.amber, .8));
+    const row = GEAR_ROWS[B.sel]; c.fillStyle = "#3a3456"; c.fillRect(200, 194, 270, 1);
+    if (row[1] === "build") { const Bd = SAVE.builds[row[2]]; txt(c, row[0] + (Bd ? "" : " · EMPTY"), 202, 198, COL.amber); wrapText(c, Bd ? buildName(Bd) : "SET UP YOUR GEAR ABOVE, THEN PICK SAVE HERE (A/D) AND PRESS ENTER.", 266).slice(0, 2).forEach((l, k) => txt(c, l, 202, 209 + k * 9, COL.dim)); }
+    else { const id = row[1] === "imp" ? SAVE.loadout.imp[row[2]] : SAVE.loadout[row[1]], it2 = id && ITEM[id];
+      if (it2) { txt(c, it2.name.toUpperCase(), 202, 198, COL.ink); wrapText(c, it2.desc.toUpperCase(), 266).slice(0, 2).forEach((l, k) => txt(c, l, 202, 209 + k * 9, COL.dim)); }
+      else txt(c, "ONLY GEAR YOU OWN IS LISTED. BUY MORE AT MAGPIE'S.", 202, 198, rgba(COL.amber, .8)); }
   } else if (tab === "INVENTORY") {
     const all = invItems(), gearOwned = all.filter(i => i.cat !== "style" && owns(i.id)).length, styleOwned = all.filter(i => i.cat === "style" && owns(i.id)).length;
     txt(c, `GEAR ${gearOwned}/${all.filter(i => i.cat !== "style").length} · STYLE ${styleOwned}/${all.filter(i => i.cat === "style").length}`, 470, 8, COL.amber, 8, "right");
