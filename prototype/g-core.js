@@ -22,8 +22,8 @@ const ocHeld = () => mouse.rdown || mouse.padRdown || held("f");
 const hit = k => G.pressed.has(k);
 
 /* Tiles */
-const WALK_BLOCK = new Set("#kmpqSuWvZDAcbdthsN".split(""));
-const SHOT_BLOCK = new Set("#kmpquWvZDAcbdhsN".split(""));
+const WALK_BLOCK = new Set("#kmpqSuWvZDAcbdthsNC".split(""));
+const SHOT_BLOCK = new Set("#kmpquWvZDAcbdhsNC".split(""));
 const tileOf = (px, py) => G.grid.at(Math.floor(px / TS), Math.floor(py / TS));
 const walkBlocked = (px, py, overLow) => { const ch = tileOf(px, py); if (ch === null) return true; if (overLow && ch === "h") return false; return WALK_BLOCK.has(ch); };
 function boxBlocked(x, y, r, overLow) { const ry = r * .6; return walkBlocked(x - r, y - ry, overLow) || walkBlocked(x + r, y - ry, overLow) || walkBlocked(x - r, y + ry, overLow) || walkBlocked(x + r, y + ry, overLow); }

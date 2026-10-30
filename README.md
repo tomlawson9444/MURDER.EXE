@@ -8,7 +8,7 @@ Inspired by *Kill the Crows* (5minlab / KRAFTON): every enemy dies to one bullet
 
 | Folder | What it is |
 |---|---|
-| `prototype/` | The playable browser prototype. Two districts: the Rain Market (boss: BLACKWING) and the Chrome Rookery (boss: THE AUGUR). |
+| `prototype/` | The playable browser prototype: the Rain Market (boss: BLACKWING), the Chrome Rookery (boss: THE AUGUR), then an endless chain of procedurally styled districts. |
 | `design/` | The game plan and art bible: research, key art, logo, sprites, enemy roster, level design, sound board and roadmap. |
 
 Everything is plain HTML and JavaScript with no build step. All art and audio is generated in code at runtime.
@@ -53,7 +53,9 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 - **Gear:** 5 sidearms (Kestrel .44, Breacher Custom, Ricochet Coilgun, Hornet SMG, Railpiercer), 4 Overclock programs (DEADLINK, ARC//CHAIN, SWARMKEY, GHOST_PROTOCOL) and 8 implants, with 2 implant slots.
 - **Milestone unlocks:** most gear is locked until you hit a milestone (for example, the Railpiercer needs a Rain Market clear). Hitting one pays 100 scrip and Magpie restocks.
 - **Procedural maps:** every run builds a brand-new arena for each district from a seed (about 2.18 billion per district). A layout archetype, buildings pushed in from the walls, spawn doors, hand-designed cyberpunk set pieces, hazards, signage, colour tint and weather are all generated, then a validator checks the level-design rules (everything reachable, no dead ends, safe start, doors reachable, cover on both sides) and rebuilds any map that fails. Phase 2 events (tram lane, bridge collapse, barricades) come from the generated layout.
-- **Seeds:** the seed shows in the HUD and on the death and clear screens. After a death you can retry the same map or reboot into a new one. Links ending `#seed-ABC123` or `#seed-ABC123-rookery` load that exact map. The title screen's MAP option switches between generated and the classic hand-made maps (`#classic` forces classic).
+- **Endless districts:** after the Chrome Rookery, breaching continues forever (District 3, 4, 5…). Each district gets a procedurally generated style and map, the bosses alternate between BLACKWING and THE AUGUR, and Heat and spawn pressure creep up with depth. Clearing the Rookery unlocks an ENDLESS start on the title screen.
+- **Procedural district styles:** a style mixes one of 10 families (streets, night markets, rooftops, server halls, summits, foundries, docks, slums, galleria, canals) with one of 6 moods and a generated palette from any hue, one of 10 floors, one of 10 backdrops (shopfronts, skyline, server walls, storm glass, giant billboards, highway overpass, shanty stacks, dockside cranes, factory, mall), a hazard look (city drop, flood water, toxic sludge, molten slag, raw data), one of 8 weathers (rain, downpour, acid rain, snow, ash, embers, smog, clear) and a family-specific set-piece pool, including shipping containers, container yards, canals, sludge pools and shanty shacks.
+- **Seeds:** the seed shows in the HUD and on the death and clear screens. After a death you can retry the same map or reboot into a new one. Links ending `#seed-ABC123`, `#seed-ABC123-rookery` or `#seed-ABC123-endless` load that exact run. The title screen's MAP option switches between generated and the classic hand-made maps (`#classic` forces classic).
 - **Map Lab (`maplab.html`):** a gallery of freshly generated maps for all four districts, with art and tactical views, Phase 2 previews, validator stats, seed search and a "Play this map" link.
 - Bullets fly until they hit something solid.
 - Cover system: hard cover, low cover you can dash over and shoot across, crates that break, and barrels and signs you can hack.
@@ -80,7 +82,8 @@ Progress (scrip, owned gear, loadout, milestones and best score) is saved in the
 | `defs.js` | Sprite definitions for Vesper, enemies, bosses and weapons |
 | `scenes.js`, `keyart.js` | Backdrops, rain and painted-art helpers used by the map renderer |
 | `maptiles.js`, `maps.js` | Tile painters, classic district map data, map renderer and tactical overlay |
-| `g-procgen.js` | Procedural map generator, validator, seeds, names and per-map styling |
+| `styles.js` | Extra floors, backdrops, hazard-pit looks, shipping containers and colour helpers used by generated styles |
+| `g-procgen.js` | Procedural district styles, map generator, validator, seeds, names and endless-district derivation |
 | `maplab.html`, `maplab.js` | Map Lab: gallery and inspector for generated maps |
 | `audio.js` | Synth SFX, ambience beds and the Heat-driven music sequencer |
 | `sfx-bank.js` | Layered combat sounds rendered offline into variants |
@@ -96,7 +99,7 @@ Progress (scrip, owned gear, loadout, milestones and best score) is saved in the
 
 ## Roadmap
 
-1. District 03, the Datacrypt, and District 04, Spire Zero.
+1. Unique enemies and bosses per family, so endless districts differ in how they fight as well as how they look.
 2. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
 3. Steam page and a free demo for Steam Next Fest.
 

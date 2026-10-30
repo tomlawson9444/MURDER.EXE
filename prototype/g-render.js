@@ -145,8 +145,8 @@ function drawClear(c, t) {
   veil(c, .78); txt(c, "DISTRICT CLEAR", GW / 2, 78, COL.cyan, 32, "center");
   txt(c, `SCORE ${String(G.score).padStart(7, "0")}   ·   BEST ${String(G.best || 0).padStart(7, "0")}`, GW / 2, 124, COL.ink, 8, "center");
   txt(c, `TIME ${Math.floor(G.time / 60)}:${String(Math.floor(G.time % 60)).padStart(2, "0")}   ·   KILLS ${G.kills}` + (G.mapKey === "run" ? "   ·   SEED " + PG.seedName(G.runSeed) : ""), GW / 2, 134, COL.dim, 8, "center");
-  const nx = D().next ? DIST[D().next] : null, L = lab();
-  if (nx) { txt(c, `NEXT: ${nx.code} ${nx.name} · HEAT CARRIES OVER (MAX 2)`, GW / 2, 160, COL.magenta, 8, "center");
+  const nx = D().next ? getDist(D().next) : null, L = lab();
+  if (nx) { txt(c, `NEXT: ${nx.code} ${nx.name} · ` + (nx.n >= 3 ? "HEAT RISES THE DEEPER YOU GO" : "HEAT CARRIES OVER (MAX 2)"), GW / 2, 160, COL.magenta, 8, "center");
     txt(c, "+" + (G.runScrip || 0) + " SCRIP THIS RUN · " + SAVE.scrip + " BANKED", GW / 2, 146, COL.amber, 8, "center");
   }
   else txt(c, "RUN COMPLETE · DATACRYPT ARRIVES IN THE NEXT BUILD", GW / 2, 160, COL.magenta, 8, "center");

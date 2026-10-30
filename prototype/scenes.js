@@ -126,10 +126,17 @@ function mkRain(W, H, seed) {
   for (let i = 0; i < n / 5; i++) spl.push([r() * W | 0, (H * .22 + r() * H * .78) | 0, r()]);
   return { drops, spl };
 }
+// Weather particles. S.weather: rain (default), heavy, acid, snow, ash, embers. Smog is painted into the map itself.
 function drawRain(c, S, t, slow = 1) {
-  if (!S.rain) return; const { W, H } = S;
-  c.fillStyle = "rgba(185,195,255,.34)";
-  for (const [x, y, l, s] of S.rain.drops) { const yy = (y + t * s * slow) % H; c.fillRect(x | 0, yy | 0, 1, slow < 1 ? 1 : l); }
+  if (!S.rain) return; const { W, H } = S, w = S.weather || "rain";
+  if (w === "snow" || w === "ash" || w === "embers") {
+    const col = w === "snow" ? "rgba(235,240,255,.75)" : w === "ash" ? "rgba(160,150,170,.6)" : null;
+    for (const [x, y, l, s] of S.rain.drops) { const k = t * s * slow * (w === "snow" ? .22 : .16);
+      if (w === "embers") { const yy = H - ((y + k) % H), xx = (x + Math.sin(k * .05 + x) * 6 + W) % W; c.fillStyle = (x | 0) % 3 ? "rgba(255,178,46,.8)" : "rgba(255,90,40,.8)"; if (((t * .01 + x) | 0) % 5) c.fillRect(xx | 0, yy | 0, 1, 1); }
+      else { const yy = (y + k) % H, xx = (x + Math.sin(k * .04 + y) * 8 + W) % W; c.fillStyle = col; c.fillRect(xx | 0, yy | 0, l > 4 && w === "snow" ? 2 : 1, 1); } }
+    return; }
+  c.fillStyle = w === "acid" ? "rgba(150,255,120,.34)" : w === "heavy" ? "rgba(185,195,255,.46)" : "rgba(185,195,255,.34)";
+  for (const [x, y, l, s] of S.rain.drops) { const yy = (y + t * s * slow * (w === "heavy" ? 1.3 : 1)) % H; c.fillRect(x | 0, yy | 0, 1, slow < 1 ? 1 : l + (w === "heavy" ? 2 : 0)); }
   if (slow < 1) return;
   c.lineWidth = 1;
   for (const [x, y, ph] of S.rain.spl) { const p = (t * .0012 + ph) % 1; if (p < .25) { const k = p / .25; c.strokeStyle = `rgba(185,195,255,${.5 * (1 - k)})`; c.beginPath(); c.ellipse(x + .5, y + .5, 1 + k * 4, .5 + k * 1.6, 0, 0, TAU); c.stroke(); } }

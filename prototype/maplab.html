@@ -57,11 +57,11 @@ footer { color: var(--dim); font-size: .85rem; }
 <div class="wrap">
   <header style="display:grid;gap:10px">
     <h1>MAP LAB<span>MURDER.EXE</span></h1>
-    <p class="lede">Every arena on this page was built in your browser a moment ago from a random seed. The generator picks a layout type, pushes buildings in from the walls, places spawn doors, drops in hand-designed cyberpunk set pieces, adds hazards and neon, then runs a validator against the level-design rules. Any map that fails gets rebuilt. Hit generate as often as you like: no two maps are the same.</p>
+    <p class="lede">Every arena on this page was built in your browser a moment ago. Endless styles mix a district family (streets, night markets, rooftops, server halls, summits, foundries, docks, slums, galleria, canals) with a mood and palette, a floor, a backdrop, a hazard look and weather. The map generator then picks a layout, places doors and set pieces, and runs a validator against the level-design rules. Any map that fails gets rebuilt. The four classic districts are here too. Hit generate as often as you like.</p>
   </header>
   <div class="bar" role="group" aria-label="Lab controls">
     <div class="seg" id="dist" role="group" aria-label="District">
-      <button type="button" id="d-all" data-d="all" aria-pressed="true">All</button>
+      <button type="button" id="d-endless" data-d="endless" aria-pressed="true">Endless styles</button>
       <button type="button" id="d-market" data-d="market" aria-pressed="false">Rain Market</button>
       <button type="button" id="d-rookery" data-d="rookery" aria-pressed="false">Chrome Rookery</button>
       <button type="button" id="d-datacrypt" data-d="datacrypt" aria-pressed="false">Datacrypt</button>
@@ -83,7 +83,7 @@ footer { color: var(--dim); font-size: .85rem; }
     <span><i style="background:#d8d4ee"></i>Hard cover</span><span><i style="background:var(--cyan)"></i>Low cover</span><span><i style="background:var(--amber)"></i>Destructible</span><span><i style="background:var(--magenta)"></i>Hackable · spawn door</span><span><i style="background:var(--blood)"></i>Hazard</span><span><i style="background:rgba(255,178,46,.35);border:1px solid var(--amber)"></i>Sniper / turret sightline</span>
   </div>
   <div class="grid" id="grid"></div>
-  <footer>Rain Market and Chrome Rookery maps are playable now. Datacrypt and Spire Zero layouts are previews until those districts are built.</footer>
+  <footer>Endless styles, Rain Market and Chrome Rookery maps are playable. Classic Datacrypt and Spire Zero layouts are previews until those districts get their own enemies and bosses.</footer>
 </div>
 <script src="engine.js"></script>
 <script src="defs.js"></script>
@@ -91,5 +91,6 @@ footer { color: var(--dim); font-size: .85rem; }
 <script src="keyart.js"></script>
 <script src="maptiles.js"></script>
 <script src="maps.js"></script>
+<script src="styles.js"></script>
 <script src="g-procgen.js"></script>
 <script src="maplab.js"></script>

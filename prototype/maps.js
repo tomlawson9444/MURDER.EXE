@@ -82,7 +82,7 @@ function renderMap(key, phase2, SP, Gover) {
   if (key === "market") { c.fillStyle = "rgba(210,170,80,.5)"; for (let x = 16; x < W - 16; x += 22) c.fillRect(x, 12 * TS + 8, 12, 1); }
   if (key === "spire") { c.fillStyle = "rgba(255,178,46,.45)"; c.fillRect(TS, 9 * TS, W - 2 * TS, 1); }
   if (M.roadRow != null) { c.fillStyle = "rgba(210,170,80,.5)"; for (let x = 16; x < W - 16; x += 22) c.fillRect(x, M.roadRow * TS + 8, 12, 1); }
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const d = DECALS[G[y][x]]; if (d) d(c, x * TS, y * TS, G, x, y, r, em); }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const d = DECALS[G[y][x]]; if (d) d(c, x * TS, y * TS, G, x, y, r, em, th); }
   th.back(c, W, H, r, em);
   const items = [];
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const ch = G[y][x]; if (OBJ[ch] && !GROUPED.has(ch)) items.push([ch, x, y, 1, 1]); }
@@ -99,7 +99,9 @@ function renderMap(key, phase2, SP, Gover) {
   em.forEach(f => f(c));
   const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgba(th.fog, .3)); g.addColorStop(.4, rgba(th.fog, 0)); c.fillStyle = g; c.fillRect(0, 0, W, H);
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (G[y][x] === "g") steamPts.push([x * TS + 8, y * TS + 8]);
-  return { C, W, H, G, M, steam: steamPts, rain: th.rain ? mkRain(W, H, M.seed + 7) : null };
+  const weather = th.weather || (th.rain ? "rain" : null);
+  if (weather === "smog") { c.fillStyle = rgba(th.fog || "#3a4a2a", .22); c.fillRect(0, 0, W, H); }
+  return { C, W, H, G, M, steam: steamPts, weather, rain: weather && weather !== "smog" && weather !== "clear" ? mkRain(W, H, M.seed + 7) : null };
 }
 
 function sightline(c, G, ox, oy, a0, a1, own) {

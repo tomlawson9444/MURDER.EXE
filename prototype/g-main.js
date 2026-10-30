@@ -14,10 +14,10 @@
     G.banner = { txt: mapName() + " · SURVIVE TO 100", col: COL.cyan, life: 2.4 };
     spawnNests();
   }
-  function reset(key) { Object.assign(G, { p: null, runScrip: 0, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : 0 }); enterDistrict(key); }
+  function reset(key) { Object.assign(G, { p: null, runScrip: 0, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : /^x\d+$/.test(key) ? 2 : 0 }); enterDistrict(key); }
   function music() { AU.setOC(false); AU.start(); AU.setHeat(Math.min(5, G.heat + 2)); setTimeout(() => AU.ambience(D().amb), 60); }
-  function start(key, sameSeed) { G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
-  function breach() { G.heatBase = Math.min(2, G.heat); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
+  function start(key, sameSeed) { if (key === "endless") key = "x3"; G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } resetEndless(); reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
+  function breach() { const next = getDist(D().next); G.heatBase = Math.min(4, Math.min(2, G.heat) + Math.floor(Math.max(0, next.n - 2) / 2)); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
   function cashOut() { persist(); AU.stop(); AU.ambience("off"); G.mode = "title"; reset(DORDER[G.sel || 0]); }
   const shopActions = {
     jackIn: () => { persist(); if (G.shop.from === "clear") breach(); else start(DORDER[G.sel || 0]); },
@@ -27,13 +27,13 @@
     if (G.mode === "play" || G.mode === "shop" || G.mode === "intro") G.menuMode = null; // menus always reopen on their first option
     const wantStart = hit("lmb") || hit("r") || hit(" ");
     if (G.mode === "title") {
-      const n = G.unlocked || 1; if (hit("arrowleft") || hit("a")) G.sel = Math.max(0, (G.sel || 0) - 1); if (hit("arrowright") || hit("d")) G.sel = Math.min(n - 1, (G.sel || 0) + 1);
+      const n = Math.min(DORDER.length, G.unlocked || 1); if (hit("arrowleft") || hit("a")) G.sel = Math.max(0, (G.sel || 0) - 1); if (hit("arrowright") || hit("d")) G.sel = Math.min(n - 1, (G.sel || 0) + 1);
       const mapLabel = SAVE.mapMode === "gen" ? (G.queuedSeed != null ? "MAP: SEED " + PG.seedName(G.queuedSeed) : "MAP: GENERATED · NEW EVERY RUN") : "MAP: CLASSIC";
       G.menu = layoutMenu([{ label: "JACK IN", act: () => start(DORDER[G.sel || 0]) }, { label: "MAGPIE'S · CHROME & IRON", col: COL.magenta, act: () => openShop("title") },
         { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } }], 190, 11); runMenu(G.menu); return; }
     if (G.mode === "shop") { updateShop(rdt, shopActions); return; }
     if (G.mode === "dead") { G.deadT += rdt; G.menu = null;
-      if (G.deadT > .8) { const regear = () => { G.sel = DORDER.indexOf(G.startDistrict); openShop("title"); };
+      if (G.deadT > .8) { const regear = () => { G.sel = DORDER.indexOf(/^x\d+$/.test(G.startDistrict) ? "endless" : G.startDistrict); openShop("title"); };
         const retrySame = () => start(G.startDistrict, true);
         if (hit("r")) { start(G.startDistrict); } else if (hit("escape")) { regear(); return; }
         else { G.menu = layoutMenu([{ label: G.mapKey === "run" ? "REBOOT · NEW MAP" : "REBOOT", act: () => start(G.startDistrict) }].concat(G.mapKey === "run" ? [{ label: "RETRY SAME MAP", act: retrySame }] : [], [{ label: "MAGPIE'S · RE-GEAR", col: COL.magenta, act: regear }, { label: "QUIT TO TITLE", col: COL.dim, act: cashOut }]), 170); runMenu(G.menu); } } }
@@ -58,7 +58,7 @@
     [G.blasts, G.zaps, G.tracers, G.pings].forEach(a => a.forEach(o => o.life -= rdt)); G.blasts = G.blasts.filter(o => o.life > 0); G.zaps = G.zaps.filter(o => o.life > 0); G.tracers = G.tracers.filter(o => o.life > 0); G.pings = G.pings.filter(o => o.life > 0);
     if (G.banner) { G.banner.life -= rdt; if (G.banner.life <= 0) G.banner = null; }
     G.shake = Math.max(0, G.shake - rdt * 20); G.flash -= rdt; if (G.kick) G.kick.t -= rdt;
-    if (G.dirty) { G.base = renderMap(G.district, false, SP, G.grid); G.dirty = false; }
+    if (G.dirty) { G.base = renderMap(G.mapKey, false, SP, G.grid); G.dirty = false; }
   }
   function draw(t) {
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";

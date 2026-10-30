@@ -4,12 +4,24 @@ const DIST = {
   market: { n: 1, name: "RAIN MARKET", code: "D-01", amb: "market", next: "rookery",
     pool: [["shrike", 0, 3], ["corvid", 0, 2], ["rook", 1, 3], ["carrion", 2, 2], ["bulwark", 3, 1], ["jackdaw", 2, 1]],
     boss: "blackwing", bossName: "BLACKWING", bossLine: "WEAK POINT · THRUSTERS AFTER LANDING", bossTip: "WATCH THE SHADOW. MOVE WHEN IT LOCKS.", phaseTxt: "TRAM LINE LIVE" },
-  rookery: { n: 2, name: "CHROME ROOKERY", code: "D-02", amb: "rookery", next: null,
+  rookery: { n: 2, name: "CHROME ROOKERY", code: "D-02", amb: "rookery", next: "x3",
     pool: [["corvid", 0, 4], ["shrike", 0, 2], ["rook", 0, 2], ["hexer", 1, 2], ["jackdaw", 1, 1], ["carrion", 2, 2], ["bulwark", 3, 1]],
     boss: "augur", bossName: "THE AUGUR", bossLine: "ONLY THE REAL ONE CASTS A SHADOW", bossTip: "HACK ANY COPY TO REVEAL IT. FAKES BITE BACK.", phaseTxt: "NORTH BRIDGE FAILING" },
 };
-const DORDER = ["market", "rookery"];
-const D = () => DIST[G.district];
+// Title-screen entry for the endless chain. The real districts are x3, x4, x5… built on demand from the run seed.
+DIST.endless = { n: 3, name: "ENDLESS SPRAWL", code: "D-03+" };
+const DORDER = ["market", "rookery", "endless"];
+const BOSSES = { blackwing: { bossName: "BLACKWING", bossLine: "WEAK POINT · THRUSTERS AFTER LANDING", bossTip: "WATCH THE SHADOW. MOVE WHEN IT LOCKS." },
+  augur: { bossName: "THE AUGUR", bossLine: "ONLY THE REAL ONE CASTS A SHADOW", bossTip: "HACK ANY COPY TO REVEAL IT. FAKES BITE BACK." } };
+// Endless district at a given depth: a generated style and map from the run seed, every enemy type, alternating bosses.
+function getDist(key) {
+  if (DIST[key]) return DIST[key];
+  const depth = +key.slice(1), e = PG.endless(G.runSeed || 0, depth), boss = depth % 2 ? "blackwing" : "augur";
+  return (DIST[key] = Object.assign({ n: depth, name: e.style.name, code: "D-" + String(depth).padStart(2, "0"), amb: e.style.amb, next: "x" + (depth + 1), endless: e, boss, phaseTxt: "",
+    pool: [["shrike", 0, 3], ["corvid", 0, 3], ["rook", 0, 3], ["carrion", 1, 2], ["hexer", 1, 2], ["jackdaw", 1, 1], ["bulwark", 2, 2]] }, BOSSES[boss]));
+}
+function resetEndless() { Object.keys(DIST).forEach(k => { if (/^x\d+$/.test(k)) delete DIST[k]; }); }
+const D = () => getDist(G.district);
 const dk = () => G.kills - G.dStart;
 const BOSSY = new Set(["blackwing", "augur", "holo", "nest"]);
 const FLYING = new Set(["corvid", "hexer", "augur", "holo", "nest", "blackwing"]);
@@ -17,6 +29,7 @@ const FLYING = new Set(["corvid", "hexer", "augur", "holo", "nest", "blackwing"]
 function perchSpot() { const g = groups(G.grid).find(x => x[0] === "S"); if (!g) return null; const [, x, y, w] = g; return { x: (x + w / 2) * TS, y: (y + 1) * TS + 6 }; }
 // Generated maps are built per district from the run seed; classic maps use the hand-made layouts.
 function chooseMap(key) {
+  if (/^x\d+$/.test(key)) { const e = getDist(key).endless; PG.generate(e.style, e.seed, "run"); return "run"; }
   if (SAVE.mapMode === "gen" && G.runSeed != null) { PG.generate(key, G.runSeed, "run"); return "run"; }
   return key;
 }
@@ -45,7 +58,7 @@ function updateTrace(dt) {
 
 /* Rookery wind: gusts across the chasm push bullets downward. */
 function updateWind(dt) {
-  if (G.district !== "rookery") return; const w = G.wind || (G.wind = { on: false, t: 5 }); w.t -= dt;
+  const M = MAPS[G.mapKey]; if (!(G.district === "rookery" || (M && M.wind))) return; const w = G.wind || (G.wind = { on: false, t: 5 }); w.t -= dt;
   if (w.t <= 0) { w.on = !w.on; w.t = w.on ? 2.5 : rnd(4, 7); if (w.on) AU.sfx("vent"); }
   if (!w.on) return;
   for (const b of G.bul) if (tileOf(b.x, b.y) === "o") b.vy += 300 * dt; // gusts only push bullets over open drops

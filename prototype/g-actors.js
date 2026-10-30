@@ -29,7 +29,7 @@ function killEnemy(e, how) {
   earn(scripFor(e)); track("kill", e.type); if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
   fx(e.x, e.y - (e.alt || 0) - 8, 16, [COL.magenta, "#2a2440", "#f0ebf6"], 70, .6); pop(e.x, e.y - 26 - (e.alt || 0), "+" + pts);
   AU.sfx("kill", panOf(e.x)); rumble(.4, .3, 90); if (Math.random() < .5) AU.sfx("caw", panOf(e.x)); G.hitstop = .035;
-  if (e.type === D().boss) { for (const h of G.en) if (h.type === "holo") h.alive = false; G.bul = []; G.mode = "clear"; G.clearT = 0; earn(200); track("clear", G.district); if (D().next) saveUnlock(DIST[D().next].n); AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best; persist(); }
+  if (e.type === D().boss) { for (const h of G.en) if (h.type === "holo") h.alive = false; G.bul = []; G.mode = "clear"; G.clearT = 0; earn(200); track("clear", G.district); if (D().next) saveUnlock(getDist(D().next).n); AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best; persist(); }
 }
 
 function explode(x, y, r, src, safe) {
