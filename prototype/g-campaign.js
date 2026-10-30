@@ -367,6 +367,31 @@ function hurtVane(e) {
   doors().filter(dd => Math.hypot(dd.x - G.p.x, dd.y - G.p.y) > 90).slice(0, 2).forEach(dd => { G.pending.push({ type: "warden", x: dd.x, y: dd.y, t: .9, door: dd }); AU.sfx("door", panOf(dd.x)); });
 }
 
+/* ---- Objective props: terminals, racks, the cargo trolley, Magpie's stall and datashards ---- */
+DEFS.t_floodgate = { w: 18, h: 24, parts: [ R("rust", 0, 19, 18, 3), R("chrome", 0, 19, 18, 1), R("rust", 3, 9, 12, 12), R("armor", 4, 10, 10, 4),
+  E("chrome", 9, 6, 6, 5.5), E("rust", 9, 6, 3.5, 3), Px("chrome", [[9, 1], [9, 11], [4, 6], [14, 6], [6, 3], [12, 3], [6, 9], [12, 9]]), E("gun", 9, 6, 1.5, 1.5), R("gun", 5, 15, 8, 4) ] };
+DEFS.t_beacon = { w: 18, h: 26, parts: [ R("armor", 3, 20, 12, 5), R("chrome", 3, 20, 12, 1), R("armor", 8, 5, 3, 16), L("chrome", 9, 8, 4, 20), L("chrome", 9, 8, 14, 20),
+  Pl("chrome", [[2, 7], [9, 2], [16, 7], [9, 9]]), Pl("gun", [[5, 6], [9, 4], [13, 6], [9, 8]]), E("redE", 9, 1.5, 1.5, 1.5), R("gun", 5, 22, 8, 2) ] };
+DEFS.t_relay = { w: 18, h: 26, parts: [ R("armor", 2, 21, 14, 4), R("chrome", 2, 21, 14, 1), R("armor", 7, 8, 4, 14), Pl("chrome", [[1, 2], [7, 8], [6, 11], [0, 5]]), Pl("chrome", [[17, 2], [11, 8], [12, 11], [18, 5]]),
+  Px("chrome", [[8, 11], [10, 11], [8, 14], [10, 14], [8, 17], [10, 17]]), R("gun", 5, 23, 8, 1) ] };
+DEFS.t_furnace = { w: 24, h: 26, parts: [ R("rust", 16, 0, 5, 8), R("gun", 16, 0, 5, 1), R("rust", 1, 6, 22, 19), R("rust", 1, 6, 22, 2), R("armor", 4, 10, 16, 11), R("ambE", 6, 16, 12, 4),
+  R("gun", 5, 12, 14, 1), R("gun", 5, 15, 14, 1), R("gun", 5, 18, 14, 1), R("hazard", 1, 23, 22, 2), Px("gun", [[3, 23], [7, 24], [11, 23], [15, 24], [19, 23]]) ] };
+DEFS.t_node = { w: 20, h: 22, parts: [ Pl("armor", [[1, 8], [19, 8], [19, 21], [1, 21]]), Pl("chrome", [[3, 2], [17, 2], [19, 8], [1, 8]]), R("gun", 4, 3, 12, 4),
+  Px("chrome", [[4, 11], [7, 11], [10, 11], [13, 11], [16, 11], [5, 14], [8, 14], [11, 14], [14, 14]]), R("gun", 3, 18, 14, 2) ] };
+DEFS.rack = { w: 20, h: 30, parts: [ R("gun", 1, 0, 18, 28), R("armor", 1, 0, 18, 2), R("chrome", 1, 0, 18, 1), L("armor", 1, 0, 1, 27), L("armor", 18, 0, 18, 27),
+  ...[0, 1, 2, 3, 4, 5].map(i => R("armor", 3, 4 + i * 4, 14, 3)), ...[0, 1, 2, 3, 4, 5].map(i => R("chrome", 12, 5 + i * 4, 4, 1)), R("chrome", 2, 28, 3, 2), R("chrome", 15, 28, 3, 2) ] };
+DEFS.trolley = { w: 36, h: 8, parts: [ R("hazard", 1, 1, 34, 3), Px("gun", [[3, 1], [7, 2], [11, 1], [15, 2], [19, 1], [23, 2], [27, 1], [31, 2]]), R("armor", 1, 4, 34, 1),
+  E("boot", 6, 6, 2.5, 2.5), E("boot", 30, 6, 2.5, 2.5), E("chrome", 6, 6, .8, .8), E("chrome", 30, 6, .8, .8), R("chrome", 17, 0, 2, 1) ] };
+DEFS.stall = { w: 40, h: 38, parts: [
+  R("chrome", 3, 6, 1, 26), R("chrome", 36, 6, 1, 26),
+  ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => Pl(i % 2 ? "coat" : "magE", [[i * 4, 2], [i * 4 + 4, 2], [i * 4 + 4, 8], [i * 4 + 2, 10], [i * 4, 8]])),
+  R("armor", 0, 0, 40, 2), R("chrome", 0, 0, 40, 1),
+  R("rust", 4, 19, 6, 5), R("chrome", 11, 17, 7, 7), R("hazard", 19, 20, 5, 4), R("armor", 25, 18, 7, 6), R("gun", 12, 19, 5, 2), Px("cyanE", [[27, 20], [29, 20]]),
+  R("coat", 2, 24, 36, 12), R("coatIn", 2, 24, 36, 2), R("armor", 2, 34, 36, 2), Px("magE", [[6, 29], [10, 29], [14, 29], [18, 29], [22, 29], [26, 29], [30, 29], [34, 29]]) ] };
+DEFS.shard = { w: 9, h: 15, parts: [ Pl("magE", [[4, 0], [8, 6], [6, 11], [4, 14], [2, 11], [0, 6]]), L("bone", 4, 1, 4, 14), Px("cyanE", [[4, 3], [4, 6]]) ] };
+const TERMINAL = { FLOODGATE: "t_floodgate", BEACON: "t_beacon", RELAY: "t_relay", FURNACE: "t_furnace", NODE: "t_node" };
+function propSprites() { ["t_floodgate", "t_beacon", "t_relay", "t_furnace", "t_node", "rack", "trolley", "stall", "shard"].forEach(k => { if (!SP[k]) SP[k] = sprite(DEFS[k], { rimR: COL.cyan, rimL: "#7f74c9" }); }); }
+
 /* ---- Rising water ---- */
 function floodCandidates() {
   const g = G.grid, out = [], near = (px, py) => (G.gates || []).some(q => Math.hypot(q.x - px, q.y - py) < 28) || (G.shard && Math.hypot(G.shard.x - px, G.shard.y - py) < 20);
@@ -426,7 +451,7 @@ function guardSpots(n, minGap, avoidTraffic) {
 }
 // The cargo crane's route: the longest walkable path from the west side of the yard to the east side.
 function cargoPath() {
-  buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0, sp = floorSpots(0).filter(reach);
+  buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0, all = floorSpots(0).filter(reach), low = all.filter(q => q.y > 84), sp = low.length > 20 ? low : all;
   const a = sp.reduce((m, q) => q.x < m.x ? q : m, sp[0]), b = sp.reduce((m, q) => q.x > m.x ? q : m, sp[0]);
   const W = MW, prev = new Int32Array(W * MH).fill(-1), q = [], sx = Math.floor(a.x / TS), sy = Math.floor(a.y / TS), ex = Math.floor(b.x / TS), ey = Math.floor(b.y / TS);
   const ok = (x, y) => { const ch = G.grid.at(x, y); return ch !== null && !WALK_BLOCK.has(ch) && ch !== "o"; };
@@ -514,7 +539,7 @@ function startChapter(n, retry) {
   if (!retry) undoChapterFx(n);
   G.camp = { n, ch, t: 0, fired: new Set(), won: false, winT: 0, kills0: 0 }; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; G.runSeed = null; G.queuedSeed = null;
   const hz = HAZARDS[ch.district] || [null, null];
-  G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.lull = false; G.zone = null; G.exit = null; storySprites(); G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
+  G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.lull = false; G.zone = null; G.exit = null; storySprites(); propSprites(); G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
   AU.init(); BANK.attach(); RUN.reset(ch.district);
   G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; G.lastHeat = G.heat;
   G.p.shield = SAVE.camp.diff === "story" ? 2 : 0;
@@ -629,34 +654,34 @@ function campDrawFloor(c, t) {
   if (G.gates) G.gates.forEach(q => { if (!q.done && !gateActive(q)) return; const col = q.done ? "#9dff4a" : COL.cyan; c.save(); c.translate(q.x, q.y); c.scale(1, .62); c.strokeStyle = rgba(col, .35); c.beginPath(); c.arc(0, 0, 18, 0, TAU); c.stroke();
     if (q.prog > 0) { c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 18, -Math.PI / 2, -Math.PI / 2 + TAU * q.prog); c.stroke(); } c.restore(); });
   if (G.shard) { const b = Math.sin(t * .005) * 2, x = G.shard.x, y = G.shard.y - 8 + b; c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y, 14, COL.magenta, .5 + .2 * Math.sin(t * .01)); c.restore();
-    c.fillStyle = COL.magenta; poly(c, [[x, y - 5], [x + 3, y], [x, y + 5], [x - 3, y]]); c.fill(); c.fillStyle = "#ffffff"; c.fillRect(Math.round(x), Math.round(y - 3), 1, 6); }
+    c.fillStyle = "rgba(0,0,0,.4)"; c.beginPath(); c.ellipse(x, G.shard.y + 2, 4, 1.5, 0, 0, TAU); c.fill(); drawSpr(c, SP.shard, x - SP.shard.w / 2, y - SP.shard.h / 2); }
 }
 function campDrawObjects(c, t) {
   for (const S of G.stalls || []) { const x = Math.round(S.x), y = Math.round(S.y), sh = S.hurtT > 0 ? Math.round(rnd(-1, 1)) : 0;
     if (S.kind === "stall") {
-      const mg = portrait("magpieBody"); if (mg) drawSpr(c, mg, x + 4 + sh, y - mg.h - 6);
-      c.fillStyle = "#1a1424"; c.fillRect(x - 15 + sh, y - 12, 30, 12); c.fillStyle = "#3a2a46"; c.fillRect(x - 15 + sh, y - 13, 30, 2);
-      for (let i = 0; i < 4; i++) { c.fillStyle = ["#8f5340", "#625d7d", "#c08d1a", "#3b374f"][i]; c.fillRect(x - 12 + i * 7 + sh, y - 18, 5, 5); }
-      c.fillStyle = "#302c41"; c.fillRect(x - 15 + sh, y - 30, 1, 18); c.fillRect(x + 14 + sh, y - 30, 1, 18);
-      for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? "#16121f" : COL.magenta; c.fillRect(x - 16 + i * 4 + sh, y - 32, 4, 4); }
-      c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 28, 16, COL.magenta, .25); c.restore();
-    } else { // server rack, on its own or riding the cargo crane
-      if (S.kind === "cargo") { c.fillStyle = "#3b374f"; c.fillRect(x - 14, y - 2, 28, 3); c.fillStyle = "#9090ad"; c.fillRect(x, 6, 1, y - 30); c.fillRect(x - 3, y - 31, 7, 2); }
-      c.fillStyle = "#14121f"; c.fillRect(x - 9 + sh, y - 28, 18, 26); c.fillStyle = "#2b2840"; c.fillRect(x - 9 + sh, y - 28, 18, 2);
+      const mg = portrait("magpieBody"); if (mg) drawSpr(c, mg, x + 6 + sh, y - mg.h - 8);
+      shadowUnder(c, x - 20, y - 36, SP.stall); drawSpr(c, SP.stall, x - 20 + sh, y - 36);
+      c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 30, 18, COL.magenta, .22); c.restore();
+    } else { // server rack, on its own or riding the cargo crane's trolley
+      if (S.kind === "cargo") { c.fillStyle = "#9090ad"; c.fillRect(x, 6, 1, y - 34); c.fillStyle = "#e2e2f1"; c.fillRect(x - 3, y - 35, 7, 2); drawSpr(c, SP.trolley, x - 18, y - 6); }
+      else shadowUnder(c, x - 10, y - 30, SP.rack);
+      drawSpr(c, SP.rack, x - 10 + sh, y - 30 - (S.kind === "cargo" ? 4 : 0));
       if (S.dead) { txt(c, "DARK", x, y - 40, rgba(COL.red, .8), 8, "center"); continue; }
       if (S.id) txt(c, "R" + S.id, x, y - 48, S.alarmT > 0 && Math.floor(t / 120) % 2 ? COL.red : rgba(COL.ink, .7), 8, "center");
-      if (S.alarmT > 0) { c.strokeStyle = rgba(COL.red, .4 + .5 * (Math.floor(t / 120) % 2)); c.strokeRect(x - 11.5, y - 30.5, 23, 30); }
+      if (S.alarmT > 0) { c.strokeStyle = rgba(COL.red, .4 + .5 * (Math.floor(t / 120) % 2)); c.strokeRect(x - 11.5, y - 31.5, 23, 31); }
       if (S.fixing) txt(c, "REBOOTING", x, y - 58, rgba(COL.cyan, .7 + .3 * Math.sin(t * .02)), 8, "center");
       else if (S.hp < S.max * .6 && Math.hypot(G.p.x - S.x, G.p.y - S.y) > 22) txt(c, "STAND HERE TO REBOOT", x, y - 58, rgba(COL.dim, .7), 8, "center");
-      for (let i = 0; i < 5; i++) { c.fillStyle = (Math.floor(t / 200) + i) % 3 ? "#2be4ff" : "#1a5a6a"; c.fillRect(x - 6 + sh, y - 24 + i * 4, 3, 1); c.fillStyle = "#2a2640"; c.fillRect(x - 1 + sh, y - 24 + i * 4, 7, 2); }
+      const ry = y - 26 - (S.kind === "cargo" ? 4 : 0); for (let i = 0; i < 6; i++) { c.fillStyle = (Math.floor(t / 200) + i) % 3 ? "#2be4ff" : "#1a5a6a"; c.fillRect(x - 6 + sh, ry + i * 4, 2, 1); }
       c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 14, 14, COL.cyan, .2); c.restore();
       if (S.kind === "cargo" && !S.moving && S.prog < 1) txt(c, S.contested ? "BLOCKED" : "STAY CLOSE", x, y - 46, rgba(S.contested ? COL.red : COL.cyan, .7 + .3 * Math.sin(t * .01)), 8, "center");
     }
     c.fillStyle = "#2a2640"; c.fillRect(x - 15, y - 38, 30, 2); c.fillStyle = S.hp / S.max < .3 && Math.floor(t / 120) % 2 ? "#ffffff" : COL.magenta; c.fillRect(x - 15, y - 38, Math.round(30 * S.hp / S.max), 2); }
   if (G.gates) G.gates.forEach(q => { const x = Math.round(q.x), y = Math.round(q.y), live = gateActive(q), col = q.done ? "#9dff4a" : live ? COL.cyan : "#3a3456", gg = gateGoal();
-    c.fillStyle = "#16121f"; c.fillRect(x - 5, y - 18, 10, 18); c.fillStyle = "#302c41"; c.fillRect(x - 5, y - 18, 10, 1); c.fillStyle = col; c.fillRect(x - 3, y - 15, 6, 4);
-    c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 13, 10, col, .5); c.restore();
-    if (live) txt(c, Math.hypot(G.p.x - x, G.p.y - y) < 18 ? gg.verb : gg.noun, x, y - 30, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); });
+    const ts = SP[TERMINAL[gg.noun] || "t_floodgate"], top = y - ts.h + 2; shadowUnder(c, x - ts.w / 2, top, ts);
+    if (!live && !q.done) c.globalAlpha = .55; drawSpr(c, ts, x - ts.w / 2, top); c.globalAlpha = 1;
+    c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, top + 4, live ? 10 + Math.sin(t * .01) * 2 : 7, col, (live ? .5 : q.done ? .4 : .15) * (gg.noun === "FURNACE" ? .5 : 1)); c.restore();
+    if (q.done) txt(c, "OK", x, top - 10, "#9dff4a", 8, "center");
+    if (live) txt(c, Math.hypot(G.p.x - x, G.p.y - y) < 18 ? gg.verb : gg.noun, x, top - 12, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); });
   for (const e of G.en) { if (!e.alive) continue;
     if (e.type === "warden" && e.state === "aim") { c.save(); c.globalAlpha = .55 + .3 * Math.sin(t * .05); pline(c, e.x + e.face * 10, e.y - BODY - 2, e.x + e.face * 10 + Math.cos(e.la) * 300, e.y - BODY - 2 + Math.sin(e.la) * 300, COL.amber); c.restore(); }
     if (e.type === "scarecrow" && e.state === "call") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 28, 18, COL.magenta, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "CALLING", e.x, e.y - 60, COL.magenta, 8, "center"); }
