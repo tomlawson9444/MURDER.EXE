@@ -29,6 +29,7 @@ const FLYING = new Set(["corvid", "hexer", "augur", "holo", "nest", "blackwing"]
 function perchSpot() { const g = groups(G.grid).find(x => x[0] === "S"); if (!g) return null; const [, x, y, w] = g; return { x: (x + w / 2) * TS, y: (y + 1) * TS + 6 }; }
 // Generated maps are built per district from the run seed; classic maps use the hand-made layouts.
 function chooseMap(key) {
+  if (G.chapMap) { const m = G.chapMap; if (m.key) return m.key; PG.generate(canalStyle(m), m.seed, "run"); return "run"; }
   if (/^x\d+$/.test(key)) { const e = getDist(key).endless; PG.generate(e.style, e.seed, "run"); return "run"; }
   if (SAVE.mapMode === "gen" && G.runSeed != null) { PG.generate(key, G.runSeed, "run"); return "run"; }
   return key;
@@ -42,7 +43,7 @@ function floorSpots(minFromPlayer) {
   return out;
 }
 // Enemies that a hit can't hurt right now.
-function armored(e) { return (e.type === "blackwing" && e.state !== "vuln") || (e.type === "augur" && e.state === "appear") || (e.type === "nest" && e.state !== "open"); }
+function armored(e) { return (e.type === "blackwing" && e.state !== "vuln") || (e.type === "augur" && e.state === "appear") || (e.type === "nest" && e.state !== "open") || (e.type === "ferryman" && e.state !== "reel" && e.state !== "stuck"); }
 
 /* Trace: stand still near the same spot for 4s and the Murder sends a flusher to the nearest door. */
 function updateTrace(dt) {

@@ -4,8 +4,9 @@ let SP = {}, SPF = {};
 function flipSpr(s) { const cv = mk(s.w, s.h), c = cv.getContext("2d"); c.translate(s.w, 0); c.scale(-1, 1); c.drawImage(s.cv, 0, 0); const gc = mk(s.gc.width, s.gc.height), g = gc.getContext("2d"); g.translate(gc.width, 0); g.scale(-1, 1); g.drawImage(s.gc, 0, 0); return { cv, gc, G: s.G, w: s.w, h: s.h }; }
 function buildSprites() {
   const rim = { rimR: COL.cyan, rimL: "#7f74c9" }, er = { rimL: COL.magenta, rimR: "#6f66b0" };
-  ["corvid", "shrike", "rook", "jackdaw", "carrion", "bulwark", "hexer", "nest", "blackwing", "augur"].forEach(k => SP[k] = sprite(DEFS[k], er));
+  ["corvid", "shrike", "rook", "jackdaw", "carrion", "bulwark", "hexer", "nest", "blackwing", "augur", "ferryman"].forEach(k => SP[k] = sprite(DEFS[k], er));
   for (const k in SP) SPF[k] = flipSpr(SP[k]);
+  SP.corvus = sprite(DEFS.corvus, { rimL: COL.red, rimR: COL.magenta });
   applyLook(); // the player is drawn from the character's saved look (g-char.js)
 }
 const sprOf = (k, face) => face < 0 ? SPF[k] : SP[k];
@@ -24,6 +25,7 @@ function drawWorld(c, t) {
   if (G.collapse) { const on = Math.floor(t / 110) % 2, ts = G.collapse.tiles; c.fillStyle = rgba(COL.red, on ? .45 : .15); ts.forEach(([x, y], i) => { c.fillRect(x * TS, y * TS, TS, TS); pline(c, x * TS + 6, y * TS + 1, x * TS + 2 + (i % 2) * 8, y * TS + 15, "#05040a"); });
     const mx = ts.reduce((s, q) => s + q[0], 0) / ts.length, my = ts.reduce((s, q) => s + q[1], 0) / ts.length; txt(c, "BRIDGE", mx * TS + 8, my * TS + 4, rgba("#ffffff", on ? 1 : .5), 8, "center"); }
   if (G.wind && G.wind.on && G.gapTiles && G.gapTiles.length) txt(c, "WIND", G.gapTiles[0][0] * TS + 24, G.gapTiles[0][1] * TS + 4, rgba("#b9c2ff", .6 + .4 * Math.sin(t * .02)), 8, "center");
+  campDrawFloor(c, t);
   for (const g of G.pings) { const k = 1 - g.life; c.strokeStyle = rgba(COL.magenta, g.life); c.beginPath(); c.ellipse(g.x, g.y, 10 + k * 80, 6 + k * 50, 0, 0, TAU); c.stroke(); }
   for (const e of G.en) if (e.alive) {
     if (e.type === "hexer" && e.state === "cast") { c.save(); c.globalAlpha = .4 + .4 * Math.sin(t * .06); pline(c, e.x, e.y - 14, p.x, p.y - BODY, COL.magenta, 3); c.restore(); c.strokeStyle = rgba(COL.magenta, .8); c.beginPath(); c.arc(e.x, e.y - 16 - e.alt, 12 + (.8 - e.t) * 10, 0, TAU); c.stroke(); }
@@ -50,6 +52,7 @@ function drawWorld(c, t) {
     if (e.type === "blackwing" && e.state === "vuln") { c.save(); c.globalCompositeOperation = "lighter"; const on = .6 + .4 * Math.sin(t * .05); glow(c, e.x - 8, y + 33, 10, COL.amber, on); glow(c, e.x + 9, y + 33, 10, COL.amber, on); c.restore(); }
     if (e.type === "bulwark") { c.strokeStyle = rgba(COL.magenta, .7); c.beginPath(); c.arc(e.x, e.y - 10, 16, e.dir - 1.1, e.dir + 1.1); c.stroke(); }
   }
+  campDrawObjects(c, t);
   for (const e of G.en) if (e.alive && e.type === "blackwing" && e.state === "rise") { c.globalAlpha = .7; drawSpr(c, sprOf("blackwing", e.face), e.x - 25, e.y - 48 - e.alt); c.globalAlpha = 1; }
   if (G.tram && G.tram.state === "run") { const em = []; OBJ.T(c, Math.round(G.tram.x), G.tram.row * TS, 288, TS, { em, light: () => {} }); em.forEach(f => f(c)); }
   // bullets
@@ -81,9 +84,10 @@ function drawHUD(c, t) {
   const p = G.p, W = GW, H = GH;
   if (G.hexed > 0) { c.save(); c.translate(Math.round(rnd(-2, 2)), Math.round(rnd(-1, 1))); }
   const nm = mapName(); c.font = "8px Silkscreen"; const pw = Math.max(110, c.measureText(nm).width + 16);
-  panel(c, 6, 6, pw, 24, "#3a3456"); txt(c, nm, 12, 9, COL.ink); txt(c, D().code + (G.runSeed != null && G.mapKey === "run" ? " · " + PG.seedName(G.runSeed) : "") + (G.phase2 ? " · PHASE 2" : ""), 12, 19, G.phase2 ? COL.red : COL.dim);
+  panel(c, 6, 6, pw, 24, "#3a3456"); txt(c, nm, 12, 9, COL.ink); if (G.camp) txt(c, chLabel(G.camp.n) + " · " + G.camp.ch.title, 12, 19, COL.amber); else txt(c, D().code + (G.runSeed != null && G.mapKey === "run" ? " · " + PG.seedName(G.runSeed) : "") + (G.phase2 ? " · PHASE 2" : ""), 12, 19, G.phase2 ? COL.red : COL.dim);
+  if (G.camp) campHudCenter(c, t); else {
   panel(c, W / 2 - 54, 6, 108, 24, "#3a3456"); txt(c, G.boss ? D().bossName : `${String(Math.min(dk(), 100)).padStart(3, "0")}/100`, W / 2, 9, G.boss ? COL.magenta : COL.ink, 8, "center");
-  for (let i = 0; i < 20; i++) { c.fillStyle = i < Math.min(dk(), 100) / 5 ? COL.magenta : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); }
+  for (let i = 0; i < 20; i++) { c.fillStyle = i < Math.min(dk(), 100) / 5 ? COL.magenta : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); } }
   panel(c, W - 108, 6, 102, 24, "#3a3456"); txt(c, String(G.score).padStart(7, "0"), W - 100, 9, COL.ink); txt(c, "x" + G.mult.toFixed(1), W - 12, 9, COL.cyan, 8, "right");
   for (let i = 0; i < 5; i++) { c.fillStyle = i < G.heat ? COL.amber : "#2a2640"; c.fillRect(W - 100 + i * 7, 21, 5, 3); } txt(c, "HEAT", W - 12, 19, COL.dim, 8, "right");
   txt(c, "+" + (G.runScrip || 0) + " SCRIP", W - 8, 34, rgba(COL.amber, .85), 8, "right");
@@ -104,6 +108,7 @@ function drawHUD(c, t) {
   if (!G.oc && p.ram >= 3 && !(G.hexed > 0)) { const tg = hackTarget(); if (tg) { reticle(c, tg.x, tg.y, tg.r + Math.round(Math.sin(t * .012)), COL.magenta); txt(c, lab().hackShort, tg.x + tg.r + 3, tg.y + tg.r - 4, COL.magenta); } }
   if (!G.oc) { reticle(c, mouse.x, mouse.y, 5, COL.cyan); c.fillStyle = COL.cyan; c.fillRect(Math.round(mouse.x), Math.round(mouse.y), 1, 1); }
   for (const q of G.texts) txt(c, q.txt, q.x, q.y, rgba(q.col.startsWith("#") ? q.col : "#e9e6f5", Math.min(1, q.life * 2)), 8, "center");
+  drawRadio(c, t);
   if (G.banner) { const b = G.banner; c.globalAlpha = Math.min(1, b.life * 2); c.font = "8px Silkscreen"; const bw = Math.max(160, c.measureText(b.txt).width + 24); panel(c, W / 2 - bw / 2, 84, bw, 22, b.col); txt(c, b.txt, W / 2, 91, b.col, 8, "center"); c.globalAlpha = 1; }
 }
 
@@ -117,7 +122,7 @@ function drawTitle(c, t) {
   c.save(); c.imageSmoothingEnabled = false; c.translate(GW / 2 - s.w, 152 - s.h * 2 + 4); c.scale(2, 2); c.drawImage(s.cv, 0, 0); c.globalCompositeOperation = "lighter"; c.drawImage(s.gc, -s.G, -s.G); c.restore();
   txt(c, SAVE.char.created ? SAVE.char.name + " · " + ORIGIN[SAVE.char.origin].name : "NO OPERATIVE YET", GW / 2, 158, SAVE.char.created ? COL.ink : COL.magenta, 8, "center");
   txt(c, loadoutLine(), GW / 2, 168, rgba(COL.cyan, .75), 8, "center");
-  const k = DIST[DORDER[G.sel || 0]]; txt(c, (G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`, GW / 2, 181, COL.amber, 8, "center");
+  const k = DIST[DORDER[G.sel || 0]]; txt(c, "ARCADE: " + ((G.unlocked || 1) > 1 ? `<  ${k.code} ${k.name}  >` : `${k.code} ${k.name}`), GW / 2, 178, COL.amber, 8, "center");
   drawMenu(c, G.menu, t);
   if (G.titleMsg) txt(c, G.titleMsg.txt, GW / 2, 86, rgba(COL.amber, Math.min(1, G.titleMsg.life * 2)), 8, "center");
   txt(c, (G.best ? "BEST " + String(G.best).padStart(7, "0") + "   ·   " : "") + SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER" : "CONTROLLERS SUPPORTED"), GW / 2, 241, COL.dim, 8, "center");
@@ -138,7 +143,7 @@ function drawIntro(c, t) {
   c.save(); c.globalAlpha = k; for (let i = -10; i < 30; i++) { c.fillStyle = i % 2 ? "#160a1c" : "#0c0712"; poly(c, [[i * 26, 70], [i * 26 + 26, 70], [i * 26 + 26 - 60, 200], [i * 26 - 60, 200]]); c.fill(); }
   c.globalCompositeOperation = "lighter"; glow(c, 120, 140, 70, COL.magenta, .35); c.globalCompositeOperation = "source-over";
   const B = D(); c.save(); c.translate(70, 92); c.scale(2, 2); drawSpr(c, SP[B.boss], 0, 0); c.restore();
-  txt(c, `DISTRICT 0${B.n} · ${B.name} · KILL 100`, 220, 96, COL.magenta);
+  txt(c, G.camp ? `${chLabel(G.camp.n)} · ${B.name}` : `DISTRICT 0${B.n} · ${B.name} · KILL 100`, 220, 96, COL.magenta);
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, B.bossName, 220 + (i === 0 ? -2 : i === 1 ? 2 : 0), 110, col, 24));
   c.font = "8px Silkscreen"; const cw = c.measureText(B.bossLine).width + 8; c.fillStyle = COL.amber; c.fillRect(220, 152, cw, 14); txt(c, B.bossLine, 224, 155, "#120c02");
   txt(c, B.bossTip, 220, 174, COL.dim); c.restore();

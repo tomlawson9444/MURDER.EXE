@@ -8,7 +8,7 @@ Inspired by *Kill the Crows* (5minlab / KRAFTON): every enemy dies to one bullet
 
 | Folder | What it is |
 |---|---|
-| `prototype/` | The playable browser prototype: the Rain Market (boss: BLACKWING), the Chrome Rookery (boss: THE AUGUR), then an endless chain of procedurally styled districts. |
+| `prototype/` | The playable browser prototype: the story campaign (Act 1 of *Nine Nights of Rain*), plus arcade runs through the Rain Market (boss: BLACKWING), the Chrome Rookery (boss: THE AUGUR) and an endless chain of procedurally styled districts. |
 | `design/` | The game plan and art bible: research, key art, logo, sprites, enemy roster, level design, sound board and roadmap. |
 
 Everything is plain HTML and JavaScript with no build step. All art and audio is generated in code at runtime.
@@ -42,9 +42,25 @@ Then open <http://localhost:8000/prototype/>.
 | Magpie's: switch tab | Q / E or Tab | LB / RB | L1 / R1 |
 | Magpie's: move / buy or equip | W / S or ↑ / ↓, Enter or click | D-pad, A | D-pad, ✕ |
 | Magpie's: jack in / back | Space / Esc | Start / B | Options / ○ |
+| Conversations: next line / skip / reply | Enter or click / Esc / 1 to 5 or click | A / B / D-pad and A | ✕ / ○ / D-pad and ✕ |
 | BODYSHOP: tab / change option / done | Q/E, A/D or ←/→, Space (Enter edits the name) | LB/RB, D-pad, Start (A rolls a random name) | L1/R1, D-pad, Options |
 
 Browsers only detect a controller after you press one of its buttons. Rumble works in Chrome and Edge.
+
+## Campaign: Nine Nights of Rain
+
+The story campaign is planned as 30 chapters across 10 districts in five acts. **Act 1, Wet Feathers, is playable now** (chapters 1 to 6, from the Rain Market to the Gutterline Canals). Pick CAMPAIGN on the title screen.
+
+- **Chapters with story objectives:** survive an ambush (Wet Feathers), protect Magpie's stall (Price of Chrome), draw out BLACKWING (Blackwing), survive rising floodwater (Low Water), open three floodgates (Lock and Key) and kill THE FERRYMAN (The Ferryman).
+- **Conversations:** briefings and debriefs with portraits for Director Vane, Magpie, Wren, CORVUS, Blackwing and the Ferryman. Replies come in four styles (Cold, Sharp, Hard, Ask), and your BODYSHOP origin adds its own reply in key scenes. Some choices run on a 10-second timer, and staying silent counts as an answer.
+- **Your name:** the story uses the name you gave your operative in the BODYSHOP.
+- **Trust and Resonance:** Magpie, Wren and Vane remember how you treat them (Dex joins in Act 2), and talking back to CORVUS raises your Resonance. Freeing or abandoning the barge sleepers in chapter 5 changes who helps you afterwards.
+- **Radio chatter:** short lines from your contacts and CORVUS during play, with tutorial tips in the early chapters that match your keyboard or controller.
+- **Gutterline Canals:** a new story district built by the map generator from fixed seeds. Floodwater rises in stages (tiles flash, then go under, and anything standing there sinks), while every door and floodgate is kept reachable.
+- **THE FERRYMAN:** a harpoon boss. He is armoured until he reels his chain back in. Get hooked and he drags you towards him, and towards the water; dash to break the chain.
+- **Datashards and the ARCHIVE:** one hidden shard per chapter unlocks a witness log about the Night of Feathers.
+- **Story difficulty:** two shields soak hits, and a fall into the water puts you back on dry ground. Normal keeps one life.
+- **Replays:** replaying a chapter takes back the trust it gave last time, so you can make different choices. Scrip from conversations is paid once per chapter.
 
 ## Prototype features
 
@@ -75,7 +91,7 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 
 ## Save data
 
-Progress (operative and look, scrip, owned gear and cosmetics, loadout, milestones and best score) is saved in the browser's local storage under `murder-save-v1`. Clearing site data resets it.
+Progress (operative and look, scrip, owned gear and cosmetics, loadout, milestones, best score, and campaign chapters, choices, trust and datashards) is saved in the browser's local storage under `murder-save-v1`. Clearing site data resets it.
 
 ## Code map (`prototype/`)
 
@@ -98,14 +114,18 @@ Progress (operative and look, scrip, owned gear and cosmetics, loadout, mileston
 | `g-shop.js` | MAGPIE'S: the fixer's stall, shop and loadout screen (sidearms, Overclock, implants, style) |
 | `g-char.js` | Character model: look options, cosmetics, origins and starter kits, and the player sprite builder |
 | `g-bodyshop.js` | BODYSHOP: character creation and customisation (LOOK, GEAR, INVENTORY, ORIGIN) |
+| `g-story.js` | The campaign script: chapters, objectives, conversations, radio lines and datashard logs for Act 1 |
+| `g-talk.js` | Conversation screen, reply choices, trust and Resonance, and in-game radio chatter |
+| `g-campaign.js` | Campaign mode: chapter runs and objectives, the Gutterline Canals and floodwater, THE FERRYMAN, the campaign menu, archive and chapter-complete screen |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |
 
 ## Roadmap
 
-1. Unique enemies and bosses per family, so endless districts differ in how they fight as well as how they look.
-2. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
-3. Steam page and a free demo for Steam Next Fest.
+1. Campaign Acts 2 to 5: story chapters in the Chrome Rookery, The Kiln, Saltgate Docks, Datacrypt, The Stacks, Halvorsen Galleria, Spire Zero and The Nest, with their bosses and the three endings.
+2. Unique enemies and bosses per family, so endless districts differ in how they fight as well as how they look.
+3. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
+4. Steam page and a free demo for Steam Next Fest.
 
 The full plan is in `design/index.html`.

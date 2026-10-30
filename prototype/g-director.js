@@ -7,16 +7,18 @@ function doors() {
   return out;
 }
 function pickType() {
-  const opts = D().pool.filter(([k, h]) => G.heat >= h && !(k === "jackdaw" && (!G.perch || G.en.some(e => e.alive && e.type === "jackdaw"))));
+  const opts = ((G.rules && G.rules.pool) || D().pool).filter(([k, h]) => G.heat >= h && !(k === "jackdaw" && (!G.perch || G.en.some(e => e.alive && e.type === "jackdaw"))));
   const tot = opts.reduce((s, o) => s + o[2], 0); let r = Math.random() * tot; for (const o of opts) { r -= o[2]; if (r <= 0) return o[0]; } return "shrike";
 }
 function updateDirector(dt) {
   const alive = G.en.filter(e => e.alive && !BOSSY.has(e.type)).length;
-  G.heat = Math.min(5, G.heatBase + Math.floor(dk() / 15)); G.mult = (1 + G.heat * .5) * (G.p.egoUsed ? .5 : 1);
+  // Campaign chapters set their own Phase 2 and boss kill counts (null means never), and can add Heat over time.
+  const R = G.rules || {}, p2At = "p2" in R ? R.p2 : 50, bossAt = "boss" in R ? R.boss : 100;
+  G.heat = Math.min(5, G.heatBase + Math.floor(dk() / 15) + (R.timeHeat && G.camp ? Math.floor(G.camp.t / R.timeHeat) : 0)); G.mult = (1 + G.heat * .5) * (G.p.egoUsed ? .5 : 1);
   if (G.heat !== G.lastHeat) { AU.setHeat(Math.min(5, G.heat + 2)); track("heat", G.heat); if (G.heat > (G.lastHeat || 0)) G.banner = { txt: "HEAT " + G.heat, col: COL.amber, life: 1.6 }; G.lastHeat = G.heat; }
-  if (dk() >= 50 && !G.phase2) startPhase2();
-  if (dk() >= 100 && !G.boss) { startBoss(); return; }
-  if (G.boss) return;
+  if (p2At != null && dk() >= p2At && !G.phase2) startPhase2();
+  if (bossAt != null && dk() >= bossAt && !G.boss) { startBoss(); return; }
+  if (G.boss || (G.camp && G.camp.won)) return;
   G.spawnT -= dt; const cap = 3 + G.heat + (dk() > 70 ? 1 : 0) + Math.floor(Math.max(0, D().n - 2) / 3); // endless depth adds pressure
   if (G.spawnT <= 0 && alive + G.pending.length < cap) {
     G.spawnT = Math.max(.6, 1.7 - G.heat * .2); const type = pickType();

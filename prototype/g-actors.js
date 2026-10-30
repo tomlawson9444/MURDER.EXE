@@ -12,7 +12,8 @@ function playerDie(by) {
   const p = G.p; if (G.mode !== "play" || p.iframes > 0 || G.god) return;
   if (hasImp("backup") && !p.egoUsed) { p.egoUsed = true; p.iframes = 2; G.bul = G.bul.filter(b => b.owner === "p"); G.shake = 6; rumble(1, 1, 300);
     fx(p.x, p.y - BODY, 30, [COL.cyan, "#ffffff"], 90, .8); G.banner = { txt: "BACKUP EGO RESTORED · MULTIPLIER HALVED", col: COL.cyan, life: 2.4 }; AU.sfx("ocSnap"); return; }
-  rumble(1, 1, 600); G.mode = "dead"; G.deadT = 0; G.killer = NAMES[by] || by; fx(p.x, p.y - BODY, 30, [COL.cyan, COL.magenta, "#ffffff"], 90, .9);
+  if (campShield(by)) return;
+  rumble(1, 1, 600); G.mode = "dead"; G.deadT = 0; G.killer = (by === "hole" && G.dropName) || NAMES[by] || by; fx(p.x, p.y - BODY, 30, [COL.cyan, COL.magenta, "#ffffff"], 90, .9);
   AU.sfx("flatline"); AU.stop(); AU.setOC(false); G.oc = null; G.shake = 6;
   G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best; persist();
 }
@@ -29,6 +30,7 @@ function killEnemy(e, how) {
   earn(scripFor(e)); track("kill", e.type); if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
   fx(e.x, e.y - (e.alt || 0) - 8, 16, [COL.magenta, "#2a2440", "#f0ebf6"], 70, .6); pop(e.x, e.y - 26 - (e.alt || 0), "+" + pts);
   AU.sfx("kill", panOf(e.x)); rumble(.4, .3, 90); if (Math.random() < .5) AU.sfx("caw", panOf(e.x)); G.hitstop = .035;
+  if (e.type === D().boss && G.camp) { for (const h of G.en) if (h.type === "holo") h.alive = false; earn(200); return campWin(); }
   if (e.type === D().boss) { for (const h of G.en) if (h.type === "holo") h.alive = false; G.bul = []; G.mode = "clear"; G.clearT = 0; earn(200); track("clear", G.district); if (D().next) saveUnlock(getDist(D().next).n); AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best; persist(); }
 }
 
@@ -38,6 +40,7 @@ function explode(x, y, r, src, safe) {
   fx(x, y, 34, [COL.amber, "#fff0c8", COL.red, "#2a2440"], 120, .8);
   for (const e of G.en) if (e.alive && Math.hypot(e.x - x, e.y - y) < r && !BOSSY.has(e.type)) killEnemy(e, "blast");
   if (!safe && Math.hypot(G.p.x - x, G.p.y - y) < r) playerDie("blast");
+  if (G.stall && Math.hypot(G.stall.x - x, G.stall.y - 8 - y) < r + 10) hurtStall(30);
   if (outer) { track("blast", G.blastCount); G.blastCount = null; }
   const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
   for (let j = ty - 1; j <= ty + 1; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === "c") breakTile(i, j); if (ch === "b" && !(i === tx && j === ty)) setTimeout(() => G.grid.at(i, j) === "b" && detonateBarrel(i, j), 120); }
@@ -98,8 +101,9 @@ function updateOC(rdt) {
 function hackTarget() {
   let best = null, bd = 22;
   for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0), d = Math.hypot(e.x - mouse.x, ey - mouse.y);
-    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln")) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
+    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !(e.type === "ferryman" && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
   if (best) return best;
+  for (const g of G.gates || []) { const d = Math.hypot(g.x - mouse.x, g.y - 13 - mouse.y); if (!g.done && d < 18) return { kind: "gate", g, x: g.x, y: g.y - 13, r: 9 }; }
   const tx = Math.floor(mouse.x / TS), ty = Math.floor(mouse.y / TS); let td = 99;
   for (let j = ty - 1; j <= ty + 1; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch !== "b" && ch !== "n") continue;
     const cx = i * TS + 8, cy = j * TS + (ch === "n" ? 2 : 10), d = Math.hypot(cx - mouse.x, cy - mouse.y); if (d < td && d < 26) { td = d; best = { kind: ch, i, j, x: cx, y: cy, r: 9 }; } }
@@ -112,6 +116,8 @@ function hack() {
   p.ram -= 3; AU.sfx("circuit"); G.zaps.push({ x0: p.x, y0: p.y - 14, x1: tg.x, y1: tg.y, life: .22 });
   if (tg.kind === "b") return detonateBarrel(tg.i, tg.j);
   if (tg.kind === "n") return dropSign(tg.i, tg.j);
+  if (tg.kind === "gate") { gateProgress(tg.g, .45); pop(tg.x, tg.y - 16, "GATE +45%", COL.cyan); return; }
+  if (tg.e.hp > 1) return hurtFerry(tg.e);
   if (tg.e.type === "augur") { tg.e.reveal = 2.5; pop(tg.x, tg.y - 24, "REVEALED", COL.magenta); return; }
   if (tg.e.type === "holo") { const bs = tg.e.boss; killEnemy(tg.e, "hack"); if (bs) { bs.reveal = 2.5; pop(bs.x, bs.y - 44, "REAL", COL.magenta); } return; }
   if (tg.e.type === "nest") return killEnemy(tg.e, "hack");
@@ -183,6 +189,7 @@ function updateEnemy(e, dt) {
       e.x = Math.max(8, Math.min(GW - 8, e.x)); e.y = Math.max(20, Math.min(GH - 8, e.y));
       break;
     case "blackwing": updateBoss(e, dt, d); break;
+    case "ferryman": updFerry(e, dt, d); break;
   }
 }
 
@@ -213,12 +220,14 @@ function updateBullets(dt) {
       }
       if (G.tram && G.tram.state === "run" && b.y > G.tram.row * TS - 10 && b.y < (G.tram.row + 1) * TS && b.x > G.tram.x && b.x < G.tram.x + 288) { b.life = 0; break; }
       if (b.owner === "p") {
-        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
+        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
           if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
+          if (e.hp > 1) { hurtFerry(e); b.life = 0; break; }
           killEnemy(e, "shot"); if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;
       } else {
+        if (stallHit(b)) { hurtStall(8); b.life = 0; break; }
         const dx = b.x - p.x, dy = b.y - (p.y - BODY), dd = Math.hypot(dx, dy);
         if (dd < p.hitR) { playerDie(b.by); b.life = 0; break; }
         if (dd < 11 && !b.grazed && G.mode === "play") { b.grazed = true; p.oc = Math.min(p.ocMax, p.oc + (hasImp("graze") ? 10 : 5)); track("graze"); AU.sfx("graze"); pop(p.x, p.y - 32, "GRAZE", COL.cyan); }
