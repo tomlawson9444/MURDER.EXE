@@ -508,7 +508,7 @@ const CHAPTERS = {
     ] },
 
   16: { act: 3, title: "COLD STORAGE", district: "datacrypt", map: { fam: "serverhalls", seed: 1616, arch: "SERVER AISLES" }, goal: "KEEP 4 RACKS ONLINE",
-    rules: { goal: { type: "guard", kind: "rack", n: 4, hp: 100, secs: 80, lose: 1 }, p2: null, boss: null, heatBase: 1, timeHeat: 25,
+    rules: { goal: { type: "guard", kind: "rack", n: 4, hp: 100, secs: 80, lose: 1 }, waves: [[0, 22], [30, 52], [58, 80]], p2: null, boss: null, heatBase: 1, timeHeat: 25,
       pool: [["carrion", 0, 3], ["shrike", 0, 3], ["rook", 0, 2], ["hexer", 1, 2], ["corvid", 1, 2]] },
     brief: [
       ["sys", "The Datacrypt. Halvorsen's cold archive under the river. Every mind the Murder took is stored here, on ice."],
@@ -522,14 +522,16 @@ const CHAPTERS = {
       ] },
     ],
     radio: [
-      { on: "start", who: "magpie", t: "Four racks. Stray shots and Carrion blasts hurt them. Lose one and we can live with it. Lose two and it's over." },
-      { on: "stall:60", who: "magpie", t: "Rack integrity dropping!" },
+      { on: "start", who: "magpie", t: "Four racks. Carrions will hunt them. Kill them before they get there. Lose one rack and we live. Lose two and it's over." },
+      { on: "t:7", who: "magpie", t: () => `Stand beside a damaged rack to reboot it, or ${lab().hack} on it for a quick patch. Three waves. Use the breaks.` },
       { on: "t:40", who: "corvus", t: "WE ARE COLD. WE ARE SO COLD." },
-      { on: "t:55", who: "vane", t: "Hold. Twenty-five seconds." },
+      { on: "t:56", who: "vane", t: "Last wave coming. Hold." },
     ],
     shard: { on: "t:30", title: "LOG 16 · CRYO TECH", text: "Every rack runs warm on its first night. After that the minds stop dreaming and start listening. They all listen to the same voice." },
     outro: [
+      { if: s => s.flags.allRacks, then: [["magpie", "All four racks still humming. Forty minds, and not one went dark."], { fx: { scrip: 200 } }], else: [["magpie", "We lost a rack. Somebody's mind just... went out."]] },
       ["sys", "Halvorsen troops in white armour pour in. Behind them walks Director Vane."],
+      { if: s => s.flags.allRacks, then: [["vane", "All four intact. That makes them worth even more."]] },
       ["vane", "Good work. Step away from the racks."],
       { c: [
         { s: "hard", t: "No.", fx: { vane: -2, flag: "defiedVane" }, then: [["vane", "...Noted."]] },
@@ -564,6 +566,7 @@ const CHAPTERS = {
         { s: "hard", t: "You joined a cult, Dex.", fx: { dex: -1 }, then: [["dex", "I joined a family that wouldn't let her die."]] },
         { s: "ask", t: "Is Ilse still... in there?", fx: { dex: 2 }, then: [["dex", "Rack 19. She hums when it rains."]] },
       ], timer: 12, silent: { t: "(Say nothing.)", then: [["dex", "...Yeah. I wouldn't have the words either."]] } },
+      { if: s => s.flags.allRacks, then: [["dex", "You kept every rack in the Crypt running. Ilse's included. I owe you, partner."], { fx: { dex: 1 } }], else: [["dex", "Some racks went dark down there, partner. There were people in them."]] },
       ["magpie", "And {FIRST}... template rack 00. It has your name on it."],
     ] },
 

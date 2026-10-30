@@ -20,7 +20,7 @@ function updateDirector(dt) {
   if (bossAt != null && dk() >= bossAt && !G.boss) { startBoss(); return; }
   if (G.boss || (G.camp && G.camp.won)) return;
   G.spawnT -= dt; const cap = 3 + G.heat + (dk() > 70 ? 1 : 0) + Math.floor(Math.max(0, D().n - 2) / 3); // endless depth adds pressure
-  if (G.spawnT <= 0 && alive + G.pending.length < cap) {
+  if (G.spawnT <= 0 && alive + G.pending.length < cap && !G.lull) {
     G.spawnT = Math.max(.6, 1.7 - G.heat * .2); const type = pickType();
     if (type === "corvid") { const x = rnd(40, GW - 40); G.pending.push({ type, x, y: 34, t: .8, door: null }); AU.sfx("caw", panOf(x)); }
     else if (type === "jackdaw") { const ps = G.perch; if (ps) G.pending.push({ type, x: ps.x, y: ps.y, t: .8, door: null, perch: true }); }

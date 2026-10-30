@@ -103,6 +103,7 @@ function hackTarget() {
   for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0), d = Math.hypot(e.x - mouse.x, ey - mouse.y);
     if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !(["ferryman", "cinder", "widow", "archivist"].includes(e.type) && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
   if (best) return best;
+  for (const S of G.stalls || []) { const d = Math.hypot(S.x - mouse.x, S.y - 14 - mouse.y); if (S.kind === "rack" && !S.dead && S.hp < S.max && d < 16) return { kind: "rack", S, x: S.x, y: S.y - 14, r: 11 }; }
   for (const g of G.gates || []) { const d = Math.hypot(g.x - mouse.x, g.y - 13 - mouse.y); if (!g.done && d < 18) return { kind: "gate", g, x: g.x, y: g.y - 13, r: 9 }; }
   const tx = Math.floor(mouse.x / TS), ty = Math.floor(mouse.y / TS); let td = 99;
   for (let j = ty - 1; j <= ty + 1; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch !== "b" && ch !== "n") continue;
@@ -116,6 +117,7 @@ function hack() {
   p.ram -= 3; AU.sfx("circuit"); G.zaps.push({ x0: p.x, y0: p.y - 14, x1: tg.x, y1: tg.y, life: .22 });
   if (tg.kind === "b") return detonateBarrel(tg.i, tg.j);
   if (tg.kind === "n") return dropSign(tg.i, tg.j);
+  if (tg.kind === "rack") { tg.S.hp = Math.min(tg.S.max, tg.S.hp + 30); pop(tg.x, tg.y - 16, "RACK +30", COL.cyan); fx(tg.x, tg.y, 14, [COL.cyan, "#ffffff"], 60, .5); return; }
   if (tg.kind === "gate") { gateProgress(tg.g, .45); pop(tg.x, tg.y - 16, "GATE +45%", COL.cyan); return; }
   if (tg.e.hp > 1) return hurtBoss(tg.e);
   if (tg.e.type === "augur") { tg.e.reveal = 2.5; pop(tg.x, tg.y - 24, "REVEALED", COL.magenta); return; }
@@ -174,8 +176,8 @@ function updateEnemy(e, dt) {
       else if (e.state === "charge") { if (e.t > .35) e.la = Math.atan2(p.y - BODY - (e.y - BODY - 6), p.x - e.x); if (e.t <= 0) { shoot(e.x, e.y - BODY - 6, e.la, 520, "e", { rail: true, by: "jackdaw" }); AU.sfx("rail", panOf(e.x)); e.state = "idle"; e.t = 2.2; } }
       break;
     case "carrion":
-      if (e.state === "walk") { walk(e, 72, dt); if (d < 30) { e.state = "armed"; e.t = 1.4 * tellK(); e.beep = 0; } }
-      else { walk(e, 26, dt); e.beep -= dt; if (e.beep <= 0) { AU.sfx("beep", panOf(e.x)); e.beep = .08 + e.t * .2; } if (e.t <= 0) { e.alive = false; explode(e.x, e.y - 6, 34, "carrion"); G.killerHint = "carrion"; } }
+      if (e.state === "walk") { if (!(e.hunt && huntStep(e, dt))) walk(e, 72, dt); if (d < 30 && e.state === "walk") { e.state = "armed"; e.t = 1.4 * tellK(); e.beep = 0; } }
+      else { if (!e.hunt) walk(e, 26, dt); e.beep -= dt; if (e.beep <= 0) { AU.sfx("beep", panOf(e.x)); e.beep = .08 + e.t * .2; } if (e.t <= 0) { e.alive = false; if (e.hunt) hunterBlast(e); explode(e.x, e.y - 6, 34, "carrion"); G.killerHint = "carrion"; } }
       break;
     case "bulwark": {
       let da = ang - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; e.dir += Math.max(-2 * dt, Math.min(2 * dt, da));
@@ -231,7 +233,7 @@ function updateBullets(dt) {
           killEnemy(e, "shot"); if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;
       } else {
-        const sh = stallHit(b); if (sh) { hurtStall(sh, 8); b.life = 0; break; }
+        const sh = stallHit(b); if (sh) { hurtStall(sh, stallShot(sh)); b.life = 0; break; }
         const dx = b.x - p.x, dy = b.y - (p.y - BODY), dd = Math.hypot(dx, dy);
         if (dd < p.hitR) { playerDie(b.by); b.life = 0; break; }
         if (dd < 11 && !b.grazed && G.mode === "play") { b.grazed = true; p.oc = Math.min(p.ocMax, p.oc + (hasImp("graze") ? 10 : 5)); track("graze"); AU.sfx("graze"); pop(p.x, p.y - 32, "GRAZE", COL.cyan); }

@@ -287,10 +287,26 @@ function updateFlood(dt) {
 
 /* ---- Objectives ---- */
 // Guarded objects: Magpie's stall (one), server racks (several) or a cargo crane that moves along a path.
-function guardSpots(n, minGap) {
+// Tiles on the shortest walks from each spawn door to the middle of the map: where enemy traffic runs.
+function tilePath(sx, sy, ex, ey) {
+  const W = MW, prev = new Int32Array(W * MH).fill(-1), q = [sx, sy], ok = (x, y) => { const ch = G.grid.at(x, y); return ch !== null && !WALK_BLOCK.has(ch) && ch !== "o"; };
+  prev[sy * W + sx] = sy * W + sx;
+  for (let h = 0; h < q.length; h += 2) { const x = q[h], y = q[h + 1]; if (x === ex && y === ey) break;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (ok(nx, ny) && prev[ny * W + nx] < 0) { prev[ny * W + nx] = y * W + x; q.push(nx, ny); } } }
+  const out = []; let k = ey * W + ex; if (prev[k] < 0) return out; while (k !== sy * W + sx) { out.push([k % W, Math.floor(k / W)]); k = prev[k]; } return out;
+}
+function trafficTiles() {
+  const busy = new Set(), cx = Math.floor(GW / 2 / TS), cy = Math.floor(GH / 2 / TS), mid = floorSpots(0).sort((a, b) => Math.hypot(a.x - GW / 2, a.y - GH / 2) - Math.hypot(b.x - GW / 2, b.y - GH / 2))[0];
+  const mx = mid ? Math.floor(mid.x / TS) : cx, my = mid ? Math.floor(mid.y / TS) : cy;
+  doors().forEach(d => tilePath(Math.floor(d.x / TS), Math.floor(d.y / TS), mx, my).forEach(([x, y]) => { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) busy.add((x + i) + "," + (y + j)); }));
+  return busy;
+}
+function guardSpots(n, minGap, avoidTraffic) {
+  const busy = avoidTraffic ? trafficTiles() : null, quiet = q => !busy || !busy.has(Math.floor(q.x / TS) + "," + Math.floor(q.y / TS));
   const ok = s2 => { const tx = Math.floor(s2.x / TS), ty = Math.floor(s2.y / TS); for (let j = ty - 1; j <= ty; j++) for (let i = tx - 1; i <= tx + 1; i++) { const ch = G.grid.at(i, j); if (ch === null || WALK_BLOCK.has(ch) || ch === "o") return false; } return true; };
-  const S = floorSpots(50).filter(ok).filter(q => doors().every(d => Math.hypot(d.x - q.x, d.y - q.y) > 72)).sort((a, b) => Math.hypot(a.x - GW / 2, a.y - GH / 2 - 10) - Math.hypot(b.x - GW / 2, b.y - GH / 2 - 10)), out = [];
-  for (const q of S) { if (out.every(o => Math.hypot(o.x - q.x, o.y - q.y) > minGap)) out.push(q); if (out.length === n) break; }
+  const S = floorSpots(50).filter(ok).filter(q => q.y > 92 && doors().every(d => Math.hypot(d.x - q.x, d.y - q.y) > 72)).sort((a, b) => Math.hypot(a.x - GW / 2, a.y - GH / 2 - 10) - Math.hypot(b.x - GW / 2, b.y - GH / 2 - 10)), out = [];
+  for (const q of S) { if (quiet(q) && out.every(o => Math.hypot(o.x - q.x, o.y - q.y) > minGap)) out.push(q); if (out.length === n) break; }
+  for (const q of S) { if (out.length >= n) break; if (out.every(o => Math.hypot(o.x - q.x, o.y - q.y) > minGap)) out.push(q); } // fall back to busy spots if the map is tight
   return out.length ? out : [{ x: GW / 2, y: GH / 2 }];
 }
 // The cargo crane's route: the longest walkable path from the west side of the yard to the east side.
@@ -309,17 +325,45 @@ function cargoPath() {
 function placeStalls() {
   const g = G.rules.goal, kind = g.type === "escort" ? "cargo" : g.kind || "stall", n = g.n || 1;
   if (kind === "cargo") { const path = cargoPath(); G.stalls = [{ kind, x: path[0].x, y: path[0].y, path, idx: 0, hp: g.hp, max: g.hp, hurtT: 0, prog: 0 }]; return; }
-  G.stalls = guardSpots(n, 90).map(q => ({ kind, x: q.x, y: q.y, hp: g.hp, max: g.hp, hurtT: 0 }));
+  G.stalls = guardSpots(n, 90, kind === "rack").map((q, i) => ({ kind, id: i + 1, x: q.x, y: q.y, hp: g.hp, max: g.hp, hurtT: 0, alarmT: 0 }));
+  if (kind === "rack") G.rackFlow = G.stalls.map(S => fieldTo(Math.floor(S.x / TS), Math.floor(S.y / TS)));
 }
 const STALL_FAIL = { stall: "STALL DESTROYED", cargo: "CARGO DESTROYED", rack: "TWO RACKS WENT DARK" };
 // Racks take reduced damage, and the chapter only fails once more racks go dark than the goal allows (1 by default for racks).
 function hurtStall(S, n) {
-  if (!S || S.dead || G.camp.won) return; if (S.kind === "rack") n *= .4; S.hp = Math.max(0, S.hp - n); S.hurtT = .25; fx(S.x + rnd(-12, 12), S.y - 12, 5, [COL.magenta, "#c08d1a", "#ffffff"], 50, .4); AU.sfx("crate", panOf(S.x));
+  if (!S || S.dead || G.camp.won) return; S.hp = Math.max(0, S.hp - n); S.hurtT = .25; S.alarmT = 2;
+  if (S.kind === "rack" && n >= 1 && (G.camp.callT || 0) <= 0) { G.camp.callT = 7; radio("magpie", S.hp / S.max < .4 ? `Rack ${S.id} is failing! Get over there and reboot it!` : `Rack ${S.id}'s getting hit!`); AU.sfx("hackFail"); } fx(S.x + rnd(-12, 12), S.y - 12, 5, [COL.magenta, "#c08d1a", "#ffffff"], 50, .4); AU.sfx("crate", panOf(S.x));
   if (S.hp > 0) return; S.dead = true; const lost = G.stalls.filter(q => q.dead).length, allow = G.rules.goal.lose || 0;
   if (lost > allow) campFail(STALL_FAIL[S.kind]); else { G.banner = { txt: `A RACK WENT DARK · ${G.stalls.length - lost} LEFT · LOSE ONE MORE AND IT'S OVER`, col: COL.red, life: 2.6 }; AU.sfx("hackFail"); fx(S.x, S.y - 14, 20, ["#2be4ff", "#2a2640"], 60, .7); }
 }
 const stallHit = b => (G.stalls || []).find(S => !S.dead && Math.abs(b.x - S.x) < 15 && b.y > S.y - 26 && b.y < S.y + 1);
-function blastStalls(x, y, r) { (G.stalls || []).forEach(S => { if (Math.hypot(S.x - x, S.y - 8 - y) < r + 10) hurtStall(S, S.kind === "rack" ? 20 : 30); }); }
+function blastStalls(x, y, r) { (G.stalls || []).forEach(S => { if (Math.hypot(S.x - x, S.y - 8 - y) < r + 10) hurtStall(S, S.kind === "rack" ? 10 : 30); }); }
+// Damage per stray enemy bullet.
+const stallShot = S => S.kind === "rack" ? 3 : 8;
+
+/* ---- Racks: Carrions that hunt them, and rebooting them ---- */
+// A walking field towards one rack, like the one enemies use to chase you.
+function fieldTo(tx, ty) {
+  const W = MW, dist = new Int16Array(W * MH).fill(-1), q = [tx, ty], ok = (x, y) => { const ch = G.grid.at(x, y); return ch !== null && !WALK_BLOCK.has(ch) && ch !== "o"; };
+  dist[ty * W + tx] = 0;
+  for (let h = 0; h < q.length; h += 2) { const x = q[h], y = q[h + 1], d = dist[y * W + x]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (ok(nx, ny) && dist[ny * W + nx] < 0) { dist[ny * W + nx] = d + 1; q.push(nx, ny); } } }
+  return dist;
+}
+function stepAlong(F, e, sp, dt) {
+  const tx = Math.floor(e.x / TS), ty = Math.floor(e.y / TS), cur = F[ty * MW + tx]; let best = null, bd = cur < 0 ? 9999 : cur;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const nx = tx + dx, ny = ty + dy; if (nx < 0 || ny < 0 || nx >= MW || ny >= MH) continue; const d = F[ny * MW + nx]; if (d < 0) continue;
+    if (dx && dy && (F[ty * MW + nx] < 0 || F[ny * MW + tx] < 0)) continue; if (d < bd) { bd = d; best = [nx, ny]; } }
+  if (!best) return; const gx = best[0] * TS + 8 - e.x, gy = best[1] * TS + 8 - e.y, l = Math.hypot(gx, gy) || 1; moveBody(e, gx / l * sp * dt, gy / l * sp * dt); if (gx) e.face = gx < 0 ? -1 : 1;
+}
+// Called from the Carrion's walk: hunters head for their rack and arm when they reach it.
+function huntStep(e, dt) {
+  const S = e.hunt; if (!S || S.dead) { e.hunt = null; return false; }
+  stepAlong(G.rackFlow[S.id - 1], e, 62, dt);
+  if (Math.hypot(e.x - S.x, e.y - S.y) < 22) { e.state = "armed"; e.t = 1.2 * tellK(); e.beep = 0; }
+  return true;
+}
+// A hunter that blows up at its rack does extra damage on top of the blast.
+function hunterBlast(e) { if (e.hunt && !e.hunt.dead && Math.hypot(e.x - e.hunt.x, e.y - e.hunt.y) < 30) hurtStall(e.hunt, 18); }
 const stallPct = () => { const live = (G.stalls || []).filter(S => !S.dead); return live.length ? Math.min(...live.map(S => S.hp / S.max)) * 100 : 0; };
 
 // Objective terminals: floodgates, beacons, relays or furnaces, set by the chapter's goal.
@@ -354,7 +398,7 @@ function startChapter(n, retry) {
   if (!retry) undoChapterFx(n);
   G.camp = { n, ch, t: 0, fired: new Set(), won: false, winT: 0, kills0: 0 }; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; G.runSeed = null; G.queuedSeed = null;
   const hz = HAZARDS[ch.district] || [null, null];
-  G.radioQ = []; G.stalls = null; G.drops = null; G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
+  G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.lull = false; G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
   AU.init(); BANK.attach(); RUN.reset(ch.district);
   G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; G.lastHeat = G.heat;
   G.p.shield = SAVE.camp.diff === "story" ? 2 : 0;
@@ -377,7 +421,19 @@ function campTick(dt) {
   updateDrops(dt);
   if (R.vents) { G.ventT -= dt; if (G.ventT <= 0) { G.ventT = R.vents * rnd(.8, 1.2); randomVent(); } } updateVents(dt);
   if (R.flood) { G.floodT -= dt; if (G.floodT <= 0) { G.floodT = R.flood; floodStage(false); } updateFlood(dt); }
-  for (const S of G.stalls || []) { S.hurtT = Math.max(0, S.hurtT - dt); let contested = false;
+  C.callT = (C.callT || 0) - dt;
+  // Waves: spawning pauses during the breaks so you can reboot racks.
+  if (R.waves) { const w = R.waves.findIndex(([a, b]) => C.t >= a && C.t < b), lull = w < 0;
+    if (lull !== G.lull || w !== C.wave) { if (w >= 0 && w !== C.wave) { G.banner = { txt: `WAVE ${w + 1}/${R.waves.length}` + (w === R.waves.length - 1 ? " · THE BIG ONE" : ""), col: COL.red, life: 2.2 }; AU.sfx("bell"); if (w === R.waves.length - 1) G.heatBase = Math.min(4, G.heatBase + 1); }
+      else if (lull && C.t < g.secs) { G.banner = { txt: "BREAK · REBOOT YOUR RACKS", col: COL.cyan, life: 2.2 }; AU.sfx("milestone"); }
+      G.lull = lull; if (w >= 0) C.wave = w; } }
+  if (G.rackFlow) for (const e of G.en) if (e.alive && e.type === "carrion" && !e.huntSet) { e.huntSet = true; const live = G.stalls.filter(S2 => !S2.dead);
+    if (live.length && Math.random() < .8) { e.hunt = live[Math.random() * live.length | 0]; if ((C.huntCallT || 0) <= 0) { C.huntCallT = 6; radio("magpie", `Carrion heading for rack ${e.hunt.id}!`); } } }
+  C.huntCallT = (C.huntCallT || 0) - dt;
+  for (const S of G.stalls || []) { S.hurtT = Math.max(0, S.hurtT - dt); S.alarmT = Math.max(0, (S.alarmT || 0) - dt); let contested = false;
+    // Rebooting: stand beside a damaged rack to restore it.
+    S.fixing = S.kind === "rack" && !S.dead && S.hp < S.max && Math.hypot(p.x - S.x, p.y - S.y) < 22;
+    if (S.fixing) { S.hp = Math.min(S.max, S.hp + 9 * dt); if (Math.random() < .3) G.parts.push({ x: S.x + rnd(-8, 8), y: S.y - rnd(4, 26), vx: 0, vy: -30, life: .4, max: .4, col: COL.cyan, g: 0 }); }
     for (const e of G.en) { if (!e.alive || BOSSY.has(e.type)) continue; const d = Math.hypot(e.x - S.x, e.y - S.y); if (d < 24) contested = true;
       if (e.type === "corvid") { if (e.state === "dive" && !e.dv) { e.dv = true; if (Math.random() < .35) e.la = Math.atan2(S.y - 10 - e.y, S.x - e.x); } if (e.state !== "dive") e.dv = false; if (e.state === "dive" && d < 14) { hurtStall(S, 12); killEnemy(e, "blast"); } }
       else if (d < 16 && S.kind !== "rack") hurtStall(S, 14 * dt); } // racks only take stray shots and blasts
@@ -390,7 +446,8 @@ function campTick(dt) {
   if (win) campWin();
 }
 function campWin() {
-  const C = G.camp; if (!C || C.won) return; C.won = true; C.winT = 1.6; if (G.stalls) SAVE.camp.stallHp = Math.round(stallPct()); G.god = true; G.flood = null; G.vents = null;
+  const C = G.camp; if (!C || C.won) return; C.won = true; C.winT = 1.6; if (G.stalls) SAVE.camp.stallHp = Math.round(stallPct()); G.lull = false;
+  if (G.rackFlow) { const saved = G.stalls.filter(S => !S.dead).length; SAVE.camp.racksSaved = saved; if (saved === G.stalls.length) SAVE.camp.flags.allRacks = true; else delete SAVE.camp.flags.allRacks; } G.god = true; G.flood = null; G.vents = null;
   for (const e of G.en) if (e.alive && e.type !== "nest") { e.alive = false; fx(e.x, e.y - 10, 8, ["#2a2440", COL.magenta], 50, .5); }
   G.pending = []; G.bul = []; G.banner = { txt: "OBJECTIVE COMPLETE", col: COL.cyan, life: 1.6 }; AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best;
 }
@@ -458,6 +515,10 @@ function campDrawObjects(c, t) {
       if (S.kind === "cargo") { c.fillStyle = "#3b374f"; c.fillRect(x - 14, y - 2, 28, 3); c.fillStyle = "#9090ad"; c.fillRect(x, 6, 1, y - 30); c.fillRect(x - 3, y - 31, 7, 2); }
       c.fillStyle = "#14121f"; c.fillRect(x - 9 + sh, y - 28, 18, 26); c.fillStyle = "#2b2840"; c.fillRect(x - 9 + sh, y - 28, 18, 2);
       if (S.dead) { txt(c, "DARK", x, y - 40, rgba(COL.red, .8), 8, "center"); continue; }
+      if (S.id) txt(c, "R" + S.id, x, y - 48, S.alarmT > 0 && Math.floor(t / 120) % 2 ? COL.red : rgba(COL.ink, .7), 8, "center");
+      if (S.alarmT > 0) { c.strokeStyle = rgba(COL.red, .4 + .5 * (Math.floor(t / 120) % 2)); c.strokeRect(x - 11.5, y - 30.5, 23, 30); }
+      if (S.fixing) txt(c, "REBOOTING", x, y - 58, rgba(COL.cyan, .7 + .3 * Math.sin(t * .02)), 8, "center");
+      else if (S.hp < S.max * .6 && Math.hypot(G.p.x - S.x, G.p.y - S.y) > 22) txt(c, "STAND HERE TO REBOOT", x, y - 58, rgba(COL.dim, .7), 8, "center");
       for (let i = 0; i < 5; i++) { c.fillStyle = (Math.floor(t / 200) + i) % 3 ? "#2be4ff" : "#1a5a6a"; c.fillRect(x - 6 + sh, y - 24 + i * 4, 3, 1); c.fillStyle = "#2a2640"; c.fillRect(x - 1 + sh, y - 24 + i * 4, 7, 2); }
       c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 14, 14, COL.cyan, .2); c.restore();
       if (S.kind === "cargo" && !S.moving && S.prog < 1) txt(c, S.contested ? "BLOCKED" : "STAY CLOSE", x, y - 46, rgba(S.contested ? COL.red : COL.cyan, .7 + .3 * Math.sin(t * .01)), 8, "center");
@@ -467,6 +528,7 @@ function campDrawObjects(c, t) {
     c.fillStyle = "#16121f"; c.fillRect(x - 5, y - 18, 10, 18); c.fillStyle = "#302c41"; c.fillRect(x - 5, y - 18, 10, 1); c.fillStyle = col; c.fillRect(x - 3, y - 15, 6, 4);
     c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 13, 10, col, .5); c.restore();
     if (live) txt(c, Math.hypot(G.p.x - x, G.p.y - y) < 18 ? gg.verb : gg.noun, x, y - 30, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); });
+  for (const e of G.en) { if (!e.alive || !e.hunt || e.hunt.dead) continue; const S = e.hunt; c.save(); c.globalAlpha = .45 + .25 * Math.sin(t * .02); c.setLineDash([3, 3]); c.strokeStyle = COL.red; c.beginPath(); c.moveTo(e.x, e.y - 6); c.lineTo(S.x, S.y - 12); c.stroke(); c.restore(); }
   for (const e of G.en) { if (!e.alive || (e.type !== "widow" && e.type !== "archivist")) continue; const s2 = sprOf(e.type, e.face);
     if (e.type === "widow" && e.state === "cab") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 26, 14, COL.cyan, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "CAB OPEN", e.x, e.y - 58, rgba(COL.cyan, .9), 8, "center"); }
     if (e.type === "archivist") { if (e.state === "exposed") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24 - e.alt, 18, COL.cyan, .8); c.restore(); txt(c, "EXPOSED", e.x, e.y - 60, COL.cyan, 8, "center"); }
@@ -492,7 +554,7 @@ function campHudCenter(c, t) {
   if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / 3 : 1; }
   else if (g.type === "kills") { label = `${String(Math.min(dk(), g.n)).padStart(2, "0")}/${g.n} KILLS`; k = dk() / g.n; }
   else if (g.type === "survive") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `SURVIVE ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; k = C.t / g.secs; }
-  else if (g.type === "stall" || g.type === "guard") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = g.type === "stall" ? `STALL ${Math.ceil(stallPct())}% · ${s}S` : `RACKS ${G.stalls.filter(q => !q.dead).length}/${G.stalls.length} · ${s}S`; k = C.t / g.secs; col = stallPct() < 30 ? COL.red : COL.ink; }
+  else if (g.type === "stall" || g.type === "guard") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = g.type === "stall" ? `STALL ${Math.ceil(stallPct())}% · ${s}S` : (G.rules.waves ? (G.lull ? "BREAK" : `W${(C.wave || 0) + 1}`) + " · " : "") + `RACKS ${G.stalls.filter(q => !q.dead).length}/${G.stalls.length} · ${s}S`; k = C.t / g.secs; col = stallPct() < 30 ? COL.red : COL.ink; }
   else if (g.type === "escort") { const S = G.stalls[0]; label = `CARGO ${Math.floor(S.prog * 100)}% · HP ${Math.ceil(S.hp / S.max * 100)}`; k = S.prog; col = S.hp / S.max < .3 ? COL.red : COL.ink; }
   else if (g.type === "gates") { const n = G.gates.filter(q => q.done).length; label = `${gateGoal().noun}S ${n}/${G.gates.length}`; k = n / G.gates.length; }
   else if (g.type === "boss") { label = `${String(Math.min(dk(), G.rules.boss)).padStart(2, "0")}/${G.rules.boss} · DRAW OUT`; k = dk() / G.rules.boss; }
