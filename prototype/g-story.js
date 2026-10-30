@@ -116,7 +116,7 @@ const CHAPTERS = {
         { s: "cold", t: "Where is he?", then: [["vane", "Above you. Make enough noise and he'll come down."]] },
         { s: "ask", t: "A Halvorsen prototype. Stolen, or sold?", fx: { vane: -1 }, then: [["vane", "Stolen. Obviously."], ["you", "Obviously."]] },
         { s: "hard", t: "You knew they had your rigs, and you sent me in blind.", fx: { vane: -1 }, then: [["vane", "I sent you in. Blind was your choice."]] },
-        { s: "origin", o: "corpo", t: "I ran security on that rig program. Its thrusters overheat on landing.", fx: { vane: 1 }, then: [["vane", "Then you know where to shoot."]] },
+        { s: "origin", o: "corpo", t: "I ran security on that rig. Its thrusters overheat on landing.", fx: { vane: 1 }, then: [["vane", "Then you know where to shoot."]] },
       ] },
       ["vane", "When the tram line goes live, stay off the tracks."],
     ],
@@ -529,7 +529,7 @@ const CHAPTERS = {
       ] },
     ],
     radio: [
-      { on: "start", who: "magpie", t: "Four racks. Carrions will hunt them. Kill them before they get there. Lose one rack and we live. Lose two and it's over." },
+      { on: "start", who: "magpie", t: "Four racks. Carrions hunt them, so kill them first. Lose one rack and we live. Lose two, it's over." },
       { on: "t:7", who: "magpie", t: () => `Stand beside a damaged rack to reboot it, or ${lab().hack} on it for a quick patch. Three waves. Use the breaks.` },
       { on: "t:40", who: "corvus", t: "WE ARE COLD. WE ARE SO COLD." },
       { on: "t:56", who: "vane", t: "Last wave coming. Hold." },
