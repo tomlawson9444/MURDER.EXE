@@ -311,11 +311,16 @@ function placeStalls() {
   if (kind === "cargo") { const path = cargoPath(); G.stalls = [{ kind, x: path[0].x, y: path[0].y, path, idx: 0, hp: g.hp, max: g.hp, hurtT: 0, prog: 0 }]; return; }
   G.stalls = guardSpots(n, 90).map(q => ({ kind, x: q.x, y: q.y, hp: g.hp, max: g.hp, hurtT: 0 }));
 }
-const STALL_FAIL = { stall: "STALL DESTROYED", cargo: "CARGO DESTROYED", rack: "A RACK WENT DARK" };
-function hurtStall(S, n) { if (!S || G.camp.won) return; S.hp = Math.max(0, S.hp - n); S.hurtT = .25; fx(S.x + rnd(-12, 12), S.y - 12, 5, [COL.magenta, "#c08d1a", "#ffffff"], 50, .4); AU.sfx("crate", panOf(S.x)); if (S.hp <= 0) campFail(STALL_FAIL[S.kind]); }
-const stallHit = b => (G.stalls || []).find(S => Math.abs(b.x - S.x) < 15 && b.y > S.y - 26 && b.y < S.y + 1);
+const STALL_FAIL = { stall: "STALL DESTROYED", cargo: "CARGO DESTROYED", rack: "TWO RACKS WENT DARK" };
+// Racks take reduced damage, and the chapter only fails once more racks go dark than the goal allows (1 by default for racks).
+function hurtStall(S, n) {
+  if (!S || S.dead || G.camp.won) return; if (S.kind === "rack") n *= .4; S.hp = Math.max(0, S.hp - n); S.hurtT = .25; fx(S.x + rnd(-12, 12), S.y - 12, 5, [COL.magenta, "#c08d1a", "#ffffff"], 50, .4); AU.sfx("crate", panOf(S.x));
+  if (S.hp > 0) return; S.dead = true; const lost = G.stalls.filter(q => q.dead).length, allow = G.rules.goal.lose || 0;
+  if (lost > allow) campFail(STALL_FAIL[S.kind]); else { G.banner = { txt: `A RACK WENT DARK · ${G.stalls.length - lost} LEFT · LOSE ONE MORE AND IT'S OVER`, col: COL.red, life: 2.6 }; AU.sfx("hackFail"); fx(S.x, S.y - 14, 20, ["#2be4ff", "#2a2640"], 60, .7); }
+}
+const stallHit = b => (G.stalls || []).find(S => !S.dead && Math.abs(b.x - S.x) < 15 && b.y > S.y - 26 && b.y < S.y + 1);
 function blastStalls(x, y, r) { (G.stalls || []).forEach(S => { if (Math.hypot(S.x - x, S.y - 8 - y) < r + 10) hurtStall(S, S.kind === "rack" ? 20 : 30); }); }
-const stallPct = () => G.stalls ? Math.min(...G.stalls.map(S => S.hp / S.max)) * 100 : 100;
+const stallPct = () => { const live = (G.stalls || []).filter(S => !S.dead); return live.length ? Math.min(...live.map(S => S.hp / S.max)) * 100 : 0; };
 
 // Objective terminals: floodgates, beacons, relays or furnaces, set by the chapter's goal.
 const gateGoal = () => Object.assign({ noun: "FLOODGATE", verb: "OPENING", done: "OPEN", secs: 3.2 }, G.rules.goal);
@@ -452,6 +457,7 @@ function campDrawObjects(c, t) {
     } else { // server rack, on its own or riding the cargo crane
       if (S.kind === "cargo") { c.fillStyle = "#3b374f"; c.fillRect(x - 14, y - 2, 28, 3); c.fillStyle = "#9090ad"; c.fillRect(x, 6, 1, y - 30); c.fillRect(x - 3, y - 31, 7, 2); }
       c.fillStyle = "#14121f"; c.fillRect(x - 9 + sh, y - 28, 18, 26); c.fillStyle = "#2b2840"; c.fillRect(x - 9 + sh, y - 28, 18, 2);
+      if (S.dead) { txt(c, "DARK", x, y - 40, rgba(COL.red, .8), 8, "center"); continue; }
       for (let i = 0; i < 5; i++) { c.fillStyle = (Math.floor(t / 200) + i) % 3 ? "#2be4ff" : "#1a5a6a"; c.fillRect(x - 6 + sh, y - 24 + i * 4, 3, 1); c.fillStyle = "#2a2640"; c.fillRect(x - 1 + sh, y - 24 + i * 4, 7, 2); }
       c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 14, 14, COL.cyan, .2); c.restore();
       if (S.kind === "cargo" && !S.moving && S.prog < 1) txt(c, S.contested ? "BLOCKED" : "STAY CLOSE", x, y - 46, rgba(S.contested ? COL.red : COL.cyan, .7 + .3 * Math.sin(t * .01)), 8, "center");
@@ -486,7 +492,7 @@ function campHudCenter(c, t) {
   if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / 3 : 1; }
   else if (g.type === "kills") { label = `${String(Math.min(dk(), g.n)).padStart(2, "0")}/${g.n} KILLS`; k = dk() / g.n; }
   else if (g.type === "survive") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `SURVIVE ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; k = C.t / g.secs; }
-  else if (g.type === "stall" || g.type === "guard") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `${g.type === "stall" ? "STALL" : "RACKS"} ${Math.ceil(stallPct())}% · ${s}S`; k = C.t / g.secs; col = stallPct() < 30 ? COL.red : COL.ink; }
+  else if (g.type === "stall" || g.type === "guard") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = g.type === "stall" ? `STALL ${Math.ceil(stallPct())}% · ${s}S` : `RACKS ${G.stalls.filter(q => !q.dead).length}/${G.stalls.length} · ${s}S`; k = C.t / g.secs; col = stallPct() < 30 ? COL.red : COL.ink; }
   else if (g.type === "escort") { const S = G.stalls[0]; label = `CARGO ${Math.floor(S.prog * 100)}% · HP ${Math.ceil(S.hp / S.max * 100)}`; k = S.prog; col = S.hp / S.max < .3 ? COL.red : COL.ink; }
   else if (g.type === "gates") { const n = G.gates.filter(q => q.done).length; label = `${gateGoal().noun}S ${n}/${G.gates.length}`; k = n / G.gates.length; }
   else if (g.type === "boss") { label = `${String(Math.min(dk(), G.rules.boss)).padStart(2, "0")}/${G.rules.boss} · DRAW OUT`; k = dk() / G.rules.boss; }

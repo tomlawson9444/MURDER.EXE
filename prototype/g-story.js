@@ -508,7 +508,7 @@ const CHAPTERS = {
     ] },
 
   16: { act: 3, title: "COLD STORAGE", district: "datacrypt", map: { fam: "serverhalls", seed: 1616, arch: "SERVER AISLES" }, goal: "KEEP 4 RACKS ONLINE",
-    rules: { goal: { type: "guard", kind: "rack", n: 4, hp: 120, secs: 80 }, p2: null, boss: null, heatBase: 1, timeHeat: 25,
+    rules: { goal: { type: "guard", kind: "rack", n: 4, hp: 100, secs: 80, lose: 1 }, p2: null, boss: null, heatBase: 1, timeHeat: 25,
       pool: [["carrion", 0, 3], ["shrike", 0, 3], ["rook", 0, 2], ["hexer", 1, 2], ["corvid", 1, 2]] },
     brief: [
       ["sys", "The Datacrypt. Halvorsen's cold archive under the river. Every mind the Murder took is stored here, on ice."],
@@ -522,7 +522,7 @@ const CHAPTERS = {
       ] },
     ],
     radio: [
-      { on: "start", who: "magpie", t: "Four racks. Stray shots and Carrion blasts hurt them, so keep the fighting away. Don't let a single rack go dark." },
+      { on: "start", who: "magpie", t: "Four racks. Stray shots and Carrion blasts hurt them. Lose one and we can live with it. Lose two and it's over." },
       { on: "stall:60", who: "magpie", t: "Rack integrity dropping!" },
       { on: "t:40", who: "corvus", t: "WE ARE COLD. WE ARE SO COLD." },
       { on: "t:55", who: "vane", t: "Hold. Twenty-five seconds." },
