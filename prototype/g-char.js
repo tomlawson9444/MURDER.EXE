@@ -10,7 +10,7 @@ const LOOK_SLOTS = [
   { key: "hair", label: "HAIR", opts: [["bob", "BOB"], ["buzz", "BUZZ"], ["long", "LONG"], ["ponytail", "PONYTAIL"], ["mohawk", "NEON MOHAWK", "c_mohawk"]] },
   { key: "hairCol", label: "HAIR COLOUR", opts: [["black", "BLACK", "", "#221d40"], ["silver", "SILVER", "", "#a8a4b8"], ["magenta", "MAGENTA", "", "#a02a78"], ["cyan", "CYAN", "", "#2a8aa0"], ["blonde", "BLONDE", "", "#c8a050"], ["red", "RED", "", "#8a2a20"], ["green", "TOXIC DYE", "c_dye_green", "#3a8a2a"], ["violet", "UV DYE", "c_dye_violet", "#6a3aa0"]] },
   { key: "skin", label: "SKIN", opts: [["s1", "TONE 1", "", "#f2c9a8"], ["s2", "TONE 2", "", "#dfaa8e"], ["s3", "TONE 3", "", "#b97d68"], ["s4", "TONE 4", "", "#8f5a44"], ["s5", "TONE 5", "", "#6a3e2e"], ["s6", "TONE 6", "", "#4a2a22"]] },
-  { key: "eyes", label: "EYES", opts: [["visor", "VISOR"], ["eyes", "OPTICS"], ["goggles", "GOGGLES"], ["mask", "RIPPER MASK", "c_mask"], ["trophy", "CROW TROPHY", "c_trophy"]] },
+  { key: "eyes", label: "EYES", opts: [["visor", "VISOR"], ["eyes", "OPTICS"], ["goggles", "GOGGLES"], ["mask", "RIPPER MASK", "c_mask"], ["trophy", "CROW TROPHY", "c_trophy"], ["scarecrow", "SCARECROW MASK", "c_scare"]] },
   { key: "arm", label: "ARM", opts: [["chrome", "CHROME ARM"], ["none", "NO CHROME"], ["both", "FULL CHROME", "c_fullchrome"], ["gold", "GOLD ARM", "c_goldarm"]] },
   { key: "glow", label: "GLOW", opts: [["cyan", "CYAN", "", COL.cyan], ["magenta", "MAGENTA", "", COL.magenta], ["amber", "AMBER", "", COL.amber], ["lime", "LIME", "c_glow_lime", "#9dff4a"], ["white", "GHOST WHITE", "c_glow_white", "#e8f6ff"], ["violet", "UV", "c_glow_violet", "#b06cff"]] },
   { key: "trail", label: "AFTERIMAGE", opts: [["glow", "MATCH GLOW"], ["magenta", "MAGENTA", "c_trail_mag", COL.magenta], ["gold", "GOLD", "c_trail_gold", "#ffd27a"], ["glitch", "GLITCH", "c_trail_glitch"]] },
@@ -32,6 +32,7 @@ const COSMETICS = [
   ["c_trail_mag", "Magenta Afterimage", 250, null, "", "Phase-dash afterimage colour."], ["c_trail_gold", "Gold Afterimage", 400, null, "", "Phase-dash afterimage colour."],
   ["c_trail_glitch", "Glitch Afterimage", 600, s => !!s.clears.rookery, "Clear the Chrome Rookery", "Your dash leaves a flickering RGB-split trail."],
   ["c_gun_carbon", "Carbon Finish", 250, null, "", "Sidearm finish. Matte black weave."], ["c_gun_gold", "Gold Finish", 500, null, "", "Sidearm finish. Gold plating."], ["c_gun_neon", "Neon Finish", 350, null, "", "Sidearm finish. A magenta light strip."],
+  ["c_scare", "Scarecrow's Mask", 0, () => !!(SAVE.camp && SAVE.camp.flags.tookMask), "Take Scarecrow's mask in Chapter 21", "Eyes. Stitched burlap and red slits. The Stacks will remember."],
   ["c_scarf", "Rain Scarf", 200, null, "", "Extra. A scarf in your lining colour."], ["c_crown", "Augur's Halo", 700, s => (s.byType.augur || 0) >= 1, "Defeat THE AUGUR", "Extra. The Augur's data halo, now orbiting you."],
 ];
 COSMETICS.forEach(([id, name, price, req, reqText, desc]) => {
@@ -104,6 +105,7 @@ function playerDef(o, L) {
   else if (L.eyes === "eyes") P.push(Px("pglow", [[10, U(9)], [14, U(9)]]));
   else if (L.eyes === "goggles") P.push(R("pgun", 7, U(8), 11, 1), R("pglow", 9, U(8), 2, 2), R("pglow", 13, U(8), 2, 2));
   else if (L.eyes === "mask") P.push(Pl("chrome", [[8, U(10)], [16, U(10)], [15, U(13)], [12, U(14)], [9, U(13)]]), Px("pglow", [[10, U(9)], [14, U(9)]]));
+  else if (L.eyes === "scarecrow") P.push(Pl("rust", [[7.5, U(5)], [16.5, U(5)], [16, U(13)], [12, U(14)], [8, U(13)]]), Px("redE", [[9, U(9)], [10, U(9)], [14, U(9)], [15, U(9)]]), Px("bone", [[10, U(12)], [12, U(12)], [14, U(12)]]));
   else if (L.eyes === "trophy") P.push(Pl("bone", [[8.5, U(7)], [15.5, U(7)], [14, U(11)], [12, U(15)], [10, U(11)]]), Px("pglow", [[10, U(8)], [13, U(8)]]));
   if (cs !== "cloak" && ["bob", "long", "ponytail"].includes(L.hair)) P.push(Px("pglow", [[14, U(4)], [15, U(5)], [16, U(7)]]));
   if (L.extra === "crown") P.push(Px("pglow", [[7, U(2)], [8, U(0)], [10, U(0)], [12, U(0)], [14, U(0)], [16, U(0)], [17, U(2)]]));

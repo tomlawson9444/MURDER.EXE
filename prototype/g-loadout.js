@@ -46,6 +46,8 @@ function loadSave() {
 let SAVE = loadSave();
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
 const owns = id => SAVE.owned.includes(id);
+// Magpie's prices: 20% off if you forgave her in the campaign, 20% more if you cut her off.
+const priceOf = i => { const f = SAVE.camp && SAVE.camp.flags || {}; return Math.round(i.price * (f.forgaveMagpie ? .8 : f.cutMagpie ? 1.2 : 1)); };
 const available = i => !i.req || i.req(SAVE.stats);
 const hasImp = id => !!(G.p && G.p.imps && G.p.imps.includes(id));
 

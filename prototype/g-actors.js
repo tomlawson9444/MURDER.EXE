@@ -21,7 +21,7 @@ function playerDie(by) {
 function killEnemy(e, how) {
   if (!e.alive) return;
   if (e.type === "holo") return holoPop(e, how !== "hack");
-  e.alive = false;
+  e.alive = false; if (e.type === "wrenc") wrenDown();
   if (e.type === "nest") { G.grid[e.ty][e.tx] = "#"; G.dirty = true; fx(e.x, e.y - 10, 30, [COL.red, COL.magenta, "#2a2440"], 90, .8); AU.sfx("crateBreak", panOf(e.x)); }
   if (how === "fall") pop(e.x, e.y - 20, "FELL", COL.amber);
   if (e.type === "carrion" && how !== "blast") { explode(e.x, e.y - 6, 34, "carrion"); }
@@ -50,7 +50,7 @@ function detonateBarrel(i, j) { G.grid[j][i] = "."; G.dirty = true; explode(i * 
 function dropSign(i, j) { G.grid[j][i] = "h"; G.dirty = true; AU.sfx("sign"); G.shake = 4; const x = i * TS + 8, y = j * TS + 10;
   fx(x, y, 20, [COL.magenta, COL.cyan, "#ffffff"], 80, .7); for (const e of G.en) if (e.alive && Math.abs(e.x - x) < 20 && Math.abs(e.y - y) < 16) killEnemy(e, "blast"); if (Math.abs(G.p.x - x) < 14 && Math.abs(G.p.y - y) < 12) playerDie("blast"); }
 
-function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [] }); }
+function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [] }); }
 
 /* ---- Player ---- */
 function updatePlayer(dt, rdt) {
@@ -101,7 +101,7 @@ function updateOC(rdt) {
 function hackTarget() {
   let best = null, bd = 22;
   for (const e of G.en) { if (!e.alive) continue; const ey = e.y - BODY - (e.alt || 0), d = Math.hypot(e.x - mouse.x, ey - mouse.y);
-    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !(["ferryman", "cinder", "widow", "archivist"].includes(e.type) && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
+    if (d < bd && !(e.type === "blackwing" && e.state !== "vuln") && !(["ferryman", "cinder", "widow", "archivist", "scarecrow", "vanexo"].includes(e.type) && armored(e))) { bd = d; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
   if (best) return best;
   for (const S of G.stalls || []) { const d = Math.hypot(S.x - mouse.x, S.y - 14 - mouse.y); if (S.kind === "rack" && !S.dead && S.hp < S.max && d < 16) return { kind: "rack", S, x: S.x, y: S.y - 14, r: 11 }; }
   for (const g of G.gates || []) { const d = Math.hypot(g.x - mouse.x, g.y - 13 - mouse.y); if (!g.done && d < 18) return { kind: "gate", g, x: g.x, y: g.y - 13, r: 9 }; }
@@ -119,6 +119,7 @@ function hack() {
   if (tg.kind === "n") return dropSign(tg.i, tg.j);
   if (tg.kind === "rack") { tg.S.hp = Math.min(tg.S.max, tg.S.hp + 30); pop(tg.x, tg.y - 16, "RACK +30", COL.cyan); fx(tg.x, tg.y, 14, [COL.cyan, "#ffffff"], 60, .5); return; }
   if (tg.kind === "gate") { gateProgress(tg.g, .45); pop(tg.x, tg.y - 16, "GATE +45%", COL.cyan); return; }
+  if (tg.e.type === "wrenc") return freeWren(tg.e);
   if (tg.e.hp > 1) return hurtBoss(tg.e);
   if (tg.e.type === "augur") { tg.e.reveal = 2.5; pop(tg.x, tg.y - 24, "REVEALED", COL.magenta); return; }
   if (tg.e.type === "holo") { const bs = tg.e.boss; killEnemy(tg.e, "hack"); if (bs) { bs.reveal = 2.5; pop(bs.x, bs.y - 44, "REAL", COL.magenta); } return; }
@@ -196,6 +197,10 @@ function updateEnemy(e, dt) {
     case "widow": updWidow(e, dt, d); break;
     case "archivist": updArchivist(e, dt); break;
     case "echo": updEcho(e, dt); break;
+    case "warden": updWarden(e, dt); break;
+    case "wrenc": updWrenc(e, dt, d); break;
+    case "scarecrow": updScarecrow(e, dt, d); break;
+    case "vanexo": updVane(e, dt, d); break;
   }
 }
 
@@ -208,6 +213,9 @@ function hugging(b) {
 function updateBullets(dt) {
   const p = G.p;
   for (const b of G.bul) {
+    // Homing rounds (Vane's missiles) turn towards you for a short while after launch.
+    if (b.seek > 0) { b.seek -= dt; const sp = Math.hypot(b.vx, b.vy); let cur = Math.atan2(b.vy, b.vx), da = Math.atan2(p.y - BODY - b.y, p.x - b.x) - cur; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
+      cur += Math.max(-2.4 * dt, Math.min(2.4 * dt, da)); b.vx = Math.cos(cur) * sp; b.vy = Math.sin(cur) * sp; }
     const steps = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 3);
     for (let s = 0; s < steps && b.life > 0; s++) {
       b.x += b.vx * dt / steps; b.y += b.vy * dt / steps; b.d += Math.hypot(b.vx, b.vy) * dt / steps;
@@ -226,13 +234,16 @@ function updateBullets(dt) {
       }
       if (G.tram && G.tram.state === "run" && b.y > G.tram.row * TS - 10 && b.y < (G.tram.row + 1) * TS && b.x > G.tram.x && b.x < G.tram.x + 288) { b.life = 0; break; }
       if (b.owner === "p") {
-        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman" || e.type === "cinder" || e.type === "widow" || e.type === "archivist", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
+        for (const e of G.en) { if (!e.alive || b.hits.includes(e)) continue; const ey = e.y - BODY - (e.alt || 0); const big = e.type === "blackwing" || e.type === "augur" || e.type === "holo" || e.type === "ferryman" || e.type === "cinder" || e.type === "widow" || e.type === "archivist" || e.type === "scarecrow" || e.type === "vanexo", hw = big ? 13 : 7, hh = big ? 16 : 9; if (Math.abs(b.x - e.x) < hw && Math.abs(b.y - ey) < hh) {
           if (e.type === "bulwark") { const ba = Math.atan2(-b.vy, -b.vx); let da = ba - e.dir; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU; if (Math.abs(da) < 1.2) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 6, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; } }
           if (armored(e)) { AU.sfx("bulwark", panOf(e.x)); fx(b.x, b.y, 5, [COL.magenta, "#ffffff"], 50, .3); b.life = 0; break; }
           if (e.hp > 1) { hurtBoss(e); b.life = 0; break; }
           killEnemy(e, "shot"); if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;
       } else {
+        // Crossfire: Warden rounds hit the Murder, and Murder rounds hit Wardens.
+        const foe = G.en.find(e => e.alive && (b.owner === "w" ? e.type !== "warden" && !BOSSY.has(e.type) && e.type !== "echo" : e.type === "warden") && Math.abs(b.x - e.x) < 7 && Math.abs(b.y - (e.y - BODY - (e.alt || 0))) < 9);
+        if (foe && b.d > 12) { killEnemy(foe, "crossfire"); b.life = 0; break; }
         const sh = stallHit(b); if (sh) { hurtStall(sh, stallShot(sh)); b.life = 0; break; }
         const dx = b.x - p.x, dy = b.y - (p.y - BODY), dd = Math.hypot(dx, dy);
         if (dd < p.hitR) { playerDie(b.by); b.life = 0; break; }

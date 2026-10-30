@@ -19,11 +19,15 @@ const SPEAKERS = {
   cinder: { name: "CINDER", col: "#ff8a3a" },
   widow: { name: "WIDOW CRANE", col: "#9ad8ff" },
   archivist: { name: "THE ARCHIVIST", col: COL.cyan, glitch: true },
+  scarecrow: { name: "SCARECROW", col: "#c08d1a" },
+  wrenc: { name: "WREN", col: COL.magenta, glitch: true },
+  holt: { name: "CAPTAIN HOLT", col: "#d8d4ee" },
   sys: { name: "SYSTEM", col: COL.dim },
 };
 
 const ACTS = [{ n: 1, name: "WET FEATHERS", chapters: [1, 2, 3, 4, 5, 6] }, { n: 2, name: "THE ROOST", chapters: [7, 8, 9, 10, 11, 12] },
-  { n: 3, name: "COLD STORAGE", chapters: [13, 14, 15, 16, 17, 18] }];
+  { n: 3, name: "COLD STORAGE", chapters: [13, 14, 15, 16, 17, 18] },
+  { n: 4, name: "BAD DEBTS", chapters: [19, 20, 21, 22, 23, 24] }];
 
 const CHAPTERS = {
   1: { act: 1, title: "WET FEATHERS", district: "market", map: { key: "market" }, goal: "SURVIVE THE AMBUSH",
@@ -602,6 +606,175 @@ const CHAPTERS = {
       ["magpie", "{FIRST}... we need to talk. About something I did. Meet me in the Stacks."],
       ["sys", "END OF ACT 3 · COLD STORAGE."],
     ] },
+  /* ===== ACT 4 · BAD DEBTS ===== */
+  19: { act: 4, title: "STACK CITY", district: "stacks", map: { fam: "slums", seed: 1919, arch: "BACK ALLEYS" }, goal: "HOLD THE STAIRWELL",
+    rules: { goal: { type: "hold", secs: 50 }, p2: null, boss: null, heatBase: 1, timeHeat: 25, wrenAt: .5 },
+    brief: [
+      ["sys", "The Stacks. Forty storeys of shanty bolted onto a dead tower block. The Murder recruit here, with free implants and free food."],
+      ["magpie", "{FIRST}. Thanks for coming. The Murder are raiding the block. If they take the stairwell, they take the building."],
+      ["magpie", "Hold it for me. Then we talk. I owe you a conversation."],
+      { c: [
+        { s: "cold", t: "Talk first.", fx: { magpie: -1 }, then: [["magpie", "...Stairwell first. Please."]] },
+        { s: "ask", t: "Why do the Stacks let the Murder in?", then: [["magpie", "Because nobody else ever came. Halvorsen sold the power. Scarecrow brought it back. Now he wears a crow mask and they love him for it."]] },
+        { s: "sharp", t: "You never say please.", fx: { magpie: 1 }, then: [["magpie", "Don't get used to it."]] },
+      ] },
+      { if: s => s.flags.leftThem, then: [["corvus", "SOMEONE YOU LEFT BEHIND IS HERE, {FIRST}. WE GAVE THEM WINGS."]] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Stand in the ring to hold it. Enemies inside the ring stop the clock." },
+      { on: "zone:25", who: "magpie", t: "A quarter of the way. Keep them off the stairs." },
+      { on: "zone:50", if: s => s.flags.leftThem, who: "magpie", t: "That's Wren! Don't shoot to kill. Quickhack the implant and you might get them back." },
+      { on: "zone:75", who: "corvus", t: "THE STACKS SING FOR US, {FIRST}. THEY WILL SING FOR YOU." },
+    ],
+    shard: { on: "zone:30", title: "LOG 19 · STACKS NOTICE", text: "Power restored by order of the Scarecrow. Free implant clinic, floor 9. Halvorsen debt collectors will be fed to the crows." },
+    outro: [
+      { if: s => s.flags.wrenFreed && s.flags.leftThem, then: [["wren", "You could have shot me. You hacked me. ...Why?"], ["you", "Because I left you once."], ["wren", "...Okay. Okay. I'm with you."], { fx: { wren: 2, flag: "freed" } }] },
+      { if: s => s.flags.wrenDead, then: [["sys", "Wren lies still on the stairwell landing, the crow mask cracked open."]] },
+      ["magpie", "Stairwell's ours. Come inside. Sit down."],
+    ] },
+
+  20: { act: 4, title: "BAD DEBT", district: "stacks", map: { fam: "slums", seed: 2020, arch: "CROSSROADS" }, goal: "SURVIVE, THEN REACH THE VAN",
+    rules: { goal: { type: "extract", secs: 45 }, p2: null, boss: null, heatBase: 2, timeHeat: 20 },
+    brief: [
+      ["magpie", "Before the Night of Feathers, someone sold Halvorsen's server keys to the Murder. That's how they got into the CORVUS test."],
+      ["magpie", "It was me. Eighty thousand scrip. I thought they were just another cult with money."],
+      ["corvus", "THANK YOU, LITTLE BIRD. WE NEVER FORGOT."],
+      ["magpie", "...And now they know where I live. They're coming. My van's on its way. Stay alive till it gets here."],
+      { c: [
+        { s: "hard", t: "You sold them the door.", fx: { magpie: -1 }, then: [["magpie", "I know."]] },
+        { s: "ask", t: "Why tell me now?", fx: { magpie: 1 }, then: [["magpie", "Because you'd have found out at the Spire, and I'd rather you heard it from me."]] },
+        { s: "cold", t: "Later. Survive first.", then: [["magpie", "...Later."]] },
+      ] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Doors everywhere, no safe corners. Keep moving." },
+      { on: "t:20", who: "corvus", t: "THE LITTLE BIRD SOLD US THE KEY. WHAT WILL SHE SELL NEXT?" },
+      { on: "van", who: "magpie", t: "Van's here! Get to it!" },
+    ],
+    shard: { on: "t:25", title: "LOG 20 · MAGPIE'S LEDGER", text: "Sold: Halvorsen server keys, one set. Buyer: crow mask, paid in clean chrome. Note to self: never ask what a cult wants with a door." },
+    outro: [
+      ["sys", "The van doors slam. Magpie drives with one hand and holds out a data chip with the other."],
+      ["magpie", "Spire Zero access codes. Every lift, every door. It's the only thing I've got worth what I cost you."],
+      { c: [
+        { s: "cold", t: "I forgive you. We finish this together.", fx: { magpie: 2, flag: "forgaveMagpie" }, then: [["magpie", "...Thank you. Prices just went down, by the way."]] },
+        { s: "hard", t: "Take the codes and get out of my life.", fx: { magpie: -3, flag: "cutMagpie" }, then: [["magpie", "...Fair. The shop's still open. Behind glass."]] },
+        { s: "ask", t: "Is there anything else you haven't told me?", then: [["magpie", "No. That was the whole debt."]] },
+      ], timer: 15, silent: { t: "(Say nothing.)", fx: { magpie: -1, flag: "cutMagpie" }, then: [["magpie", "...Yeah. I'd go quiet too. I'll be behind the glass."]] } },
+      { if: s => !s.flags.forgaveMagpie && !s.flags.cutMagpie, then: [
+        { c: [
+          { s: "cold", t: "Then I forgive you.", fx: { magpie: 2, flag: "forgaveMagpie" }, then: [["magpie", "...Thank you."]] },
+          { s: "hard", t: "Then we're done.", fx: { magpie: -3, flag: "cutMagpie" }, then: [["magpie", "...Behind the glass, then."]] },
+        ] } ] },
+    ] },
+
+  21: { act: 4, title: "SCARECROW", district: "stacks", map: { fam: "slums", seed: 2121, arch: "POOLS" }, goal: "BRING DOWN SCARECROW",
+    rules: { goal: { type: "boss" }, p2: null, boss: 14, heatBase: 2 },
+    brief: [
+      ["scarecrow", "You came into my Stacks with a Halvorsen gun, {LAST}. Halvorsen sold our power, our water, our names."],
+      ["scarecrow", "Mother gave them back. Who are you to take them away?"],
+      { c: [
+        { s: "ask", t: "Mother gave them a leash.", then: [["scarecrow", "A leash is a kind of love down here."]] },
+        { s: "hard", t: "Someone who's going to stop you.", then: [["scarecrow", "Then the Stacks will remember you as Halvorsen."]] },
+        { s: "cold", t: "I'm not here for Halvorsen.", fx: { res: 1 }, then: [["scarecrow", "Everybody's here for Halvorsen. Some just don't know it yet."]] },
+        { s: "origin", o: "ghost", t: "Nobody in the Stacks will see who did this.", then: [["scarecrow", "The crows will."]] },
+      ] },
+      ["sys", "He plants drone nests on the walls and calls the flock. He can only be hurt while his arms are raised."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Thin his people. He'll come out to protect them." },
+      { on: "boss", who: "magpie", t: "Shoot the nests when they open. Hit him when he raises his arms." },
+      { on: "hp:2", who: "corvus", t: "THE STACKS ARE WATCHING YOU, {FIRST}." },
+      { on: "hp:1", if: s => s.flags.freed, who: "wren", t: "One more! I've got your back from the roof!" },
+    ],
+    shard: { on: "k:7", title: "LOG 21 · SCARECROW", text: "Before the mask I was a Halvorsen lineman. I wired this block. Then they cut it, to make the rent go up. Mother turned it back on. That's all she had to do." },
+    outro: [
+      ["scarecrow", "...Halvorsen... did this. Not you. Tell them that, {LAST}."],
+      ["sys", "The crowd on the walkways goes silent. His burlap mask lies in the mud."],
+      { c: [
+        { s: "cold", t: "(Leave the mask with his people.)", fx: { flag: "leftMask" }, then: [["sys", "An old woman picks it up and holds it to her chest. Someone on the balconies nods at you."]] },
+        { s: "hard", t: "(Take the mask.)", fx: { flag: "tookMask" }, then: [["sys", "You take it. Nobody on the walkways says a word."], ["magpie", "That's a trophy now. It's in the shop's STYLE tab if you want to wear it. I wouldn't, down here."]] },
+      ] },
+      ["vane", "Kade. Good. Come to the Galleria. Let's finish our business."],
+      ["magpie", "The Galleria is a Halvorsen mall. That's not a meeting, {FIRST}. That's a trap with a gift shop."],
+    ] },
+
+  22: { act: 4, title: "CLOSING TIME", district: "galleria", map: { fam: "galleria", seed: 2222, arch: "PLAZA" }, goal: "FIGHT THROUGH THE LOCKDOWN",
+    rules: { goal: { type: "kills", n: 40 }, p2: null, boss: null, heatBase: 1, timeHeat: 30 },
+    brief: [
+      ["sys", "Halvorsen Galleria. A luxury arcade under glass, locked down for one guest."],
+      ["vane", "Kade. Your contract is cancelled. There's a bounty on you, effective immediately. I'm sorry. It was always going to end like this."],
+      { c: [
+        { s: "hard", t: "Send everyone you've got.", fx: { vane: -1 }, then: [["vane", "I already did."]] },
+        { s: "ask", t: "Why now?", then: [["vane", "Because you know about rack 00. And CORVUS wants you more than it wants me."]] },
+        { s: "sharp", t: "How much is the bounty? Asking for Magpie.", fx: { magpie: 1 }, then: [["magpie", "Ha. More than I'd pay for you, sweetheart."]] },
+        { s: "origin", o: "corpo", t: "I wrote half of your security protocols, Saskia.", fx: { flag: "corpoProtocols" }, then: [["vane", "And I rewrote them all the day you left."]] },
+      ] },
+      ["holt", "Halvorsen Wardens, weapons free. The target is Kade."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Wardens. White armour, laser sights. When you see the amber line, move." },
+      { on: "k:15", who: "holt", t: "Target is mobile. Tighten the net." },
+      { on: "k:30", who: "corvus", t: "THEY HUNT YOU FOR US, {FIRST}. HOW KIND." },
+    ],
+    shard: { on: "k:14", title: "LOG 22 · BOUNTY ORDER", text: "Asset {LAST}: retrieve alive if possible. If not possible, retrieve the head. The neural template must be intact. Authorised: S. Vane." },
+    outro: [
+      ["holt", "Fall back! The Murder are inside the Galleria!"],
+      ["magpie", "Everybody's here for you, {FIRST}. You're the most popular person in Saint Varrow."],
+    ] },
+
+  23: { act: 4, title: "SHOPFLOOR", district: "galleria", map: { fam: "galleria", seed: 2323, arch: "TERRACES" }, goal: "SURVIVE THE CROSSFIRE",
+    rules: { goal: { type: "survive", secs: 75 }, p2: null, boss: null, heatBase: 2, timeHeat: 25, infight: true,
+      pool: [["warden", 0, 3], ["shrike", 0, 3], ["rook", 0, 3], ["corvid", 0, 2], ["carrion", 1, 2], ["bulwark", 2, 1]] },
+    brief: [
+      ["sys", "Halvorsen Wardens on one side of the shopfloor. The Murder on the other. You in the middle."],
+      ["magpie", "They hate each other more than they hate you. Use that. Let them thin each other out."],
+      { c: [
+        { s: "cold", t: "Stay out of the lines of fire.", then: [["magpie", "Exactly."]] },
+        { s: "ask", t: "Can I make them fight harder?", then: [["magpie", "Stand where a Warden's shot has to go through a cultist to reach you."]] },
+        { s: "hard", t: "I'll kill them all.", then: [["magpie", "Or that. That works too."]] },
+      ] },
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Wardens shoot the Murder too, and Murder rounds hit Wardens. Let them trade." },
+      { on: "t:25", who: "holt", t: "Ignore the cultists! Kade is the priority!" },
+      { on: "t:45", who: "corvus", t: "SUCH NOISE. SUCH LOVELY NOISE." },
+      { on: "t:60", who: "vane", t: "Enough. I'll handle Kade myself." },
+    ],
+    shard: { on: "t:30", title: "LOG 23 · HALVORSEN BOARD MINUTES", text: "Motion: recover CORVUS intact and license it to the city as a security service. Carried. Note: Director Vane to personally oversee the recovery of the template." },
+    outro: [
+      ["sys", "The shopfloor falls quiet. Glass crunches. Something heavy walks out of the Halvorsen store, wearing a white exo-frame."],
+      ["vane", "You were the best enforcer I ever had, Kade. Let's see if you still are."],
+    ] },
+
+  24: { act: 4, title: "DIRECTOR VANE", district: "galleria", map: { fam: "galleria", seed: 2424, arch: "CORE HALL" }, goal: "BRING DOWN DIRECTOR VANE",
+    rules: { goal: { type: "boss" }, p2: null, boss: 10, heatBase: 2 },
+    brief: [
+      ["vane", "Halvorsen built CORVUS out of you because you never hesitated. Don't start now."],
+      { c: [
+        { s: "hard", t: "I won't.", then: [["vane", "Good."]] },
+        { s: "ask", t: "Was any of it real? The job, the noodle bar?", fx: { vane: 1 }, then: [["vane", "The noodles were real. I paid for them."]] },
+        { s: "cold", t: "You copied my mind without asking.", then: [["vane", "Asking is for people who can afford no."]] },
+      ] },
+      ["sys", "Her missiles follow you. She charges in a straight line, then the frame overheats. That's your window."],
+    ],
+    radio: [
+      { on: "start", who: "magpie", t: "Clear her Wardens. She'll come out for you." },
+      { on: "boss", who: "magpie", t: "Sidestep the charge, then shoot the frame while it's venting steam." },
+      { on: "hp:2", who: "holt", t: "Director! Fall back!" },
+      { on: "hp:1", who: "corvus", t: "SHE MADE US. YOU WILL UNMAKE HER. HOW FITTING." },
+    ],
+    shard: { on: "k:5", title: "LOG 24 · VANE, PRIVATE", text: "I signed the template order at 22:58 and went home. I slept fine. That's what scares me." },
+    outro: [
+      ["vane", "...I ordered the upload test. I let the Murder in, to see what CORVUS would do with real minds. I'd do it again."],
+      { c: [
+        { s: "cold", t: "(Spare her.)", fx: { vane: 1, flag: "vaneSpared" }, then: [["vane", "...The Spire lifts. My codes still work. Use them."], ["sys", "Vane limps away into the dark of the Galleria."]] },
+        { s: "hard", t: "(End it.)", fx: { flag: "vaneKilled" }, then: [["sys", "Director Vane doesn't get up again."], ["holt", "...All units. The Director is down. Kade is now priority one."]] },
+        { s: "ask", t: "(Hand her to the Stacks.)", fx: { flag: "vaneStacks" }, then: [["magpie", "The Stacks have been waiting a long time to meet a Halvorsen director."], ["sys", "Vane is led away by people who used to pay her rent."]] },
+      ], timer: 15, silent: { t: "(Walk away.)", fx: { flag: "vaneSpared" }, then: [["sys", "You walk away. Behind you, Vane laughs, then coughs, then stops."]] } },
+      ["corvus", "COME UP, {FIRST}. SPIRE ZERO. MOTHER IS WAITING. SO ARE WE."],
+      ["sys", "END OF ACT 4 · BAD DEBTS."],
+    ] },
 };
+
 
 

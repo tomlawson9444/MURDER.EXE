@@ -103,7 +103,7 @@ function drawBodyshop(c, t) {
       c.fillStyle = own ? "#16121f" : "#0b0912"; c.fillRect(x, y, 28, 22); c.strokeStyle = on ? COL.cyan : equipped(i.id) ? rgba(COL.cyan, .5) : "#2a2640"; c.strokeRect(x + .5, y + .5, 27, 21);
       c.globalAlpha = own ? 1 : .3; itemIcon(c, i, x + 3, y + 4); c.globalAlpha = 1; if (!own) { c.fillStyle = COL.magenta; c.fillRect(x + 23, y + 2, 3, 3); } });
     const i = all[B.sel]; if (i) { const own = owns(i.id), kit = Object.values(ORIGIN[SAVE.char.origin].kit).flat().includes(i.id);
-      const status = equipped(i.id) ? ["EQUIPPED", COL.cyan] : own ? [kit && SAVE.char.starterClaimed ? "OWNED · STARTER KIT" : "OWNED", COL.ink] : !available(i) ? ["LOCKED · " + i.reqText.toUpperCase(), COL.magenta] : ["AT MAGPIE'S · " + i.price + " SC", COL.amber];
+      const status = equipped(i.id) ? ["EQUIPPED", COL.cyan] : own ? [kit && SAVE.char.starterClaimed ? "OWNED · STARTER KIT" : "OWNED", COL.ink] : !available(i) ? ["LOCKED · " + i.reqText.toUpperCase(), COL.magenta] : ["AT MAGPIE'S · " + priceOf(i) + " SC", COL.amber];
       txt(c, i.name.toUpperCase(), 202, 172, COL.ink); txt(c, status[0], 470, 172, status[1], 8, "right"); wrapText(c, i.desc.toUpperCase(), 266).slice(0, 3).forEach((l, k) => txt(c, l, 202, 186 + k * 10, COL.dim)); }
   } else if (tab === "ORIGIN") {
     ORIGINS.forEach((O, i) => { const y = BROW_Y + i * 46, on = i === B.sel, mine = SAVE.char.origin === O.id; if (on) sel(y - 2, 44);

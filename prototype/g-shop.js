@@ -16,6 +16,8 @@ DEFS.magpie = { w: 44, h: 46, parts: [
   Px("ambE", [[12, 15], [12, 17], [32, 15]]),
 ] };
 const LINES = {
+  warm: ["PARTNER. FRIENDS-AND-FAMILY PRICES TODAY.", "STILL CAN'T BELIEVE YOU FORGAVE ME. TWENTY PERCENT OFF.", "YOU KEEP ME HONEST. IT'S EXHAUSTING."],
+  cold: ["BEHIND THE GLASS NOW. PRICES WENT UP.", "BUSINESS ONLY. PAY OR WALK.", "I KNOW. I KNOW. JUST BUY SOMETHING."],
   greet: ["VESPER. YOU SMELL LIKE WET CROW.", "BACK ALREADY? CHROME DOESN'T BUY ITSELF.", "FRESH STOCK OFF A HALVORSEN TRUCK. DON'T ASK.", "THE MURDER'S TWITCHY TONIGHT. GOOD FOR BUSINESS."],
   between: ["STILL BREATHING. I'M IMPRESSED.", "THAT BOSS OF THEIRS? I'D HAVE CHARGED DOUBLE.", "SPEND IT BEFORE THE CROWS DO."],
   buy: ["PLEASURE DOING CRIMES WITH YOU.", "TREAT IT NICE. NO REFUNDS.", "STILL WARM. THE LAST OWNER ISN'T."],
@@ -47,11 +49,11 @@ function wrapText(c, s, maxW) { c.font = "8px Silkscreen"; const out = []; let l
 function openShop(from) {
   AU.init(); shopSprites(); if (!SHOPBG) SHOPBG = buildShopBG();
   const L = SAVE.loadout; G.mode = "shop"; G.shop = { tab: 0, sel: 0, from, line: "", lineT: 0, mx: mouse.x, my: mouse.y, flash: 0 };
-  G.shop.sel = Math.max(0, shopList().findIndex(i => i.id === L.gun)); say(from === "clear" ? "between" : "greet");
+  G.shop.sel = Math.max(0, shopList().findIndex(i => i.id === L.gun)); const f = SAVE.camp && SAVE.camp.flags || {}; say(f.forgaveMagpie ? "warm" : f.cutMagpie ? "cold" : from === "clear" ? "between" : "greet");
 }
 const shopList = () => ITEMS.filter(i => i.cat === CATS[G.shop.tab][0]);
 const equipped = id => { const L = SAVE.loadout, it3 = ITEM[id]; if (it3 && it3.cat === "style") return SAVE.char.look[it3.slot] === it3.value; return L.gun === id || L.oc === id || L.imp.includes(id); };
-function shopStatus(i) { if (equipped(i.id)) return ["EQUIPPED", COL.cyan]; if (owns(i.id)) return ["OWNED", COL.dim]; if (!available(i)) return ["LOCKED", COL.magenta]; return [i.price + " SC", SAVE.scrip >= i.price ? COL.amber : COL.red]; }
+function shopStatus(i) { if (equipped(i.id)) return ["EQUIPPED", COL.cyan]; if (owns(i.id)) return ["OWNED", COL.dim]; if (!available(i)) return ["LOCKED", COL.magenta]; return [priceOf(i) + " SC", SAVE.scrip >= i.price ? COL.amber : COL.red]; }
 function shopConfirm() {
   const i = shopList()[G.shop.sel], L = SAVE.loadout; if (!i) return;
   if (i.cat === "style" && owns(i.id)) { // wear it, or take it off (back to the slot's first free option)
@@ -63,8 +65,8 @@ function shopConfirm() {
     say("equip"); AU.sfx("lock", 3); persist(); return;
   }
   if (!available(i)) { say("locked"); AU.sfx("hackFail"); return; }
-  if (SAVE.scrip < i.price) { say("poor"); AU.sfx("hackFail"); G.shop.flash = .4; return; }
-  SAVE.scrip -= i.price; SAVE.owned.push(i.id); say("buy"); AU.sfx("milestone"); AU.sfx("reload"); G.shop.pop = { txt: "-" + i.price, life: 1 };
+  if (SAVE.scrip < priceOf(i)) { say("poor"); AU.sfx("hackFail"); G.shop.flash = .4; return; }
+  const cost = priceOf(i); SAVE.scrip -= cost; SAVE.owned.push(i.id); say("buy"); AU.sfx("milestone"); AU.sfx("reload"); G.shop.pop = { txt: "-" + cost, life: 1 };
   if (i.cat === "style") { SAVE.char.look[i.slot] = i.value; applyLook(); }
   else if (i.cat === "gun") L.gun = i.id; else if (i.cat === "oc") L.oc = i.id; else { if (L.imp.length >= 2) L.imp.shift(); L.imp.push(i.id); }
   persist();

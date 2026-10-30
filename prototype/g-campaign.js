@@ -17,6 +17,8 @@ DIST.kiln = { n: 4, name: "THE KILN", code: "C-04", amb: "datacrypt", next: null
 // Story districts are built by the map generator from a fixed style and seed, so every player gets the same chapter maps.
 const STORY_STYLES = {
   canals: { family: "canals", mood: "neon", hue: 192, weather: "heavy", floor: "tiles", backdrop: "docks", hole: "water", name: "GUTTERLINE CANALS", signs: ["NOODLE", "PAWN", "CAW//24H", "LOANS", "SOBA", "CORVUS"] },
+  slums: { family: "slums", mood: "toxic", hue: 95, weather: "acid", floor: "gravel", backdrop: "shanty", hole: "toxic", name: "THE STACKS", signs: ["SLEEP POD", "LOANS", "CLINIC", "IMPLANTS", "FREE CHROME", "CORVUS"] },
+  galleria: { family: "galleria", mood: "neon", hue: 320, weather: "clear", floor: "marble", backdrop: "mall", hole: "void", name: "HALVORSEN GALLERIA", signs: ["HALVORSEN", "LUXE", "CLOSED", "LOCKDOWN", "SALE", "CORVUS"] },
   docks: { family: "docks", mood: "ice", hue: 205, weather: "smog", floor: "plate", backdrop: "docks", hole: "water", name: "SALTGATE DOCKS", signs: ["SALTGATE", "BERTH 7", "CUSTOMS", "NO ENTRY", "HALVORSEN", "CORVUS"] },
   serverhalls: { family: "serverhalls", mood: "ultraviolet", hue: 268, weather: "clear", floor: "grid", backdrop: "serverWall", hole: "data", name: "DATACRYPT", signs: ["COLD STORE", "RACK 00", "HALVORSEN", "NO SIGNAL", "DATA", "CORVUS"] },
   foundries: { family: "foundries", mood: "sodium", hue: 22, weather: "embers", floor: "rust", backdrop: "factory", hole: "molten", name: "THE KILN", signs: ["KILN", "SHIFT 3", "HOT", "NO ENTRY", "HALVORSEN", "CORVUS"] },
@@ -25,7 +27,13 @@ function storyStyle(m) {
   const P = STORY_STYLES[m.fam || "canals"];
   return Object.assign({}, PG.FAMILIES[P.family], P, { id: P.family + m.seed, seed: m.seed, accents: PG.MOODS[P.mood].acc, target: [13, 16], puddles: P.weather !== "embers", phaseExtra: "h", arch: [m.arch] });
 }
-const HAZARDS = { canals: ["THE CANAL", "water"], kiln: ["THE SLAG", "molten"], docks: ["THE HARBOUR", "water"], datacrypt: ["THE DATA", "data"] };
+DIST.stacks = { n: 7, name: "THE STACKS", code: "C-07", amb: "market", next: null,
+  pool: [["shrike", 0, 4], ["rook", 0, 3], ["corvid", 0, 2], ["carrion", 1, 2], ["hexer", 1, 1], ["jackdaw", 2, 1], ["bulwark", 2, 1]],
+  boss: "scarecrow", bossName: "SCARECROW", bossLine: "WEAK POINT · WHILE HE CALLS THE FLOCK", bossTip: "SHOOT HIS NESTS. HIT HIM WHEN HIS ARMS GO UP.", phaseTxt: "" };
+DIST.galleria = { n: 8, name: "HALVORSEN GALLERIA", code: "C-08", amb: "spire", next: null,
+  pool: [["warden", 0, 4], ["shrike", 0, 2], ["rook", 0, 2], ["bulwark", 1, 1], ["corvid", 1, 2], ["carrion", 2, 1]],
+  boss: "vanexo", bossName: "DIRECTOR VANE", bossLine: "WEAK POINT · THE EXO-FRAME WHILE IT OVERHEATS", bossTip: "SIDESTEP THE CHARGE. THE MISSILES FOLLOW YOU.", phaseTxt: "" };
+const HAZARDS = { stacks: ["THE PIT", "toxic"], galleria: ["THE ATRIUM", "void"], canals: ["THE CANAL", "water"], kiln: ["THE SLAG", "molten"], docks: ["THE HARBOUR", "water"], datacrypt: ["THE DATA", "data"] };
 DIST.docks = { n: 5, name: "SALTGATE DOCKS", code: "C-05", amb: "rookery", next: null,
   pool: [["shrike", 0, 3], ["rook", 0, 3], ["corvid", 0, 2], ["carrion", 1, 2], ["jackdaw", 1, 1], ["bulwark", 2, 2]],
   boss: "widow", bossName: "WIDOW CRANE", bossLine: "WEAK POINT · THE CAB WHILE IT'S OPEN AFTER A DROP", bossTip: "A SHADOW ON THE FLOOR MEANS A CONTAINER IS COMING.", phaseTxt: "" };
@@ -80,8 +88,8 @@ function updFerry(e, dt, d) {
   }
 }
 // Story bosses take three hits. Each hit sends adds through the doors and stirs up the district hazard.
-function hurtBoss(e) { if (e.type === "cinder") return hurtCinder(e); if (e.type === "widow") return hurtWidow(e); if (e.type === "archivist") return hurtArchivist(e); return hurtFerry(e); }
-const STORY_BOSSES = { ferryman: () => spawnFerryman(), cinder: () => spawnCinder(), widow: () => spawnWidow(), archivist: () => spawnArchivist() };
+function hurtBoss(e) { if (e.type === "wrenc") return hurtWrenc(e); if (e.type === "scarecrow") return hurtScarecrow(e); if (e.type === "vanexo") return hurtVane(e); if (e.type === "cinder") return hurtCinder(e); if (e.type === "widow") return hurtWidow(e); if (e.type === "archivist") return hurtArchivist(e); return hurtFerry(e); }
+const STORY_BOSSES = { scarecrow: () => spawnScarecrow(), vanexo: () => spawnVane(), ferryman: () => spawnFerryman(), cinder: () => spawnCinder(), widow: () => spawnWidow(), archivist: () => spawnArchivist() };
 function bossSpot() { buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0; return floorSpots(120).filter(reach).sort(() => Math.random() - .5)[0] || { x: GW / 2, y: 90 }; }
 // A hit while he reels the chain in costs him one of three hits. He calls the water up each time.
 function hurtFerry(e) {
@@ -252,6 +260,95 @@ function hurtArchivist(e) {
   fx(e.x, e.y - 24, 24, [COL.cyan, "#ffffff", COL.magenta], 90, .6); pop(e.x, e.y - 54, e.hp + " LEFT", COL.cyan);
 }
 
+/* ---- Act 4 people: Halvorsen Wardens and a crow-masked Wren ---- */
+NPC_LOOKS.warden = { coat: "vest", coatCol: "white", lining: "amber", hair: "buzz", hairCol: "black", skin: "s3", eyes: "visor", arm: "chrome", glow: "amber", trail: "glow", gun: "steel", extra: "none" };
+NPC_LOOKS.wrenCult = { coat: "jacket", coatCol: "plum", lining: "magenta", hair: "mohawk", hairCol: "green", skin: "s4", eyes: "trophy", arm: "none", glow: "magenta", trail: "glow", gun: "carbon", extra: "scarf" };
+function storySprites() {
+  [["warden", "warden"], ["wrenc", "wrenCult"]].forEach(([k, look]) => { if (SP[k]) return; const v = previewSprite(NPC_LOOKS[look]); SP[k] = { cv: v.cv, gc: v.gc, G: v.G, w: v.w, h: v.h }; SPF[k] = flipSpr(SP[k]); });
+  if (!SP.scarecrow) { SP.scarecrow = sprite(DEFS.scarecrow, { rimL: COL.magenta, rimR: "#6f66b0" }); SPF.scarecrow = flipSpr(SP.scarecrow); }
+}
+NAMES.warden = "A HALVORSEN WARDEN"; NAMES.wrenc = "WREN";
+// Wardens: Halvorsen troopers with a laser sight and a fast round. In crossfire chapters they shoot the Murder too.
+function wardenTarget(e) {
+  const p = G.p; if (!(G.rules && G.rules.infight)) return p; let best = p, bd = Math.hypot(p.x - e.x, p.y - e.y) * 1.3;
+  for (const o of G.en) { if (!o.alive || o === e || o.type === "warden" || BOSSY.has(o.type) || o.type === "echo") continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd && d < 170) { bd = d; best = o; } }
+  return best;
+}
+function updWarden(e, dt) {
+  const tg = e.state === "aim" && e.tg && (e.tg === G.p || e.tg.alive) ? e.tg : wardenTarget(e), d = Math.hypot(tg.x - e.x, tg.y - e.y), sees = los(e.x, e.y - BODY, tg.x, tg.y - BODY);
+  e.face = tg.x < e.x ? -1 : 1;
+  if (e.state === "walk") { if (d > 140 || !sees) walk(e, 46, dt); else if (e.t <= 0) { e.state = "aim"; e.t = .65 * tellK(); e.tg = tg; AU.sfx("glint", panOf(e.x)); } }
+  else if (e.state === "aim") { e.la = Math.atan2(tg.y - BODY - (e.y - BODY - 2), tg.x - e.x - e.face * 10); if (e.t <= 0) { shoot(e.x + e.face * 10, e.y - BODY - 2, e.la, 230, "w", { by: "warden" }); AU.sfx("shotE", panOf(e.x)); e.state = "walk"; e.t = rnd(1.4, 2); } }
+  if (Math.hypot(G.p.x - e.x, G.p.y - e.y) < 9) playerDie("warden");
+}
+// Wren, if you left the sleepers in Chapter 5: two hits to kill, or quickhack the implant to free her.
+function spawnWrenc() { storySprites(); const ds = doors().sort((a, b) => Math.hypot(b.x - G.p.x, b.y - G.p.y) - Math.hypot(a.x - G.p.x, a.y - G.p.y)); const d = ds[0] || { x: GW / 2, y: 60 };
+  const e = spawnEnemy("wrenc", d.x, d.y); Object.assign(e, { hp: 2, state: "walk", t: 1 }); G.banner = { txt: "WREN · HACK THE IMPLANT TO FREE THEM", col: "#9dff4a", life: 3 }; return e; }
+function updWrenc(e, dt, d) {
+  const p = G.p, ang = Math.atan2(p.y - e.y, p.x - e.x); e.hurt = Math.max(0, (e.hurt || 0) - dt);
+  if (e.state === "walk") { walk(e, 66, dt); if (d < 60 && los(e.x, e.y - BODY, p.x, p.y - BODY)) { e.state = "crouch"; e.t = .45 * tellK(); e.la = ang; AU.sfx("crouch", panOf(e.x)); } }
+  else if (e.state === "crouch") { e.la = ang; if (e.t <= 0) { e.state = "lunge"; e.t = .3; AU.sfx("lunge", panOf(e.x)); } }
+  else if (e.state === "lunge") { if (moveBody(e, Math.cos(e.la) * 280 * dt, Math.sin(e.la) * 280 * dt)) e.t = 0; e.face = Math.cos(e.la) < 0 ? -1 : 1; if (d < 9) playerDie("wrenc"); if (e.t <= 0) { e.state = "rec"; e.t = .8; } }
+  else if (e.t <= 0) e.state = "walk";
+}
+function hurtWrenc(e) { e.hp--; e.hurt = .3; e.state = "rec"; e.t = 1; pop(e.x, e.y - 34, "WREN · 1 MORE HIT KILLS", "#9dff4a"); AU.sfx("bulwark", panOf(e.x)); }
+function freeWren(e) { e.alive = false; SAVE.camp.flags.wrenFreed = true; delete SAVE.camp.flags.wrenDead; SAVE.camp.trust.wren = Math.max(SAVE.camp.trust.wren, 0); persist();
+  fx(e.x, e.y - 14, 24, ["#9dff4a", "#ffffff", COL.magenta], 80, .7); pop(e.x, e.y - 34, "IMPLANT FRIED · WREN IS FREE", "#9dff4a"); radio("wren", "...{FIRST}? It's quiet. It's actually quiet. I'm sorry. I'm so sorry."); }
+function wrenDown() { SAVE.camp.flags.wrenDead = true; persist(); radio("magpie", "That was Wren. ...Keep moving, {FIRST}."); }
+
+/* ---- Hold a zone, and extract to a van ---- */
+function placeZone() { const q = guardSpots(1, 0, true)[0]; G.zone = { x: q.x, y: q.y, r: 30, prog: 0 }; }
+function placeExit() { buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0;
+  const q = floorSpots(0).filter(reach).sort((a, b) => Math.hypot(b.x - G.p.x, b.y - G.p.y) - Math.hypot(a.x - G.p.x, a.y - G.p.y))[0] || { x: GW / 2, y: GH / 2 };
+  G.exit = { x: q.x, y: q.y }; G.banner = { txt: "THE VAN IS HERE · GET TO IT", col: COL.cyan, life: 2.6 }; AU.sfx("milestone"); }
+
+/* ---- SCARECROW: plants drone nests on the walls and calls the flock ---- */
+NAMES.scarecrow = "SCARECROW"; FLYING.add("scarecrow"); BOSSY.add("scarecrow");
+function spawnScarecrow() { storySprites(); const s2 = bossSpot(); const e = spawnEnemy("scarecrow", s2.x, s2.y); Object.assign(e, { hp: 3, state: "walk", t: 2.2, call: 4 }); return e; }
+function plantNest() {
+  if (G.en.filter(x => x.alive && x.type === "nest").length >= 3) return;
+  const c = []; for (let y = 2; y < MH - 3; y++) for (let x = 2; x < MW - 2; x++) if (G.grid[y][x] === "#" && G.grid[y + 1][x] === "." && Math.hypot(x * TS - G.p.x, y * TS - G.p.y) > 60) c.push([x, y]);
+  const pick = c[Math.random() * c.length | 0]; if (!pick) return; const [x, y] = pick; G.grid[y][x] = "N"; G.dirty = true;
+  const n = spawnEnemy("nest", x * TS + 9, y * TS + 17); n.tx = x; n.ty = y; n.state = "closed"; n.t = rnd(1.5, 3); fx(x * TS + 8, y * TS + 8, 14, [COL.magenta, "#2a2440"], 60, .5); AU.sfx("nest", panOf(x * TS));
+}
+function updScarecrow(e, dt, d) {
+  const p = G.p; e.face = p.x < e.x ? -1 : 1; e.hurt = Math.max(0, (e.hurt || 0) - dt);
+  if (e.state === "walk") { walk(e, 24, dt); e.face = p.x < e.x ? -1 : 1; e.call -= dt; if (d < 14) playerDie("scarecrow");
+    if (e.call <= 0) { e.state = "call"; e.t = 2.6; plantNest(); for (let i = 0; i < 3; i++) spawnEnemy("corvid", e.x + rnd(-30, 30), e.y - 30); AU.sfx("caw"); AU.sfx("nest", panOf(e.x)); }
+    else if (e.t <= 0) { e.state = "sweep"; e.t = .75 * tellK(); e.la = Math.atan2(p.y - e.y, p.x - e.x); AU.sfx("charge", panOf(e.x)); } }
+  else if (e.state === "sweep") { if (e.t <= 0) { for (let k = -4; k <= 4; k++) shoot(e.x, e.y - 22, e.la + k * .15, 100, "e", { by: "scarecrow" }); AU.sfx("shotE", panOf(e.x)); e.state = "walk"; e.t = rnd(1.8, 2.6); } }
+  else if (e.state === "call") { if (e.t <= 0) { e.state = "walk"; e.t = 1.5; e.call = rnd(4.5, 6); } }
+}
+function hurtScarecrow(e) {
+  e.hp--; e.hurt = .3; e.state = "walk"; e.t = 1.2; e.call = 3; G.shake = 5; AU.sfx("land", panOf(e.x)); rumble(.8, .6, 250);
+  fx(e.x, e.y - 24, 24, [COL.magenta, "#ffffff", "#c08d1a"], 90, .6); pop(e.x, e.y - 54, e.hp + " LEFT", COL.magenta); plantNest();
+}
+
+/* ---- DIRECTOR VANE in a Halvorsen exo-frame ---- */
+DEFS.vanexo = { w: 48, h: 48, dither: 1, parts: [
+  R("chrome", 12, 32, 7, 12), R("chrome", 29, 32, 7, 12), R("boot", 10, 43, 10, 5), R("boot", 28, 43, 10, 5),
+  Pl("bone", [[12, 14], [36, 14], [38, 33], [10, 33]]), R("ambE", 20, 20, 8, 3), R("chrome", 14, 28, 20, 3),
+  S_(Pl("bone", [[4, 12], [13, 12], [13, 24], [4, 24]])), S_(Pl("bone", [[35, 12], [44, 12], [44, 24], [35, 24]])), R("gun", 2, 9, 9, 5), R("gun", 37, 9, 9, 5), Px("ambE", [[3, 11], [45, 11]]),
+  E("skin", 24, 9, 5, 5), Pl("hair", [[18, 8], [20, 3], [24, 2], [28, 3], [30, 8], [29, 6], [19, 6]]), R("ambE", 20, 9, 8, 1),
+] };
+NAMES.vanexo = "DIRECTOR VANE"; FLYING.add("vanexo"); BOSSY.add("vanexo");
+function spawnVane() { storySprites(); const s2 = bossSpot(); const e = spawnEnemy("vanexo", s2.x, s2.y); Object.assign(e, { hp: 3, state: "walk", t: 2, gun: 1.2 }); return e; }
+function updVane(e, dt, d) {
+  const p = G.p; e.hurt = Math.max(0, (e.hurt || 0) - dt); if (e.state !== "charge") e.face = p.x < e.x ? -1 : 1;
+  if (e.state === "walk") { walk(e, 32, dt); e.gun -= dt; if (d < 16) playerDie("vanexo");
+    if (e.gun <= 0) { for (const sx of [-14, 14]) for (let k = 0; k < 2; k++) shoot(e.x + sx, e.y - 36, -Math.PI / 2 + sx * .03 + rnd(-.4, .4), 70, "e", { by: "vanexo", seek: 1.6, life: 4 }); AU.sfx("rail", panOf(e.x)); e.gun = 2.8; }
+    if (e.t <= 0) { e.state = "aim"; e.t = .9 * tellK(); AU.sfx("charge", panOf(e.x)); } }
+  else if (e.state === "aim") { if (e.t > .3) e.la = Math.atan2(p.y - e.y, p.x - e.x); if (e.t <= 0) { e.state = "charge"; e.t = .7; e.face = Math.cos(e.la) < 0 ? -1 : 1; AU.sfx("dash"); } }
+  else if (e.state === "charge") { const hitWall = moveBody(e, Math.cos(e.la) * 340 * dt, Math.sin(e.la) * 340 * dt); G.parts.push({ x: e.x, y: e.y - rnd(4, 30), vx: -Math.cos(e.la) * 80, vy: 0, life: .2, max: .2, col: COL.amber, g: 0 });
+    if (d < 18) playerDie("vanexo"); if (hitWall || e.t <= 0) { e.state = "overheat"; e.t = 2.4; G.shake = hitWall ? 6 : 3; AU.sfx("land", panOf(e.x)); } }
+  else if (e.state === "overheat") { if (Math.random() < .4) G.parts.push({ x: e.x + rnd(-10, 10), y: e.y - 30, vx: rnd(-10, 10), vy: -50, life: .5, max: .5, col: "#d8d4ee", g: 0 }); if (e.t <= 0) { e.state = "walk"; e.t = rnd(2.4, 3.4); e.gun = .8; } }
+}
+function hurtVane(e) {
+  e.hp--; e.hurt = .3; e.state = "walk"; e.t = 1.6; e.gun = 1; G.shake = 5; AU.sfx("land", panOf(e.x)); rumble(.8, .6, 250);
+  fx(e.x, e.y - 24, 24, [COL.amber, "#ffffff", "#d8d4ee"], 90, .6); pop(e.x, e.y - 54, e.hp + " LEFT", COL.amber);
+  doors().filter(dd => Math.hypot(dd.x - G.p.x, dd.y - G.p.y) > 90).slice(0, 2).forEach(dd => { G.pending.push({ type: "warden", x: dd.x, y: dd.y, t: .9, door: dd }); AU.sfx("door", panOf(dd.x)); });
+}
+
 /* ---- Rising water ---- */
 function floodCandidates() {
   const g = G.grid, out = [], near = (px, py) => (G.gates || []).some(q => Math.hypot(q.x - px, q.y - py) < 28) || (G.shard && Math.hypot(G.shard.x - px, G.shard.y - py) < 20);
@@ -386,6 +483,7 @@ function placeShard() { const s = floorSpots(110).filter(q => tileOf(q.x, q.y) !
 function trig(on) {
   const C = G.camp; if (on === "start") return C.t >= .6; if (on === "p2") return G.phase2; if (on === "boss") return G.boss && G.mode === "play";
   const [k, v] = on.split(":"), n = +v;
+  if (k === "zone") return G.zone && G.zone.prog * 100 >= n; if (k === "van") return !!G.exit;
   if (k === "t") return C.t >= n; if (k === "k") return dk() >= n; if (k === "stall") return G.stalls && stallPct() <= n; if (k === "cargo") return G.stalls && G.stalls[0].prog * 100 >= n;
   if (k === "gate") return G.gates && G.gates.filter(g => g.done).length >= n; if (k === "hp") return G.en.some(e => e.alive && e.hp && BOSSY.has(e.type) && e.hp <= n);
   return false;
@@ -398,11 +496,11 @@ function startChapter(n, retry) {
   if (!retry) undoChapterFx(n);
   G.camp = { n, ch, t: 0, fired: new Set(), won: false, winT: 0, kills0: 0 }; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; G.runSeed = null; G.queuedSeed = null;
   const hz = HAZARDS[ch.district] || [null, null];
-  G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.lull = false; G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
+  G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.lull = false; G.zone = null; G.exit = null; storySprites(); G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
   AU.init(); BANK.attach(); RUN.reset(ch.district);
   G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; G.lastHeat = G.heat;
   G.p.shield = SAVE.camp.diff === "story" ? 2 : 0;
-  const g = G.rules.goal; if (g.type === "stall" || g.type === "guard" || g.type === "escort") placeStalls(); if (g.type === "gates") placeGates(g.n);
+  const g = G.rules.goal; if (g.type === "stall" || g.type === "guard" || g.type === "escort") placeStalls(); if (g.type === "hold") placeZone(); if (g.type === "gates") placeGates(g.n);
   G.floodT = G.rules.flood || 0; G.ventT = G.rules.vents || 0;
   const title = `CHAPTER ${String(n).padStart(2, "0")} · ${ch.title}`, go = () => { G.mode = "play"; G.paused = false; G.banner = { txt: ch.goal, col: COL.cyan, life: 2.6 }; RUN.music(); buildFlow(); };
   AU.stop(); AU.ambience(D().amb);
@@ -442,7 +540,11 @@ function campTick(dt) {
       if (S.moving) { const tg = S.path[S.idx + 1], dx = tg.x - S.x, dy = tg.y - S.y, l = Math.hypot(dx, dy), st = 15 * dt; if (l <= st) { S.x = tg.x; S.y = tg.y; S.idx++; } else { S.x += dx / l * st; S.y += dy / l * st; } }
       S.prog = S.idx / (S.path.length - 1); S.contested = contested; } }
   if (G.gates) G.gates.forEach(q => { if (gateActive(q) && Math.hypot(q.x - p.x, q.y - p.y) < 18) gateProgress(q, dt / gateGoal().secs); });
-  const win = (g.type === "kills" && dk() >= g.n) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
+  if (G.zone) { const Z = G.zone, inside = Math.hypot(p.x - Z.x, p.y - Z.y) < Z.r; Z.contested = inside && G.en.some(e => e.alive && !FLYING.has(e.type) && Math.hypot(e.x - Z.x, e.y - Z.y) < Z.r); Z.inside = inside;
+    if (inside && !Z.contested) Z.prog = Math.min(1, Z.prog + dt / g.secs);
+    if (R.wrenAt != null && SAVE.camp.flags.leftThem && !C.wrenOut && Z.prog >= R.wrenAt) { C.wrenOut = true; spawnWrenc(); } }
+  if (g.type === "extract" && !G.exit && C.t >= g.secs) placeExit();
+  const win = (g.type === "kills" && dk() >= g.n) || (g.type === "hold" && G.zone.prog >= 1) || (g.type === "extract" && G.exit && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 18) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
   if (win) campWin();
 }
 function campWin() {
@@ -490,6 +592,10 @@ function drawMolten(c, t) {
 }
 function campDrawFloor(c, t) {
   if (G.hazard === "water") drawWater(c, t); if (G.hazard === "molten") drawMolten(c, t);
+  if (G.zone) { const Z = G.zone, col = Z.contested ? COL.red : Z.inside ? COL.cyan : COL.amber; c.save(); c.translate(Z.x, Z.y); c.scale(1, .62); c.strokeStyle = rgba(col, .5); c.beginPath(); c.arc(0, 0, Z.r, 0, TAU); c.stroke();
+    c.fillStyle = rgba(col, .08); c.fill(); c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, Z.r, -Math.PI / 2, -Math.PI / 2 + TAU * Z.prog); c.stroke(); c.restore();
+    txt(c, Z.contested ? "CONTESTED" : Z.inside ? "HOLDING" : "HOLD HERE", Z.x, Z.y - 32, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); }
+  if (G.exit) { const on = .6 + .4 * Math.sin(t * .01); c.save(); c.globalCompositeOperation = "lighter"; glow(c, G.exit.x, G.exit.y - 8, 22, COL.cyan, .5 * on); c.restore(); c.strokeStyle = rgba(COL.cyan, on); c.strokeRect(G.exit.x - 12.5, G.exit.y - 14.5, 25, 16); txt(c, "VAN", G.exit.x, G.exit.y - 28, COL.cyan, 8, "center"); }
   for (const d of G.drops || []) if (d.state === "warn") { const on = Math.floor(t / 90) % 2, x = d.tiles[0][0] * TS, y = d.tiles[0][1] * TS, k = 1 - d.t / 1.4;
     c.fillStyle = `rgba(0,0,0,${.25 + .4 * k})`; c.fillRect(x + 6 - 6 * k, y + 6 - 6 * k, 20 + 12 * k, 20 + 12 * k); c.strokeStyle = on ? COL.amber : rgba(COL.amber, .5); c.strokeRect(x + .5, y + .5, 31, 31); }
   for (const v of G.vents || []) { const on = Math.floor(t / 100) % 2;
@@ -528,6 +634,13 @@ function campDrawObjects(c, t) {
     c.fillStyle = "#16121f"; c.fillRect(x - 5, y - 18, 10, 18); c.fillStyle = "#302c41"; c.fillRect(x - 5, y - 18, 10, 1); c.fillStyle = col; c.fillRect(x - 3, y - 15, 6, 4);
     c.save(); c.globalCompositeOperation = "lighter"; glow(c, x, y - 13, 10, col, .5); c.restore();
     if (live) txt(c, Math.hypot(G.p.x - x, G.p.y - y) < 18 ? gg.verb : gg.noun, x, y - 30, rgba(col, .8 + .2 * Math.sin(t * .01)), 8, "center"); });
+  for (const e of G.en) { if (!e.alive) continue;
+    if (e.type === "warden" && e.state === "aim") { c.save(); c.globalAlpha = .55 + .3 * Math.sin(t * .05); pline(c, e.x + e.face * 10, e.y - BODY - 2, e.x + e.face * 10 + Math.cos(e.la) * 300, e.y - BODY - 2 + Math.sin(e.la) * 300, COL.amber); c.restore(); }
+    if (e.type === "scarecrow" && e.state === "call") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 28, 18, COL.magenta, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "CALLING", e.x, e.y - 60, COL.magenta, 8, "center"); }
+    if (e.type === "scarecrow" && e.state === "sweep") { c.save(); c.globalAlpha = .35; c.fillStyle = COL.red; c.beginPath(); c.moveTo(e.x, e.y - 20); c.arc(e.x, e.y - 20, 110, e.la - .65, e.la + .65); c.fill(); c.restore(); }
+    if (e.type === "vanexo" && e.state === "aim") { c.save(); c.globalAlpha = e.t > .3 ? .4 : .9; pline(c, e.x, e.y - 20, e.x + Math.cos(e.la) * 300, e.y - 20 + Math.sin(e.la) * 300, COL.amber, 3); c.restore(); }
+    if (e.type === "vanexo" && e.state === "overheat") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 24, 16, "#ffffff", .5 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "OVERHEATING", e.x, e.y - 60, COL.amber, 8, "center"); }
+    if (["wrenc", "scarecrow", "vanexo"].includes(e.type) && e.hurt > 0) { const s2 = sprOf(e.type, e.face); c.save(); c.globalAlpha = e.hurt * 2; c.drawImage(tinted(s2, "#ffffff"), Math.round(e.x - s2.w / 2), Math.round(e.y - s2.h + 2)); c.restore(); } }
   for (const e of G.en) { if (!e.alive || !e.hunt || e.hunt.dead) continue; const S = e.hunt; c.save(); c.globalAlpha = .45 + .25 * Math.sin(t * .02); c.setLineDash([3, 3]); c.strokeStyle = COL.red; c.beginPath(); c.moveTo(e.x, e.y - 6); c.lineTo(S.x, S.y - 12); c.stroke(); c.restore(); }
   for (const e of G.en) { if (!e.alive || (e.type !== "widow" && e.type !== "archivist")) continue; const s2 = sprOf(e.type, e.face);
     if (e.type === "widow" && e.state === "cab") { c.save(); c.globalCompositeOperation = "lighter"; glow(c, e.x, e.y - 26, 14, COL.cyan, .7 + .3 * Math.sin(t * .05)); c.restore(); txt(c, "CAB OPEN", e.x, e.y - 58, rgba(COL.cyan, .9), 8, "center"); }
@@ -555,6 +668,8 @@ function campHudCenter(c, t) {
   else if (g.type === "kills") { label = `${String(Math.min(dk(), g.n)).padStart(2, "0")}/${g.n} KILLS`; k = dk() / g.n; }
   else if (g.type === "survive") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = `SURVIVE ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; k = C.t / g.secs; }
   else if (g.type === "stall" || g.type === "guard") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = g.type === "stall" ? `STALL ${Math.ceil(stallPct())}% · ${s}S` : (G.rules.waves ? (G.lull ? "BREAK" : `W${(C.wave || 0) + 1}`) + " · " : "") + `RACKS ${G.stalls.filter(q => !q.dead).length}/${G.stalls.length} · ${s}S`; k = C.t / g.secs; col = stallPct() < 30 ? COL.red : COL.ink; }
+  else if (g.type === "hold") { label = `HOLD ${Math.floor(G.zone.prog * 100)}%` + (G.zone.contested ? " · CONTESTED" : ""); k = G.zone.prog; col = G.zone.contested ? COL.red : COL.ink; }
+  else if (g.type === "extract") { const s = Math.max(0, Math.ceil(g.secs - C.t)); label = G.exit ? "GET TO THE VAN" : `VAN IN ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; k = Math.min(1, C.t / g.secs); col = G.exit ? COL.cyan : COL.ink; }
   else if (g.type === "escort") { const S = G.stalls[0]; label = `CARGO ${Math.floor(S.prog * 100)}% · HP ${Math.ceil(S.hp / S.max * 100)}`; k = S.prog; col = S.hp / S.max < .3 ? COL.red : COL.ink; }
   else if (g.type === "gates") { const n = G.gates.filter(q => q.done).length; label = `${gateGoal().noun}S ${n}/${G.gates.length}`; k = n / G.gates.length; }
   else if (g.type === "boss") { label = `${String(Math.min(dk(), G.rules.boss)).padStart(2, "0")}/${G.rules.boss} · DRAW OUT`; k = dk() / G.rules.boss; }
@@ -579,9 +694,11 @@ function campMenuItems() {
 }
 function updateCamp(rdt) {
   if (G.campView === "archive") {
-    const all = allChapters(), n = all.length; if (hit("escape") || hit("lmb") && mouse.y > 240) { G.campView = "list"; G.menuMode = null; return; }
+    const all = ACTS[G.campAct || 0].chapters, n = all.length; if (hit("escape") || hit("lmb") && mouse.y > 240) { G.campView = "list"; G.menuMode = null; return; }
+    const sw = d => { const a = Math.max(0, Math.min(ACTS.length - 1, (G.campAct || 0) + d)); if (a !== G.campAct) { G.campAct = a; G.archSel = 0; AU.sfx("lock", 1); } };
+    if (hit("arrowleft") || hit("a") || hit("q")) sw(-1); if (hit("arrowright") || hit("d") || hit("e")) sw(1);
     if (hit("arrowup") || hit("w")) G.archSel = (G.archSel + n - 1) % n; if (hit("arrowdown") || hit("s")) G.archSel = (G.archSel + 1) % n;
-    all.forEach((ch, i) => { if (hit("lmb") && inBox([20, 50 + i * 11, 150, 11], mouse.x, mouse.y)) G.archSel = i; });
+    all.forEach((ch, i) => { if (hit("lmb") && inBox([20, 54 + i * 13, 150, 12], mouse.x, mouse.y)) G.archSel = i; });
     if (hit("enter") || hit(" ")) { G.campView = "list"; G.menuMode = null; } return;
   }
   if (hit("escape")) { G.mode = "title"; G.menuMode = null; return; }
@@ -619,13 +736,13 @@ function drawCamp(c, t) {
   txt(c, PAD.active ? "LEFT / RIGHT: ACT · UP / DOWN + " + lab().confirm + " · B: BACK" : "A / D: ACT · W / S + ENTER OR CLICK · ESC: BACK", GW / 2, GH - 14, rgba(COL.dim, .7), 8, "center");
 }
 function drawArchive(c, t) {
-  const S = SAVE.camp, all = allChapters(); txt(c, "THE NIGHT OF FEATHERS, AS WITNESSES SAW IT", GW / 2, 42, COL.dim, 8, "center");
-  all.forEach((n, i) => { const got = S.shards[n], on = i === G.archSel, y = 52 + i * 11; if (on) { c.fillStyle = rgba(COL.magenta, .14); c.fillRect(20, y - 2, 150, 11); }
+  const S = SAVE.camp, A = ACTS[G.campAct || 0], all = A.chapters; G.archSel = Math.max(0, Math.min(G.archSel || 0, all.length - 1)); txt(c, `< ACT ${A.n} · ${A.name} >`, GW / 2, 42, COL.dim, 8, "center");
+  all.forEach((n, i) => { const got = S.shards[n], on = i === G.archSel, y = 56 + i * 13; if (on) { c.fillStyle = rgba(COL.magenta, .14); c.fillRect(20, y - 2, 150, 11); }
     txt(c, got ? CHAPTERS[n].shard.title.split(" · ")[0] : "LOG " + String(n).padStart(2, "0"), 28, y, got ? (on ? COL.magenta : COL.ink) : "#3a3456"); txt(c, got ? "" : "MISSING", 164, y, "#3a3456", 8, "right"); });
   const n = all[G.archSel], sh = CHAPTERS[n].shard; panel(c, 180, 52, 284, 170, COL.magenta);
   if (S.shards[n]) { txt(c, sh.title, 190, 60, COL.magenta); wrapText(c, fillName(sh.text).toUpperCase(), 264).forEach((l, i) => txt(c, l, 190, 76 + i * 11, COL.ink)); }
   else { txt(c, "NOT RECOVERED", 190, 60, COL.dim); wrapText(c, `FIND THE GLOWING DATASHARD DURING ${chLabel(n)} · ${CHAPTERS[n].title}.`, 264).forEach((l, i) => txt(c, l, 190, 76 + i * 11, COL.dim)); }
-  txt(c, PAD.active ? "UP / DOWN · B: BACK" : "W / S · ESC: BACK", GW / 2, GH - 14, rgba(COL.dim, .7), 8, "center");
+  txt(c, PAD.active ? "LEFT / RIGHT: ACT · UP / DOWN · B: BACK" : "A / D: ACT · W / S · ESC: BACK", GW / 2, GH - 14, rgba(COL.dim, .7), 8, "center");
 }
 
 /* ---- Chapter complete ---- */
