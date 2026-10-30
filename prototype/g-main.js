@@ -43,14 +43,17 @@
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
         { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" }], 176, 13); runMenu(G.menu); return; }
     if (G.mode === "arcade") {
-      const n = Math.min(DORDER.length, G.unlocked || 1), move = d => { G.sel = Math.max(0, Math.min(n - 1, (G.sel || 0) + d)); AU.sfx("lock", 1); };
-      if (hit("arrowleft") || hit("a")) move(-1); if (hit("arrowright") || hit("d")) move(1);
+      // New maps every run: no district to pick, runs start at District 1 (or jump into the Endless Sprawl once unlocked).
+      const n = Math.min(DORDER.length, G.unlocked || 1), fresh = arcadeFresh(), move = d => { G.sel = Math.max(0, Math.min(n - 1, (G.sel || 0) + d)); AU.sfx("lock", 1); };
+      if (!fresh) { if (hit("arrowleft") || hit("a")) move(-1); if (hit("arrowright") || hit("d")) move(1); }
       if (hit("escape")) { G.mode = "title"; G.menuMode = null; return; }
       const mapLabel = SAVE.mapMode === "gen" ? (G.queuedSeed != null ? "MAP: SEED " + PG.seedName(G.queuedSeed) : "MAP: NEW EVERY RUN") : "MAP: CLASSIC LAYOUT";
-      G.menu = layoutMenu([{ label: "START RUN", act: () => start(DORDER[G.sel || 0]) },
+      const runs = fresh ? [{ label: "START RUN", act: () => { G.sel = 0; start(DORDER[0]); } }].concat(n >= DORDER.length ? [{ label: "ENDLESS RUN", act: () => { G.sel = DORDER.indexOf("endless"); start("endless"); } }] : [])
+        : [{ label: "START RUN", act: () => start(DORDER[G.sel || 0]) }];
+      G.menu = layoutMenu(runs.concat([
         { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } },
-        { label: "MAGPIE'S FIRST", col: COL.magenta, act: () => openShop("arcade") },
-        { label: "BACK", col: COL.dim, act: () => { G.mode = "title"; G.menuMode = null; } }], 174, 13); runMenu(G.menu); return; }
+        { label: "MAGPIE'S FIRST", col: COL.magenta, act: () => { if (fresh) G.sel = 0; openShop("arcade"); } },
+        { label: "BACK", col: COL.dim, act: () => { G.mode = "title"; G.menuMode = null; } }]), fresh ? 134 : 174, 13); runMenu(G.menu); return; }
     if (G.mode === "talk") { updateTalk(rdt); return; }
     if (G.mode === "camp") { updateCamp(rdt); return; }
     if (G.mode === "chap") { updateChap(rdt, chapActions); return; }

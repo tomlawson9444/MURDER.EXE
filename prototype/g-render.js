@@ -130,10 +130,18 @@ function drawTitle(c, t) {
 const ARCADE_INFO = { market: ["BOSS: BLACKWING", "WHERE IT STARTS. A TRAM SWEEPS THE SOUTH LANE AT KILL 50."], rookery: ["BOSS: THE AUGUR", "ROOFTOPS OVER A CHASM. WIND, DRONE NESTS AND A BRIDGE THAT FALLS."],
   endless: ["BOSSES: BLACKWING AND THE AUGUR, IN TURN", "A NEW DISTRICT STYLE EVERY TIME. HEAT KEEPS CLIMBING. IT NEVER ENDS."] };
 function openArcade() { G.mode = "arcade"; G.menuMode = null; }
+const arcadeFresh = () => SAVE.mapMode === "gen" && G.queuedSeed == null;
 function drawArcade(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .8);
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, "ARCADE", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 12, col, 16, "center"));
   txt(c, "ONE LIFE · KILL 100 · BEAT THE BOSS · BREACH INTO THE NEXT DISTRICT", GW / 2, 34, COL.dim, 8, "center");
+  if (arcadeFresh()) { // no district card: every run builds its own districts
+    panel(c, 60, 48, 360, 70, "#3a3456"); txt(c, "A NEW MAP EVERY RUN", GW / 2, 58, COL.ink, 16, "center");
+    wrapText(c, "EVERY RUN BUILDS FRESH DISTRICTS FROM A RANDOM SEED. START IN DISTRICT 1 AND BREACH AS DEEP AS YOU CAN.", 330).forEach((l, j) => txt(c, l, GW / 2, 84 + j * 10, rgba(COL.ink, .85), 8, "center"));
+    if ((G.unlocked || 1) < DORDER.length) txt(c, "CLEAR " + DIST[DORDER[DORDER.length - 2]].name + " TO UNLOCK ENDLESS RUNS", GW / 2, 106, rgba(COL.dim, .8), 8, "center");
+    drawMenu(c, G.menu, t); txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 228, rgba(COL.cyan, .75), 8, "center");
+    if (G.best) txt(c, "BEST SCORE " + String(G.best).padStart(7, "0"), GW / 2, 239, COL.dim, 8, "center");
+    const L = lab(); txt(c, PAD.active ? "UP / DOWN + " + L.confirm + " · B: BACK" : "W / S + ENTER OR CLICK · ESC: BACK", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center"); return; }
   const n = Math.min(DORDER.length, G.unlocked || 1), i = G.sel || 0, key = DORDER[i], k = DIST[key], info = ARCADE_INFO[key];
   panel(c, 60, 48, 360, 104, "#3a3456");
   txt(c, k.code, GW / 2, 56, COL.amber, 8, "center"); txt(c, k.name, GW / 2, 68, COL.ink, 16, "center");

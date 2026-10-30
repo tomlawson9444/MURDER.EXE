@@ -52,7 +52,7 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 The title screen has four choices, with a one-line description under the selected one:
 
 - **STORY:** the campaign. It shows the next chapter to play and opens the chapter list.
-- **ARCADE:** score runs. Pick a district (Rain Market, Chrome Rookery, Endless Sprawl), choose a map type (new every run, or the classic layout), visit Magpie's first if you like, then start. Seed links open this screen with the seed ready.
+- **ARCADE:** score runs. With MAP set to NEW EVERY RUN, each run builds fresh districts and starts at District 1, and ENDLESS RUN jumps straight into the Endless Sprawl once it's unlocked. With MAP set to CLASSIC LAYOUT, you pick the district (Rain Market or Chrome Rookery) on a card. MAGPIE'S FIRST opens the shop before the run. Seed links open this screen with the seed and its district ready.
 - **OPERATIVE:** the BODYSHOP (or CREATE OPERATIVE before your first game).
 - **MAGPIE'S:** the shop.
 
