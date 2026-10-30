@@ -1,7 +1,9 @@
 /* BODYSHOP: create and customise your operative. Tabs: LOOK, GEAR, INVENTORY, ORIGIN. */
 "use strict";
-// LOOK rows: NAME, RANDOMISE, then one row per slot; 13 show at once and the list scrolls.
-const LOOK_OFF = 2, LOOK_VIS = 13;
+// LOOK rows: NAME, RANDOM, DEFAULT, then one row per slot; 13 show at once and the list scrolls.
+const LOOK_OFF = 3, LOOK_VIS = 13;
+// RANDOM and DEFAULT buttons under the preview (also rows 1 and 2 of LOOK, and the R / X keys).
+const BTN_RAND = [12, 244, 82, 18], BTN_DEF = [98, 244, 82, 18];
 const INV_COLS = 10, INV_W = 27, INV_H = 21; // 10 x 6 grid of small cells keeps every item clear of the details below
 const BTABS = ["LOOK", "GEAR", "INVENTORY", "ORIGIN"], BROW_Y = 42, BTAB_W = 69, BTN_DONE = [356, 244, 114, 18], BTN_BBACK = [198, 244, 60, 18];
 const GEAR_ROWS = [["SIDEARM", "gun"], ["OVERCLOCK", "oc"], ["IMPLANT 1", "imp", 0], ["IMPLANT 2", "imp", 1]];
@@ -21,7 +23,12 @@ function cycleLook(slot, d) {
   const i = opts.findIndex(o => o[0] === L[slot.key]); L[slot.key] = opts[(i + d + opts.length) % opts.length][0]; applyLook(); persist(); AU.sfx("lock", 2);
 }
 // Roll every slot at random from what you own (afterimage and gun finish included).
-function randomLook() { const L = SAVE.char.look; LOOK_SLOTS.forEach(sl => { const opts = sl.opts.filter(o => lookOwned(sl.key, o)); L[sl.key] = opts[Math.random() * opts.length | 0][0]; }); applyLook(); persist(); AU.sfx("lock", 4); say2("NEW LOOK. KEEP ROLLING OR TWEAK IT."); }
+// RANDOM changes everything: every look slot, the name, and the origin while you're still creating.
+function randomLook() { const L = SAVE.char.look, making = G.body.from === "create" || !SAVE.char.created; LOOK_SLOTS.forEach(sl => { const opts = sl.opts.filter(o => lookOwned(sl.key, o)); L[sl.key] = opts[Math.random() * opts.length | 0][0]; });
+  SAVE.char.name = randomName(); if (making) SAVE.char.origin = ORIGINS[Math.random() * ORIGINS.length | 0].id;
+  applyLook(); persist(); AU.sfx("lock", 4); say2(making ? "NEW OPERATIVE · " + ORIGIN[SAVE.char.origin].name : "NEW LOOK AND NAME · ROLL AGAIN?"); }
+// DEFAULT puts the look back to the standard operative (your name and origin stay).
+function defaultLook() { SAVE.char.look = Object.assign({}, DEFAULT_LOOK); applyLook(); persist(); AU.sfx("lock", 2); say2("BACK TO THE STANDARD LOOK."); }
 function cycleGear(row, d) {
   const [, cat, slot] = row, L = SAVE.loadout, owned = ITEMS.filter(i => i.cat === cat && owns(i.id)).map(i => i.id);
   if (cat === "imp") { const other = L.imp[1 - slot], opts = [null].concat(owned.filter(id => id !== other)); const cur = L.imp[slot] || null; const next = opts[(opts.indexOf(cur) + d + opts.length) % opts.length];
@@ -33,6 +40,7 @@ function bodyConfirm(actions) {
   const B = G.body, t = BTABS[B.tab];
   if (t === "LOOK" && B.sel === 0) { if (PAD.active) { SAVE.char.name = randomName(); persist(); AU.sfx("lock", 4); } else { B.edit = !B.edit; } return; }
   if (t === "LOOK" && B.sel === 1) return randomLook();
+  if (t === "LOOK" && B.sel === 2) return defaultLook();
   if (t === "LOOK") return cycleLook(LOOK_SLOTS[B.sel - LOOK_OFF], 1);
   if (t === "GEAR") return cycleGear(GEAR_ROWS[B.sel], 1);
   if (t === "ORIGIN") { const O = ORIGINS[B.sel]; if (SAVE.char.created && SAVE.char.origin !== O.id) { say2("YOUR ORIGIN IS SET. YOUR STORY STAYS YOURS."); AU.sfx("hackFail"); return; }
@@ -58,8 +66,9 @@ function updateBodyshop(rdt, actions) {
     if (hit("arrowup") || hit("w")) B.sel = Math.max(0, B.sel - cols); if (hit("arrowdown") || hit("s")) B.sel = Math.min(n - 1, B.sel + cols); }
   else { if (hit("arrowup") || hit("w")) { B.sel = (B.sel - 1 + n) % n; AU.sfx("lock", 0); } if (hit("arrowdown") || hit("s")) { B.sel = (B.sel + 1) % n; AU.sfx("lock", 0); }
     const dir = (hit("arrowright") || hit("d")) ? 1 : (hit("arrowleft") || hit("a")) ? -1 : 0;
-    if (dir && t === "LOOK" && B.sel >= LOOK_OFF) cycleLook(LOOK_SLOTS[B.sel - LOOK_OFF], dir); else if (dir && t === "LOOK" && B.sel === 1) randomLook(); else if (dir && t === "LOOK" && B.sel === 0) { SAVE.char.name = randomName(); persist(); } else if (dir && t === "GEAR") cycleGear(GEAR_ROWS[B.sel], dir); }
+    if (dir && t === "LOOK" && B.sel >= LOOK_OFF) cycleLook(LOOK_SLOTS[B.sel - LOOK_OFF], dir); else if (dir && t === "LOOK" && B.sel === 1) randomLook(); else if (dir && t === "LOOK" && B.sel === 2) defaultLook(); else if (dir && t === "LOOK" && B.sel === 0) { SAVE.char.name = randomName(); persist(); } else if (dir && t === "GEAR") cycleGear(GEAR_ROWS[B.sel], dir); }
   if (hit("enter")) bodyConfirm(actions);
+  if (hit("r")) randomLook(); if (hit("x")) defaultLook();
   // mouse
   const rowH = t === "GEAR" ? 18 : t === "ORIGIN" ? 46 : 14, rowAt = y => Math.floor((y - BROW_Y) / rowH) + (t === "LOOK" ? B.scroll || 0 : 0);
   if (t === "LOOK") { B.scroll = Math.max(0, Math.min(B.scroll || 0, n - LOOK_VIS)); if (B.sel < B.scroll) B.scroll = B.sel; if (B.sel >= B.scroll + LOOK_VIS) B.scroll = B.sel - LOOK_VIS + 1;
@@ -69,6 +78,7 @@ function updateBodyshop(rdt, actions) {
   if (hit("lmb")) { const x = mouse.x, y = mouse.y;
     if (y >= 20 && y < 36 && x > 196) { const k = Math.min(BTABS.length - 1, Math.floor((x - 198) / BTAB_W)); if (k !== B.tab) { B.tab = k; B.sel = 0; AU.sfx("lock", 1); } }
     else if (inBox(BTN_DONE, x, y)) bodyDone(actions); else if (inBox(BTN_BBACK, x, y)) actions.back();
+    else if (inBox(BTN_RAND, x, y)) randomLook(); else if (inBox(BTN_DEF, x, y)) defaultLook();
     else if (x > 198 && y >= BROW_Y && y < 236) { const i = t === "INVENTORY" ? cellAt(x, y) : rowAt(y); if (i >= 0 && i < n) { if (i === B.sel || t !== "INVENTORY") { B.sel = i; bodyConfirm(actions); } else B.sel = i; } } }
   if (hit(" ")) bodyDone(actions);
   if (hit("escape")) actions.back();
@@ -94,11 +104,11 @@ function drawBodyshop(c, t) {
   BTABS.forEach((name, i) => { const x = 198 + i * BTAB_W, on = i === B.tab; c.fillStyle = on ? COL.cyan : "#16121f"; c.fillRect(x, 20, BTAB_W - 3, 15); txt(c, name, x + (BTAB_W - 3) / 2, 24, on ? "#05040b" : COL.dim, 8, "center"); });
   const sel = (y, h) => { c.fillStyle = "rgba(43,228,255,.12)"; c.fillRect(198, y, 274, h); c.fillStyle = COL.cyan; c.fillRect(198, y, 1, h); };
   if (tab === "LOOK") {
-    const rows = [["NAME", B.edit ? "TYPING…" : SAVE.char.name, null], ["RANDOMISE", "ROLL A NEW LOOK", null]].concat(LOOK_SLOTS.map(sl => { const o = optOf(L, sl.key), own = sl.opts.filter(x => lookOwned(sl.key, x)), at = own.findIndex(x => x[0] === o[0]);
+    const rows = [["NAME", B.edit ? "TYPING…" : SAVE.char.name, null], ["RANDOM", "CHANGE EVERYTHING", null], ["DEFAULT", "STANDARD LOOK", null]].concat(LOOK_SLOTS.map(sl => { const o = optOf(L, sl.key), own = sl.opts.filter(x => lookOwned(sl.key, x)), at = own.findIndex(x => x[0] === o[0]);
       return [sl.label, o[1], o[3], sl.opts.length - own.length, (at + 1) + "/" + own.length]; }));
     const sc = B.scroll || 0;
     rows.slice(sc, sc + LOOK_VIS).forEach(([lbl, val, col, more, count], k) => { const i = k + sc, y = BROW_Y + k * 14, on = i === B.sel; if (on) sel(y - 2, 13);
-      txt(c, lbl, 202, y + 1, i === 1 ? (on ? COL.amber : rgba(COL.amber, .75)) : on ? COL.ink : COL.dim); const v = on && i !== 1 ? "< " + val + " >" : val; txt(c, v, col ? 456 : 470, y + 1, on ? COL.cyan : i === 1 ? rgba(COL.amber, .6) : COL.ink, 8, "right");
+      const btn = i === 1 || i === 2; txt(c, lbl, 202, y + 1, btn ? (on ? COL.amber : rgba(COL.amber, .75)) : on ? COL.ink : COL.dim); const v = on && !btn ? "< " + val + " >" : val; txt(c, v, col ? 456 : 470, y + 1, on ? COL.cyan : btn ? rgba(COL.amber, .6) : COL.ink, 8, "right");
       if (col) { c.fillStyle = col; c.fillRect(460, y, 9, 8); c.strokeStyle = "#05040b"; c.strokeRect(460.5, y + .5, 8, 7); }
       if (on && count && !(B.msg && B.msgT < 3.5)) txt(c, `${lbl} ${count}` + (more ? ` · ${more} MORE AT MAGPIE'S` : "") + " · A/D TO CHANGE", 334, 226, rgba(more ? COL.amber : COL.dim, .85), 8, "center"); });
     if (rows.length > LOOK_VIS) { const h = 182 * LOOK_VIS / rows.length; c.fillStyle = "#2a2640"; c.fillRect(473, BROW_Y - 2, 2, 182); c.fillStyle = COL.cyan; c.fillRect(473, BROW_Y - 2 + 182 * sc / rows.length, 2, h); }
@@ -125,6 +135,7 @@ function drawBodyshop(c, t) {
   }
   if (B.msg && B.msgT < 3.5) txt(c, B.msg, 334, 226, rgba(COL.amber, Math.min(1, (3.5 - B.msgT) * 2)), 8, "center");
   c.fillStyle = "#16121f"; c.fillRect(...BTN_BBACK); txt(c, "BACK", BTN_BBACK[0] + 30, 249, COL.dim, 8, "center");
+  [[BTN_RAND, PAD.active ? "RANDOM" : "RANDOM (R)"], [BTN_DEF, PAD.active ? "DEFAULT" : "DEFAULT (X)"]].forEach(([bx, label]) => { const hov = inBox(bx, mouse.x, mouse.y); c.fillStyle = hov ? rgba(COL.amber, .25) : "#16121f"; c.fillRect(...bx); c.strokeStyle = rgba(COL.amber, hov ? .9 : .45); c.strokeRect(bx[0] + .5, bx[1] + .5, bx[2] - 1, bx[3] - 1); txt(c, label, bx[0] + bx[2] / 2, 249, COL.amber, 8, "center"); });
   const pulse = .75 + .25 * Math.sin(t * .006); c.fillStyle = rgba(COL.cyan, pulse); c.fillRect(...BTN_DONE); txt(c, (B.from === "create" || !SAVE.char.created) ? "CREATE >" : "DONE >", BTN_DONE[0] + 57, 249, "#05040b", 8, "center");
   const tabs = PAD.active ? (PAD.kind === "ps" ? "L1/R1" : "LB/RB") : "Q/E", ch = PAD.active ? "D-PAD" : "A/D", go = PAD.active ? (PAD.kind === "ps" ? "OPTIONS" : "START") : "SPACE";
   txt(c, `${tabs} TAB · ${ch} CHANGE · ${go} ${(B.from === "create" || !SAVE.char.created) ? "CREATE" : "DONE"}`, 334, 235, rgba(COL.dim, .7), 8, "center");
