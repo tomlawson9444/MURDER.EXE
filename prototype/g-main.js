@@ -16,16 +16,16 @@
   }
   function reset(key) { Object.assign(G, { p: null, runScrip: 0, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : /^x\d+$/.test(key) ? 2 : 0 }); enterDistrict(key); }
   function music() { AU.setOC(false); AU.start(); AU.setHeat(Math.min(5, G.heat + 2)); setTimeout(() => AU.ambience(D().amb), 60); }
-  const leaveCampaign = () => Object.assign(G, { camp: null, rules: null, chapMap: null, radioQ: [], stalls: null, gates: null, shard: null, flood: null, vents: null, drops: null, rackFlow: null, lull: false, fog: 0, hazard: null, dropName: null, god: false, allies: [], rw: null, zone: null, exit: null, choirRounds: 0, range: null, tryLoadout: null });
+  const leaveCampaign = () => Object.assign(G, { camp: null, rules: null, chapMap: null, radioQ: [], stalls: null, gates: null, shard: null, flood: null, vents: null, drops: null, rackFlow: null, lull: false, fog: 0, hazard: null, dropName: null, god: false, allies: [], rw: null, zone: null, exit: null, choirRounds: 0, range: null, tryLoadout: null, daily: null, rush: null });
   function start(key, sameSeed) { leaveCampaign(); if (key === "endless") key = "x3"; G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } resetEndless(); reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
   function breach() { const next = getDist(D().next); G.heatBase = Math.min(4, Math.min(2, G.heat) + Math.floor(Math.max(0, next.n - 2) / 2)); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
   // The title screen always sits on the Rain Market ("endless" is a menu entry, not a map, so it can't be rebuilt).
-  function cashOut() { persist(); AU.stop(); AU.ambience("off"); leaveCampaign(); G.mode = "title"; reset("market"); }
+  function cashOut() { if (G.daily) recordDaily(); persist(); AU.stop(); AU.ambience("off"); leaveCampaign(); G.mode = "title"; reset("market"); }
   // FIRING RANGE: try any item from Magpie's (owned or not) on targets that never fight back. Nothing you do here pays or counts.
   function startRange(item) {
     const L = SAVE.loadout, T = { gun: L.gun, oc: L.oc, imp: L.imp.slice() }; if (item.cat === "gun") T.gun = item.id; else if (item.cat === "oc") T.oc = item.id; else if (item.cat === "imp" && !T.imp.includes(item.id)) { if (T.imp.length >= IMP_SLOTS) T.imp.shift(); T.imp.push(item.id); }
     const back = { from: G.shop.from, tab: G.shop.tab, sel: G.shop.sel, camp: G.camp };
-    leaveCampaign(); G.tryLoadout = T; G.range = { item, back, kills: 0, t: 0, spawnT: 0 }; reset("market"); G.mode = "play"; G.paused = false; G.god = true; G.lull = true; G.rules = { p2: null, boss: null };
+    achieve("range"); leaveCampaign(); G.tryLoadout = T; G.range = { item, back, kills: 0, t: 0, spawnT: 0 }; reset("market"); G.mode = "play"; G.paused = false; G.god = true; G.lull = true; G.rules = { p2: null, boss: null };
     AU.init(); BANK.attach(); music(); buildFlow(); G.banner = { txt: "FIRING RANGE · " + item.name.toUpperCase(), col: COL.amber, life: 2.4 };
   }
   function updateRange(dt) {
@@ -36,7 +36,10 @@
   }
   function endRange() { const b = G.range.back; G.range = null; G.tryLoadout = null; G.god = false; G.lull = false; AU.stop(); AU.ambience("off"); reset("market");
     G.camp = b.camp; openShop(b.from); Object.assign(G.shop, { tab: b.tab, sel: b.sel }); G.shop.line = "WELL? WORTH THE SCRIP?"; G.shop.lineT = 0; }
-  Object.assign(RUN, { reset, music, enter: enterDistrict, startRange });
+  // DAILY CHALLENGE: today's seed, twist and kit (see g-extras.js). Scored like Arcade; the run ends when you flatline or cash out.
+  function startDaily() { const d = dailyOf(); leaveCampaign(); G.daily = Object.assign({ recorded: false }, d); G.tryLoadout = d.kit; G.startDistrict = "market"; G.runSeed = d.seed; G.queuedSeed = null; SAVE.mapMode = "gen";
+    resetEndless(); reset("market"); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); G.banner = { txt: "DAILY · " + d.mod[1] + " · " + d.mod[2], col: COL.amber, life: 3.2 }; }
+  Object.assign(RUN, { reset, music, enter: enterDistrict, startRange, startDaily, leave: leaveCampaign });
   // Pause menu: resume, controller settings and quit. Left / right (or Enter) changes a setting.
   function pauseItems() { const P = padCfg(), onOff = v => v ? "ON" : "OFF";
     return [{ k: "resume", label: "RESUME" },
@@ -53,7 +56,7 @@
     if (!PAD.active && (mouse.x !== G.pmx || mouse.y !== G.pmy)) { G.pmx = mouse.x; G.pmy = mouse.y; if (hov >= 0) G.pauseSel = hov; }
     const it = items[G.pauseSel], d = hit("arrowleft") || hit("a") ? -1 : hit("arrowright") || hit("d") ? 1 : 0;
     if (d && it.step) { it.step(d); persist(); AU.sfx("lock", 2); }
-    if (hit("enter") || hit(" ") || (hit("lmb") && hov === G.pauseSel)) { if (it.k === "resume") G.paused = false; else if (it.k === "quit") { G.paused = false; if (G.range) endRange(); else if (G.camp) { AU.setOC(false); G.oc = null; toCamp(); } else cashOut(); } else { it.step(1); persist(); AU.sfx("lock", 2); } }
+    if (hit("enter") || hit(" ") || (hit("lmb") && hov === G.pauseSel)) { if (it.k === "resume") G.paused = false; else if (it.k === "quit") { G.paused = false; if (G.range) endRange(); else if (G.rush) { AU.stop(); leaveCampaign(); openExtras(); } else if (G.camp) { AU.setOC(false); G.oc = null; toCamp(); } else cashOut(); } else { it.step(1); persist(); AU.sfx("lock", 2); } }
   }
   const toCamp = () => { persist(); AU.stop(); AU.ambience("off"); openCamp(); };
   const chapActions = { toCamp };
@@ -76,7 +79,8 @@
           desc: !made ? need : finished ? `ENDINGS FOUND ${found}/3 · REPLAY ANY CHAPTER OR CHASE ANOTHER ENDING` : begun ? `ACT ${actOf(nextChapter()).n} · ${actOf(nextChapter()).name} · NEXT: ${next.title}` : "NINE NIGHTS OF RAIN · ACT 1 · YOUR CHOICES CHANGE THE STORY" },
         { label: "ARCADE", act: () => made ? openArcade() : openBodyshop("create"), desc: made ? "PICK A DISTRICT · KILL 100 · BEAT THE BOSS · GO DEEPER" : need },
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
-        { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" }], 176, 13); runMenu(G.menu); return; }
+        { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" },
+        { label: "CHALLENGES", col: COL.red, act: () => made ? openExtras() : openBodyshop("create"), desc: made ? `DAILY CHALLENGE · BOSS RUSH · ACHIEVEMENTS ${Object.keys(SAVE.ach).length}/${ACH.length}` : need }], 170, 12); runMenu(G.menu); return; }
     if (G.mode === "arcade") {
       // New maps every run: no district to pick, runs start at District 1 (or jump into the Endless Sprawl once unlocked).
       const n = Math.min(DORDER.length, G.unlocked || 1), fresh = arcadeFresh(), move = d => { G.sel = Math.max(0, Math.min(n - 1, (G.sel || 0) + d)); AU.sfx("lock", 1); };
@@ -89,13 +93,20 @@
         { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } },
         { label: "MAGPIE'S FIRST", col: COL.magenta, act: () => { if (fresh) G.sel = 0; openShop("arcade"); } },
         { label: "BACK", col: COL.dim, act: () => { G.mode = "title"; G.menuMode = null; } }]), fresh ? 134 : 174, 13); runMenu(G.menu); return; }
+    if (G.mode === "extras") { updateExtras(rdt); return; }
     if (G.mode === "talk") { updateTalk(rdt); return; }
     if (G.mode === "camp") { updateCamp(rdt); return; }
     if (G.mode === "chap") { updateChap(rdt, chapActions); return; }
     if (G.mode === "shop") { updateShop(rdt, shopActions); return; }
     if (G.mode === "body") { updateBodyshop(rdt, bodyActions); return; }
-    if (G.mode === "dead") { G.deadT += rdt; G.menu = null;
-      if (G.deadT > .8 && G.camp) { const retry = () => startChapter(G.camp.n, true);
+    if (G.mode === "dead") { G.deadT += rdt; G.menu = null; if (G.daily) recordDaily();
+      if (G.deadT > .8 && G.rush) { const R = G.rush, again = () => { leaveCampaign(); startRush(); };
+        if (hit("r")) again(); else if (hit("escape")) { leaveCampaign(); openExtras(); }
+        else { G.menu = layoutMenu([{ label: "TRY THE RUSH AGAIN", act: again }, { label: "CHALLENGES", col: COL.dim, act: () => { leaveCampaign(); openExtras(); } }], 176); runMenu(G.menu); } }
+      else if (G.deadT > .8 && G.daily) { const again = () => RUN.startDaily();
+        if (hit("r")) again(); else if (hit("escape")) { leaveCampaign(); openExtras(); }
+        else { G.menu = layoutMenu([{ label: "TRY TODAY'S DAILY AGAIN", act: again }, { label: "CHALLENGES", col: COL.dim, act: () => { leaveCampaign(); openExtras(); } }], 176); runMenu(G.menu); } }
+      else if (G.deadT > .8 && G.camp) { const retry = () => startChapter(G.camp.n, true);
         if (hit("r")) retry(); else if (hit("escape")) toCamp();
         else { G.menu = layoutMenu([{ label: "RETRY " + chLabel(G.camp.n), act: retry }, { label: "MAGPIE'S · RE-GEAR", col: COL.magenta, act: () => openShop("campRetry") }, { label: "CAMPAIGN MENU", col: COL.dim, act: toCamp }], 170); runMenu(G.menu); } }
       else if (G.deadT > .8) { const regear = () => { G.sel = DORDER.indexOf(/^x\d+$/.test(G.startDistrict) ? "endless" : G.startDistrict); openShop("title"); };
@@ -104,7 +115,7 @@
         else { G.menu = layoutMenu([{ label: G.mapKey === "run" ? "REBOOT · NEW MAP" : "REBOOT", act: () => start(G.startDistrict) }].concat(G.mapKey === "run" ? [{ label: "RETRY SAME MAP", act: retrySame }] : [], [{ label: "MAGPIE'S · RE-GEAR", col: COL.magenta, act: regear }, { label: "QUIT TO TITLE", col: COL.dim, act: cashOut }]), 170); runMenu(G.menu); } } }
     if (G.mode === "clear") { G.clearT += rdt; G.menu = null;
       if (G.clearT > 1) { if (hit("escape")) { cashOut(); return; }
-        G.menu = layoutMenu(D().next ? [{ label: "BREACH NOW", act: breach }, { label: "MAGPIE'S, THEN BREACH", col: COL.magenta, act: () => openShop("clear") }, { label: "CASH OUT", col: COL.dim, act: cashOut }]
+        G.menu = layoutMenu(D().next ? [{ label: "BREACH NOW", act: breach }].concat(G.daily ? [] : [{ label: "MAGPIE'S, THEN BREACH", col: COL.magenta, act: () => openShop("clear") }], [{ label: G.daily ? "END THE DAILY · BANK THE SCORE" : "CASH OUT", col: COL.dim, act: cashOut }])
           : [{ label: "RETURN TO TITLE", act: cashOut }, { label: "MAGPIE'S", col: COL.magenta, act: () => { cashOut(); openShop("title"); } }], 176); runMenu(G.menu); }
       return; }
     if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else if (STORY_BOSSES[D().boss]) STORY_BOSSES[D().boss](); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
@@ -126,8 +137,10 @@
     G.shake = Math.max(0, G.shake - rdt * 20); G.flash -= rdt; if (G.kick) G.kick.t -= rdt;
     if (G.dirty) { G.base = renderMap(G.mapKey, false, SP, G.grid); G.dirty = false; }
   }
-  function draw(t) {
+  function draw(t) { drawScene(t); achTick(1 / 60); drawAchToast(c, t); } // achievement toasts sit on top of every screen
+  function drawScene(t) {
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
+    if (G.mode === "extras") return drawExtras(c, t);
     if (G.mode === "title") return drawTitle(c, t);
     if (G.mode === "arcade") return drawArcade(c, t);
     if (G.mode === "shop") return drawShop(c, t);

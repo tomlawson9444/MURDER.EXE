@@ -22,7 +22,7 @@ function playerDie(by) {
 }
 
 // Freeze every non-boss enemy within r of (x, y) for secs (Cryo Pistol, Cryo Core, BLACKOUT).
-function stunAround(x, y, r, secs) { for (const e of G.en) if (e.alive && !BOSSY.has(e.type) && Math.hypot(e.x - x, e.y - y) < r) { e.stun = Math.max(e.stun || 0, secs); fx(e.x, e.y - 12, 6, ["#9ff3ff", "#ffffff"], 40, .4); } }
+function stunAround(x, y, r, secs) { let n = 0; for (const e of G.en) if (e.alive && !BOSSY.has(e.type) && Math.hypot(e.x - x, e.y - y) < r) { e.stun = Math.max(e.stun || 0, secs); n++; fx(e.x, e.y - 12, 6, ["#9ff3ff", "#ffffff"], 40, .4); } if (n >= 6) achieve("freeze"); }
 // Rounds that fly out in a ring from a kill (Requiem feathers, MIRRORSHARD shards).
 function ringShots(x, y, n, col) { const off = Math.random() * TAU; for (let k = 0; k < n; k++) shoot(x, y - 4, off + k / n * TAU, 380, "p", { life: .45, col }); fx(x, y, 12, [col, "#2a2440"], 80, .4); }
 function killEnemy(e, how) {
@@ -32,10 +32,12 @@ function killEnemy(e, how) {
   if (e.type === "nest") { G.grid[e.ty][e.tx] = "#"; G.dirty = true; fx(e.x, e.y - 10, 30, [COL.red, COL.magenta, "#2a2440"], 90, .8); AU.sfx("crateBreak", panOf(e.x)); }
   if (how === "fall") pop(e.x, e.y - 20, "FELL", COL.amber);
   if (e.type === "carrion" && how !== "blast") { explode(e.x, e.y - 6, 34, "carrion"); }
-  const pts = Math.round((e.type === D().boss ? 5000 : e.type === "nest" ? 500 : 100) * G.mult); G.score += pts; G.kills += e.type === "corvid" || e.type === "blackwing" ? 1 : 1;
+  const pts = Math.round((e.type === D().boss ? 5000 : e.type === "nest" ? 500 : 100) * G.mult * (dailyMod("glass") || dailyMod("swarm") ? 2 : 1)); G.score += pts; G.kills += e.type === "corvid" || e.type === "blackwing" ? 1 : 1;
   if (hasImp("aegis") && !G.p.aegis && ++G.p.aegisK >= 20) { G.p.aegis = true; pop(G.p.x, G.p.y - 34, "AEGIS READY", COL.amber); AU.sfx("lock", 4); }
   if (how === "oc" && G.p.ocId === "crown") G.p.ocRefund = (G.p.ocRefund || 0) + 6;
-  G.p.oc = Math.min(G.p.ocMax, G.p.oc + (hasImp("overcharger") ? 13 : 8));
+  G.p.oc = Math.min(G.p.ocMax, G.p.oc + (hasImp("overcharger") ? 13 : 8) * (dailyMod("charged") ? 3 : 1));
+  if (how === "dash") achieve("dashkill");
+  if (G.daily && how !== "blast" && !BOSSY.has(e.type)) { if (dailyMod("boom")) { const bx = e.x, by = e.y - 6; setTimeout(() => G.mode === "play" && explode(bx, by, 26, "daily", true), 0); } if (dailyMod("frost")) stunAround(e.x, e.y, 44, 1.6); }
   if (how === "hack" && hasImp("cryocore")) stunAround(e.x, e.y, 54, 2);
   if (hasImp("berserk") && (G.p.streak + 1) % 8 === 0) { G.p.berserk = 4; pop(G.p.x, G.p.y - 34, "BERSERK", COL.red); AU.sfx("charge"); } G.p.ram = Math.min(G.p.ramMax, G.p.ram + .5); G.p.streak = (G.p.streak || 0) + 1;
   if (!G.range) { earn(scripFor(e) * (hasImp("bounty") ? 1.4 : 1) * (G.scripMul || 1)); track("kill", e.type); } else G.range.kills++; /* the firing range pays nothing */ if (how === "fall") track("fall"); if (how === "hack") track("hack"); if (G.blastCount != null && how === "blast") G.blastCount++;
@@ -61,7 +63,7 @@ function detonateBarrel(i, j) { G.grid[j][i] = "."; G.dirty = true; explode(i * 
 function dropSign(i, j) { G.grid[j][i] = "h"; G.dirty = true; AU.sfx("sign"); G.shake = 4; const x = i * TS + 8, y = j * TS + 10;
   fx(x, y, 20, [COL.magenta, COL.cyan, "#ffffff"], 80, .7); for (const e of G.en) if (e.alive && Math.abs(e.x - x) < 20 && Math.abs(e.y - y) < 16) killEnemy(e, "blast"); if (Math.abs(G.p.x - x) < 14 && Math.abs(G.p.y - y) < 12) playerDie("blast"); }
 
-function shoot(x, y, a, spd, owner, o = {}) { G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [], col: o.col, big: o.big, homing: o.homing, feathers: o.feathers, blast: o.blast, arc: o.arc, freeze: o.freeze, vamp: o.vamp, split: o.split }); }
+function shoot(x, y, a, spd, owner, o = {}) { if (owner === "e" && dailyMod("glass")) spd *= 1.35; G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [], col: o.col, big: o.big, homing: o.homing, feathers: o.feathers, blast: o.blast, arc: o.arc, freeze: o.freeze, vamp: o.vamp, split: o.split }); }
 // The traits a gun's rounds carry.
 function shotOpts(g, focus) { return { pierce: g.pierce, bounce: g.bounce, life: g.life, col: g.col, big: g.big, homing: g.homing, feathers: g.feathers, blast: g.blast, arc: g.arc, freeze: g.freeze, vamp: g.vamp, split: g.split }; }
 
@@ -96,7 +98,7 @@ function updatePlayer(dt, rdt) {
       if (hasImp("twin")) shoot(gx, gy, a + .12, g.speed * (focus ? 1.5 : 1), "p", shotOpts(g, focus));
       for (let k = 1; k < (g.burst || 0); k++) G.echoShots.push({ t: k * .07, a, burst: 1 });
       if (g.echo) (G.echoShots || (G.echoShots = [])).push({ t: g.echo, a }); // the Archive Repeater fires every shot again a beat later
-      p.ammo--; p.fireCd = g.cd * (p.berserk > 0 ? .5 : 1); const gk = "gun_" + p.gunId; AU.sfx(AU.has(gk) ? gk : g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
+      if (!dailyMod("bottomless")) p.ammo--; p.fireCd = g.cd * (p.berserk > 0 ? .5 : 1); const gk = "gun_" + p.gunId; AU.sfx(AU.has(gk) ? gk : g.sfx === "rail" ? "rail" : "kestrel", 0); if (g.kick) G.shake = Math.max(G.shake, g.kick); rumble(.25, .5, 70); G.flash = .06; G.shake = Math.max(G.shake, 1.6); G.kick = { x: -Math.cos(a) * 2, y: -Math.sin(a) * 2, t: .06 }; for (let k = 0; k < 5; k++) { const sa = a + rnd(-.5, .5), sv = rnd(60, 160); G.parts.push({ x: gx, y: gy, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, life: .12, max: .12, col: k % 2 ? COL.cyan : "#ffffff", g: 0 }); } if (p.ammo === 1) AU.sfx("lastRound"); if (p.ammo === 0) { p.reload = g.reload; AU.sfx("reload"); } }
   }
   for (const q of G.echoShots || []) { q.t -= dt; if (q.t <= 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2; if (q.burst) shoot(gx, gy, q.a + rnd(-.03, .03), g.speed, "p", shotOpts(g)); else shoot(gx, gy, q.a, g.speed, "p", { life: g.life, col: "#9fd8ff" }); AU.sfx("kestrel", 0); fx(gx, gy, 4, [q.burst ? COL.cyan : "#9fd8ff", "#ffffff"], 50, .15); } }
   if (G.echoShots) G.echoShots = G.echoShots.filter(q => q.t > 0);
@@ -114,7 +116,7 @@ function updateOC(rdt) {
     // Pad: a quick tap of the trigger locks the nearest enemies you can see and fires at once.
     if (PAD.active && !o.locks.length && o.t < .35) o.locks = G.en.filter(e => e.alive && los(gx, gy, e.x, e.y - BODY - (e.alt || 0), 1e9)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, p.maxLocks);
     const prog = p.ocId; if (o.locks.length >= 6) { SAVE.stats.ocFull++; checkMilestones(); }
-    p.ocRefund = 0; G.scripMul = prog === "reaper" ? 3 : 1;
+    p.ocRefund = 0; G.scripMul = prog === "reaper" ? 3 : 1; const k0 = G.kills;
     o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 });
       if (prog === "crown" && e.alive && e.hp > 1) { hurtBoss(e); return; } // the crown cracks a story boss's armour; the last hit is still yours to land
       if (armored(e)) { AU.sfx("bulwark"); return; }
@@ -125,7 +127,7 @@ function updateOC(rdt) {
       else if (prog === "mirror") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); ringShots(ex, ey, 6, "#9ff3ff"); }
       else if (prog === "leech") { killEnemy(e, "oc"); p.ocRefund = (p.ocRefund || 0) + 12; p.ram = Math.min(p.ramMax, p.ram + 1); }
       else killEnemy(e, "oc"); });
-    G.scripMul = 1;
+    G.scripMul = 1; if (G.kills - k0 >= 6) achieve("volley"); if (G.kills - k0 >= 10) achieve("mass");
     if (prog === "blackout") { G.bul = G.bul.filter(q => q.owner === "p" || q.owner === "a"); stunAround(p.x, p.y, 9999, 1.5); G.flash = .2; }
     if (prog === "bastion") { p.iframes = 2.5; p.ram = p.ramMax; fx(p.x, p.y - BODY, 30, [COL.amber, "#ffffff"], 90, .7); pop(p.x, p.y - 36, "BASTION", COL.amber); }
     if (prog === "ghost" && o.locks.length) { const t = o.locks[o.locks.length - 1]; if (!boxBlocked(t.x, t.y, p.r, false) && tileOf(t.x, t.y) !== "o") { fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); p.trail.push({ x: p.x, y: p.y, life: .3 }); p.x = t.x; p.y = t.y; p.iframes = .6; fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); } }
@@ -164,7 +166,7 @@ function hack() {
   if (tg.e.type === "nest") return killEnemy(tg.e, "hack");
   // Fry the target's implants, then arc to up to 2 nearby enemies.
   fx(tg.e.x, tg.y, 10, [COL.magenta, "#ffffff"], 70, .4); killEnemy(tg.e, "hack"); const n = arcFrom(tg.e, 2, "hack");
-  if (n) pop(tg.x, tg.y - 22, "ARC x" + (n + 1), COL.magenta);
+  if (n) pop(tg.x, tg.y - 22, "ARC x" + (n + 1), COL.magenta); if (n >= 2) achieve("arc3");
 }
 // Chain lightning from a target to up to n nearby enemies. Returns how many it hit.
 function arcFrom(src, n, how) {
@@ -271,7 +273,7 @@ function updateBullets(dt) {
         const i = Math.floor(b.x / TS), j = Math.floor(b.y / TS);
         if (b.bounce > 0 && ch !== "b" && ch !== "c") { // Ricochet: reflect off the face we hit and keep going
           const px = b.x - b.vx * dt / steps, py = b.y - b.vy * dt / steps, bx = SHOT_BLOCK.has(tileOf(b.x, py)), by = SHOT_BLOCK.has(tileOf(px, b.y));
-          if (bx || !by) b.vx = -b.vx; if (by || !bx) b.vy = -b.vy; b.x = px; b.y = py; b.bounce--; b.d = 20; b.hits = [];
+          if (bx || !by) b.vx = -b.vx; if (by || !bx) b.vy = -b.vy; b.x = px; b.y = py; b.bounce--; b.bounced = true; b.d = 20; b.hits = [];
           AU.sfx("impactMetal", panOf(b.x)); fx(b.x, b.y, 5, [COL.cyan, "#ffffff"], 50, .2); continue; }
         if (b.blast && b.owner === "p") { explode(b.x - b.vx * .01, b.y - b.vy * .01, b.blast, "gun", true); b.life = 0; break; }
         if (ch === "b") detonateBarrel(i, j);
@@ -288,7 +290,7 @@ function updateBullets(dt) {
           if (e.hp > 1) { hurtBoss(e); b.life = 0; break; }
           { const kx = e.x, ky = e.y - 6; killEnemy(e, "shot"); if (b.owner === "p" && hasImp("kiln")) explode(kx, ky, 26, "kiln", true);
             if (b.feathers) ringShots(kx, ky, b.feathers, "#ff3d3d");
-            if (b.owner === "p") { if (b.arc) arcFrom(e, b.arc, "shot"); if (b.freeze) stunAround(kx, ky, b.freeze, 2); if (b.vamp || hasImp("scavenger")) p.ammo = Math.min(p.gun.mag, p.ammo + 1);
+            if (b.owner === "p") { if (b.bounced) achieve("ricochet"); b.kills = (b.kills || 0) + 1; if (b.kills >= 4) achieve("longshot"); if (b.arc) arcFrom(e, b.arc, "shot"); if (b.freeze) stunAround(kx, ky, b.freeze, 2); if (b.vamp || hasImp("scavenger")) p.ammo = Math.min(p.gun.mag, p.ammo + 1);
               if (hasImp("chainmod") && Math.random() < .35) arcFrom(e, 1, "shot"); } }
           if (b.pierce > 0) { b.pierce--; b.hits.push(e); continue; } b.life = 0; break; } }
         if (b.life <= 0) break;

@@ -726,7 +726,7 @@ function radioOnce(key, who, text) { const C = G.camp; if (!C || C.fired.has(key
 
 /* ---- Chapter runs ---- */
 function startChapter(n, retry) {
-  const ch = CHAPTERS[n]; SAVE.camp.cur = n; SAVE.camp.met.magpie = SAVE.camp.met.magpie || n >= 2;
+  const ch = CHAPTERS[n]; if (!G.rush) SAVE.camp.cur = n; SAVE.camp.met.magpie = SAVE.camp.met.magpie || n >= 2;
   if (!retry) undoChapterFx(n);
   G.camp = { n, ch, t: 0, fired: new Set(), won: false, winT: 0, kills0: 0 }; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; G.runSeed = null; G.queuedSeed = null;
   const hz = HAZARDS[ch.district] || [null, null];
@@ -743,10 +743,10 @@ function startChapter(n, retry) {
 }
 function campTick(dt) {
   const C = G.camp; if (!C) return; const ch = C.ch, R = G.rules, g = R.goal;
-  if (C.won) { C.winT -= dt; if (C.winT <= 0 && G.mode === "play") { AU.stop(); startTalk(ch.outro, chapterDone, { title: `CHAPTER ${String(C.n).padStart(2, "0")} · ${ch.title}` }); } return; }
+  if (C.won) { C.winT -= dt; if (C.winT <= 0 && G.mode === "play" && G.rush) return rushNext(); if (C.winT <= 0 && G.mode === "play") { AU.stop(); startTalk(ch.outro, chapterDone, { title: `CHAPTER ${String(C.n).padStart(2, "0")} · ${ch.title}` }); } return; }
   C.t += dt;
   ch.radio.forEach((r, i) => { if (C.fired.has(i) || (r.if && !r.if(SAVE.camp)) || !trig(r.on)) return; C.fired.add(i); radio(r.who, typeof r.t === "function" ? r.t() : r.t); });
-  if (ch.shard && !C.shardOut && !SAVE.camp.shards[C.n] && trig(ch.shard.on)) { C.shardOut = true; placeShard(); }
+  if (ch.shard && !G.rush && !C.shardOut && !SAVE.camp.shards[C.n] && trig(ch.shard.on)) { C.shardOut = true; placeShard(); }
   if (ch.shard && !C.shardOut && SAVE.camp.shards[C.n] && trig(ch.shard.on)) C.shardOut = true; // already found on an earlier run
   if (G.shard && Math.hypot(G.shard.x - G.p.x, G.shard.y - G.p.y) < 12) { SAVE.camp.shards[C.n] = true; C.gotShard = true; G.shard = null; persist(); AU.sfx("milestone"); G.banner = { txt: "DATASHARD RECOVERED · CHECK THE ARCHIVE", col: COL.magenta, life: 2.4 }; }
   const p = G.p; if (tileOf(p.x, p.y) !== "o" && !onVent(p.x, p.y)) p.safe = { x: p.x, y: p.y };
@@ -788,7 +788,7 @@ function campTick(dt) {
   if (win) campWin();
 }
 function campWin() {
-  const C = G.camp; if (!C || C.won) return; C.won = true; C.winT = 1.6; if (G.stalls) SAVE.camp.stallHp = Math.round(stallPct()); G.lull = false;
+  const C = G.camp; if (!C || C.won) return; C.won = true; C.winT = 1.6; if (G.stalls) SAVE.camp.stallHp = Math.round(stallPct()); G.lull = false; if (C.n === 2 && G.stalls && stallPct() >= 75) achieve("stall");
   if (G.rackFlow) { const saved = G.stalls.filter(S => !S.dead).length; SAVE.camp.racksSaved = saved; if (saved === G.stalls.length) SAVE.camp.flags.allRacks = true; else delete SAVE.camp.flags.allRacks; } G.god = true; G.flood = null; G.vents = null;
   for (const e of G.en) if (e.alive && e.type !== "nest") { e.alive = false; fx(e.x, e.y - 10, 8, ["#2a2440", COL.magenta], 50, .5); }
   G.pending = []; G.bul = []; G.banner = { txt: "OBJECTIVE COMPLETE", col: COL.cyan, life: 1.6 }; AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best;
@@ -953,7 +953,7 @@ function campHudCenter(c, t) {
   else if (g.type === "boss") { label = `${String(Math.min(dk(), G.rules.boss)).padStart(2, "0")}/${G.rules.boss} · DRAW OUT`; k = dk() / G.rules.boss; }
   panel(c, x, 6, 108, 24, "#3a3456"); txt(c, label, W / 2, 9, col, 8, "center");
   for (let i = 0; i < 20; i++) { c.fillStyle = i < Math.min(1, k) * 20 ? (G.boss ? COL.amber : COL.magenta) : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); }
-  if (G.p.shield > 0 || SAVE.camp.diff === "story") { txt(c, "SHIELD", 168, GH - 58, COL.dim); for (let i = 0; i < 2; i++) { c.fillStyle = i < G.p.shield ? COL.cyan : "#2a2640"; c.fillRect(206 + i * 8, GH - 56, 6, 4); } }
+  if (G.p.shield > 0 || SAVE.camp.diff === "story" || G.rush) { txt(c, "SHIELD", 168, GH - 58, COL.dim); for (let i = 0; i < (G.rush ? 3 : 2); i++) { c.fillStyle = i < G.p.shield ? COL.cyan : "#2a2640"; c.fillRect(206 + i * 8, GH - 56, 6, 4); } }
 }
 
 /* ---- Campaign menu and archive ---- */

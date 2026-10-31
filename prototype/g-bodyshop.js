@@ -24,7 +24,7 @@ function cycleLook(slot, d) {
 }
 // Roll every slot at random from what you own (afterimage and gun finish included).
 // RANDOM changes everything: every look slot, the name, and the origin while you're still creating.
-function randomLook() { const L = SAVE.char.look, making = G.body.from === "create" || !SAVE.char.created; LOOK_SLOTS.forEach(sl => { const opts = sl.opts.filter(o => lookOwned(sl.key, o)); L[sl.key] = opts[Math.random() * opts.length | 0][0]; });
+function randomLook() { SAVE.extra.randoms = (SAVE.extra.randoms || 0) + 1; const L = SAVE.char.look, making = G.body.from === "create" || !SAVE.char.created; LOOK_SLOTS.forEach(sl => { const opts = sl.opts.filter(o => lookOwned(sl.key, o)); L[sl.key] = opts[Math.random() * opts.length | 0][0]; });
   SAVE.char.name = randomName(); if (making) SAVE.char.origin = ORIGINS[Math.random() * ORIGINS.length | 0].id;
   applyLook(); persist(); AU.sfx("lock", 4); say2(making ? "NEW OPERATIVE · " + ORIGIN[SAVE.char.origin].name : "NEW LOOK AND NAME · ROLL AGAIN?"); }
 // DEFAULT puts the look back to the standard operative (your name and origin stay).

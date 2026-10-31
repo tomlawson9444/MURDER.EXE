@@ -19,7 +19,8 @@ function updateDirector(dt) {
   if (p2At != null && dk() >= p2At && !G.phase2) startPhase2();
   if (bossAt != null && dk() >= bossAt && !G.boss) { startBoss(); return; }
   if (G.boss || (G.camp && G.camp.won)) return;
-  G.spawnT -= dt; const cap = 3 + G.heat + (dk() > 70 ? 1 : 0) + Math.floor(Math.max(0, D().n - 2) / 3); // endless depth adds pressure
+  if (dailyMod("heat") || dailyMod("bottomless")) G.heatBase = Math.max(G.heatBase, 3);
+  G.spawnT -= dt; const cap = Math.round((3 + G.heat + (dk() > 70 ? 1 : 0) + Math.floor(Math.max(0, D().n - 2) / 3)) * (dailyMod("swarm") ? 1.5 : 1)); // endless depth adds pressure
   if (G.spawnT <= 0 && alive + G.pending.length < cap && !G.lull) {
     G.spawnT = Math.max(.6, 1.7 - G.heat * .2); const type = pickType();
     if (type === "corvid") { const x = rnd(40, GW - 40); G.pending.push({ type, x, y: 34, t: .8, door: null }); AU.sfx("caw", panOf(x)); }

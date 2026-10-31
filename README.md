@@ -58,6 +58,14 @@ The title screen has four choices, with a one-line description under the selecte
 - **OPERATIVE:** the BODYSHOP (or CREATE OPERATIVE before your first game).
 - **MAGPIE'S:** the shop.
 
+## Challenges
+
+Pick CHALLENGES on the title screen.
+
+- **Daily Challenge:** today's date picks the map seed, a twist and a fixed kit (any sidearm, Overclock and two implants, even ones you don't own), so everyone gets the same run. The twists are BOOM TOWN (every kill explodes), COLD SNAP (kills freeze nearby enemies), BOTTOMLESS (no ammo use, Heat starts at 3), GLASS JAW (faster enemy bullets, double score), SWARM (half again as many enemies, double score), OVERCHARGED (Overclock charges three times faster) and RED ALERT (Heat starts at 3). It plays like Arcade with no shop stops; flatlining or ending the run banks the score, and the screen keeps your best five scores for the day.
+- **Boss Rush:** all ten story bosses back to back (Blackwing, the Ferryman, the Augur, Cinder, the Widow Crane, the Archivist, Scarecrow, Director Vane, the Choir and Mother Corvina) with your own gear and three shields for the whole run. The clock never stops, your best time is saved, and it never touches your story progress.
+- **Achievements:** 39 of them across the story, combat, Arcade, builds, the challenges and style (FIRST BLOOD, EVERY WAY OUT, BLAST RADIUS, MASS DELETE, ICE AGE, TRICK SHOT, SKEWER, DEEP DIVE, IDENTITY CRISIS, NO TIME TO WASTE and more). Each pays 100 to 1,500 scrip and pops up on any screen; the ACHIEVEMENTS list shows what's left.
+
 ## Campaign: Nine Nights of Rain
 
 The story campaign is complete: **30 chapters across 10 districts in five acts, with three endings**. Pick STORY on the title screen, and switch acts with A / D (or left / right) on the chapter list.
@@ -176,6 +184,7 @@ Progress (operative and look, scrip, owned gear and cosmetics, loadout, mileston
 | `g-story.js` | The campaign script: chapters, objectives, conversations, radio lines and datashard logs for all five acts |
 | `g-talk.js` | Conversation screen, reply choices, trust and Resonance, and in-game radio chatter |
 | `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, the docks fog, escort and guard objectives, hold and extract objectives, Halvorsen Wardens and crossfire, THE FERRYMAN, CINDER, the WIDOW CRANE, THE ARCHIVIST, SCARECROW, DIRECTOR VANE, THE CHOIR and MOTHER CORVINA, climbing, allies, the Nest's rewriting floor, the endings, the campaign menu, archive and chapter-complete screen |
+| `g-extras.js` | Achievements, the Daily Challenge, Boss Rush and the CHALLENGES screen |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |
