@@ -397,10 +397,12 @@ function drawWait(c, t) {
   txt(c, (PAD.active ? lab().pause : "ESC") + ": MENU", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
 function drawMembers(c, t, list, y) {
-  panel(c, GW / 2 - 130, y, 260, 16 + COOP_MAX * 22, "#3a3456"); txt(c, `PLAYERS ${list.length}/${COOP_MAX}`, GW / 2 - 120, y + 6, COL.dim);
-  for (let i = 0; i < COOP_MAX; i++) { const m = list[i], yy = y + 20 + i * 22;
+  const rh = COOP.couch && isHost() ? 30 : 22; // local co-op rows have room for each controller's loadout
+  panel(c, GW / 2 - 130, y, 260, 16 + COOP_MAX * rh, "#3a3456"); txt(c, `PLAYERS ${list.length}/${COOP_MAX}`, GW / 2 - 120, y + 6, COL.dim);
+  for (let i = 0; i < COOP_MAX; i++) { const m = list[i], yy = y + 20 + i * rh, mm = m && m.pad != null && COOP.couch ? COOP.members.get(m.id) : null;
     if (!m) { txt(c, "· OPEN SLOT ·", GW / 2, yy + 6, "#3a3456", 8, "center"); continue; }
     const s = m.look ? lookSprites(m.look) : null; if (s) { const f = Math.floor(t / 400) % 2 ? s.SP.vesperB : s.SP.vesper; c.save(); c.beginPath(); c.rect(GW / 2 - 120, yy - 2, 26, 20); c.clip(); drawSpr(c, f, GW / 2 - 120, yy - 4); c.restore(); }
+    if (mm) { drawLocalRow(c, mm, GW / 2 - 88, yy, t); txt(c, "CONTROLLER " + (m.pad + 1), GW / 2 + 120, yy + 1, COL.cyan, 8, "right"); continue; }
     txt(c, m.name, GW / 2 - 88, yy + 6, COL.ink); txt(c, m.host ? (COOP.couch ? "PLAYER 1" : "HOST") : m.pad != null ? "CONTROLLER " + (m.pad + 1) : "READY", GW / 2 + 120, yy + 6, m.host ? COL.amber : COL.cyan, 8, "right"); }
 }
 
@@ -457,15 +459,15 @@ function coopItems() {
 function updateCoop(rdt) {
   if (COOP.role === "client" && !COOP.joined) { if (hit("escape")) COOP.leave(); return; }
   if (hit("escape")) { if (COOP.view === "friends") { COOP.view = "lobby"; G.menuMode = null; } else { G.mode = "title"; G.menuMode = null; } return; }
-  G.menu = layoutMenu(coopItems(), COOP.view === "friends" ? 64 : isHost() ? 160 : 118, COOP.view === "friends" ? 13 : 12); runMenu(G.menu);
+  G.menu = layoutMenu(coopItems(), COOP.view === "friends" ? 64 : isHost() ? (COOP.couch ? 193 : 160) : 118, COOP.view === "friends" ? 13 : 12); runMenu(G.menu);
 }
 function drawCoop(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .8);
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, "CO-OP", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 12, col, 16, "center"));
   if (COOP.role === "client" && !COOP.joined) { txt(c, COOP.msg || "CONNECTING…", GW / 2, 120, COL.ink, 8, "center"); txt(c, "ESC: CANCEL", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center"); return; }
   if (COOP.view === "friends") { txt(c, "INVITE FRIENDS · " + (COOP.friends ? COOP.friends.length + " ONLINE" : "LOADING…"), GW / 2, 40, COL.dim, 8, "center"); if (COOP.friends && !COOP.friends.length) txt(c, "NO FRIENDS ONLINE · TRY THE STEAM OVERLAY", GW / 2, 50, COL.amber, 8, "center"); }
-  else if (isHost() && COOP.couch) { txt(c, COOP.members.size < COOP_MAX - 1 ? "CONTROLLERS: PRESS A TO JOIN · UP TO 4 PLAYERS ON ONE SCREEN" : "FULL · 4 PLAYERS", GW / 2, 34, COL.cyan, 8, "center"); drawMembers(c, t, lobbyList(), 46);
-    txt(c, "ON A JOINED CONTROLLER: X NEW LOOK · B LEAVE" + (PAD.active ? " · PLAYER 1 IS ON " + lab().name : " · PLAYER 1 IS ON KEYBOARD AND MOUSE"), GW / 2, 222, rgba(COL.dim, .85), 8, "center"); }
+  else if (isHost() && COOP.couch) { txt(c, COOP.members.size < COOP_MAX - 1 ? "CONTROLLERS: PRESS A TO JOIN · UP TO 4 PLAYERS ON ONE SCREEN" : "FULL · 4 PLAYERS", GW / 2, 30, COL.cyan, 8, "center"); drawMembers(c, t, lobbyList(), 50);
+    txt(c, "JOINED CONTROLLERS: UP / DOWN PICK · LEFT / RIGHT CHANGE · X NEW LOOK · B LEAVE", GW / 2, 241, rgba(COL.dim, .85), 8, "center"); txt(c, PAD.active ? "PLAYER 1 IS ON " + lab().name : "PLAYER 1 IS ON KEYBOARD AND MOUSE", GW / 2, 40, rgba(COL.dim, .85), 8, "center"); }
   else if (isHost()) { txt(c, (NET.kind === "steam" ? "STEAM LOBBY · FRIENDS ONLY" : "TEST GAME ON THIS COMPUTER") + " · UP TO 4 PLAYERS", GW / 2, 34, COL.dim, 8, "center"); drawMembers(c, t, lobbyList(), 46); }
   else { txt(c, "PLAY ARCADE AND THE STORY WITH UP TO THREE FRIENDS", GW / 2, 34, COL.dim, 8, "center");
     wrapText(c, "THE HOST PICKS THE RUN OR CHAPTER AND MAKES THE STORY CHOICES. EVERYONE BRINGS THEIR OWN OPERATIVE AND LOADOUT, AND KEEPS THE SCRIP AND ACHIEVEMENTS THEY EARN. GO DOWN AND A TEAMMATE CAN REVIVE YOU; THE RUN ENDS WHEN EVERYONE IS DOWN.", 380).forEach((l, i) => txt(c, l, GW / 2, 56 + i * 11, rgba(COL.ink, .85), 8, "center"));

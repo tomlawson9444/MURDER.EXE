@@ -12,10 +12,43 @@ function localLook() { const L = Object.assign({}, SAVE.char.look);
   LOOK_SLOTS.forEach(sl => { const opts = sl.opts.filter(o => lookOwned(sl.key, o)); if (opts.length) L[sl.key] = opts[Math.random() * opts.length | 0][0]; }); return L; }
 function renumberLocals() { localMembers().forEach((m, i) => { m.name = "PLAYER " + (i + 2); if (m.p) m.p.name = m.name; }); }
 function addLocal(gp) {
-  const m = { id: "pad" + gp.index, local: true, pad: gp.index, name: "", look: localLook(), heard: performance.now(), presses: [], lockE: null, aimA: 0, aimed: false, cur: null };
-  Object.defineProperty(m, "loadout", { get: () => safeLoadout(SAVE.loadout) }); // the save's equipped loadout
+  const kept = ((SAVE.extra || {}).pads || {})[gp.index] || {}; // what this controller picked last time
+  const m = { id: "pad" + gp.index, local: true, pad: gp.index, name: "", look: kept.look || localLook(), heard: performance.now(), presses: [], lockE: null, aimA: 0, aimed: false, cur: null,
+    build: kept.build != null ? kept.build : "p1", custom: kept.custom || null, field: 0, nav: {} };
+  Object.defineProperty(m, "loadout", { get: () => safeLoadout(srcLoadout(m)) });
   COOP.members.set(m.id, m); renumberLocals(); AU.sfx("milestone"); coopDropIn(m);
 }
+const remember = m => { const X = SAVE.extra || (SAVE.extra = {}); (X.pads || (X.pads = {}))[m.pad] = { build: m.build, custom: m.custom, look: m.look }; persist(); };
+
+/* ---- Each controller's loadout: Player 1's, one of the three saved builds, or their own ----
+   Their own build starts from the starter kit and cycles through the sidearms, Overclocks and implants this save owns.
+   Changing a part while a saved build is picked makes it their own copy to tweak (the saved build is never changed). */
+const LOCAL_FIELDS = ["LOADOUT", "SIDEARM", "OVERCLOCK", "IMPLANT 1", "IMPLANT 2", "IMPLANT 3"];
+const LOCAL_SOURCES = ["p1", 0, 1, 2, "custom"];
+const padOwned = cat => ITEMS.filter(i => i.cat === cat && owns(i.id)).map(i => i.id);
+function srcLoadout(m) {
+  if (m.build === "custom" && m.custom) return m.custom;
+  const B = typeof m.build === "number" && SAVE.builds[m.build]; if (B) return { gun: owns(B.gun) ? B.gun : SAVE.loadout.gun, oc: owns(B.oc) ? B.oc : SAVE.loadout.oc, imp: B.imp.filter(owns) };
+  return SAVE.loadout; }
+const srcLabel = s => s === "p1" ? "SAME AS PLAYER 1" : s === "custom" ? "MY OWN BUILD" : "BUILD " + (s + 1) + (SAVE.builds[s] ? "" : " (EMPTY)");
+function editLocal(m, f, d) {
+  if (f === 0) { const i = LOCAL_SOURCES.indexOf(m.build); m.build = LOCAL_SOURCES[(i + d + LOCAL_SOURCES.length) % LOCAL_SOURCES.length];
+    if (m.build === "custom" && !m.custom) m.custom = Object.assign({}, defaultSave().loadout, { imp: [null, null, null] }); } // from scratch: the starter kit
+  else { if (m.build !== "custom") { const L = safeLoadout(srcLoadout(m)); m.custom = { gun: L.gun, oc: L.oc, imp: [0, 1, 2].map(k => L.imp[k] || null) }; m.build = "custom"; }
+    const C = m.custom, step = (list, cur) => list[(Math.max(0, list.indexOf(cur)) + d + list.length) % list.length];
+    if (f === 1) C.gun = step(padOwned("gun"), C.gun); else if (f === 2) C.oc = step(padOwned("oc"), C.oc);
+    else { const k = f - 3, opts = [null].concat(padOwned("imp").filter(id => !C.imp.includes(id) || C.imp[k] === id)); C.imp[k] = step(opts, C.imp[k] || null); } }
+  remember(m); AU.sfx("lock", 1);
+}
+const shortName = id => (ITEM[id] ? ITEM[id].name : "?").toUpperCase();
+function drawLocalRow(c, m, x, y, t) {
+  const L = safeLoadout(srcLoadout(m)), f = m.field || 0, custom = m.build === "custom" && m.custom;
+  const val = f === 0 ? srcLabel(m.build) : f === 1 ? shortName(L.gun) : f === 2 ? shortName(L.oc) : (custom ? m.custom.imp[f - 3] : L.imp[f - 3]) ? shortName(custom ? m.custom.imp[f - 3] : L.imp[f - 3]) : "NONE";
+  txt(c, m.name, x, y + 1, mateColName(m.name)); txt(c, LOCAL_FIELDS[f] + ":  < " + val + " >", x, y + 10, COL.amber);
+  c.font = "8px Silkscreen"; let sum = [shortName(L.gun), shortName(L.oc)].concat(L.imp.map(shortName)).join(" · "); while (sum.length > 8 && c.measureText(sum).width > 206) sum = sum.slice(0, -2);
+  txt(c, sum === [shortName(L.gun), shortName(L.oc)].concat(L.imp.map(shortName)).join(" · ") ? sum : sum + "…", x, y + 19, rgba(COL.ink, .6));
+}
+const mateColName = name => mateCol({ name });
 function dropLocal(m) { COOP.members.delete(m.id); coopDropOut(m); renumberLocals(); AU.sfx("lock", 0); }
 
 // Once a frame, before Player 1's controller is read.
@@ -27,11 +60,18 @@ function pollLocals(rdt) {
     const m = COOP.members.get("pad" + gp.index);
     // In the local lobby, A on any controller Player 1 isn't using joins; B leaves again and X rolls a new look.
     if (!m && lobby && press(BTN.A) && !(PAD.active && gp.index === PAD.idx) && COOP.members.size < COOP_MAX - 1) addLocal(gp);
-    else if (m && lobby) { if (press(BTN.B)) dropLocal(m); else if (press(BTN.X)) { m.look = localLook(); if (m.p) m.p.look = m.look; AU.sfx("lock", 3); } }
+    else if (m && lobby) { if (press(BTN.B)) dropLocal(m); else if (press(BTN.X)) { m.look = localLook(); if (m.p) m.p.look = m.look; remember(m); AU.sfx("lock", 3); } else lobbyNav(m, gp, b, rdt); }
     else if (m) driveLocal(m, gp, b, press, rdt);
     LOCAL_PREV[gp.index] = gp.buttons.map((x, i) => b(i));
   }
   for (const m of localMembers()) if (!all.some(g => g.index === m.pad)) { m.input = null; m.presses = []; } // unplugged: stands still until it's back
+}
+// Up / down picks a line of the loadout, left / right changes it. Holding keeps stepping after a short delay.
+function lobbyNav(m, gp, b, rdt) {
+  const lx = gp.axes[0] || 0, ly = gp.axes[1] || 0, R = m.nav || (m.nav = {});
+  const rep = (key, dir) => { if (!dir) { R[key] = 0; return 0; } if (!R[key]) { R[key] = .32; return dir; } R[key] -= rdt; if (R[key] <= 0) { R[key] = .12; return dir; } return 0; };
+  const v = rep("v", b(BTN.UP) || ly < -.6 ? -1 : b(BTN.DOWN) || ly > .6 ? 1 : 0), h = rep("h", b(BTN.LEFT) || lx < -.6 ? -1 : b(BTN.RIGHT) || lx > .6 ? 1 : 0);
+  if (v) { m.field = ((m.field || 0) + v + LOCAL_FIELDS.length) % LOCAL_FIELDS.length; AU.sfx("lock", 0); } if (h) editLocal(m, m.field || 0, h);
 }
 // The same twin-stick controls as Player 1's controller (g-pad.js), turned into the input a co-op teammate sends.
 function driveLocal(m, gp, b, press, rdt) {
