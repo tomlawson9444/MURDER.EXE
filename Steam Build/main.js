@@ -72,7 +72,7 @@ function createWindow() {
 // Self-test for any build: MURDER_SMOKE=1 starts the game, checks it reached the title screen with the Steam bridge
 // in place, saves a screenshot to smoke-test.png beside the app, prints a JSON line and quits (exit code 1 on failure).
 function smokeTest(win) {
-  const errors = []; win.webContents.on("console-message", (e, level, msg) => { if (level >= 3) errors.push(msg); });
+  const errors = []; win.webContents.on("console-message", e => { if (e.level === "error") errors.push(e.message); });
   setTimeout(async () => {
     let r = {}; try { r = await win.webContents.executeJavaScript(`({ mode: __G.mode, bridge: typeof window.steamBridge, steam: !!(window.steamBridge && window.steamBridge.available), platform: PLATFORM.name, achievements: ACH.length, font: document.fonts.check('8px "Silkscreen"') })`); } catch (e) { errors.push(String(e)); }
     if (process.env.MURDER_SMOKE_EVAL) { try { r.eval = await win.webContents.executeJavaScript(process.env.MURDER_SMOKE_EVAL); await new Promise(ok => setTimeout(ok, 900)); } catch (e) { errors.push("eval: " + e.message); } } // extra checks for tests

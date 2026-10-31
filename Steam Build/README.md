@@ -1,6 +1,6 @@
 # MURDER.EXE · Steam Build
 
-This folder builds MURDER.EXE as a desktop game for Steam using [Electron](https://www.electronjs.org/). The game itself lives in `../prototype` and is copied in at build time, so there is only ever one copy of the game to work on. [steamworks-ffi-node](https://www.npmjs.com/package/steamworks-ffi-node) connects it to Steam (Steamworks SDK 1.64) for achievements, leaderboards, Steam Cloud saves, friends, lobbies and co-op networking.
+This folder builds MURDER.EXE as a desktop game for Steam using [Electron](https://www.electronjs.org/) 44 (pinned to an exact version in `package.json`; to upgrade, change the version, run `npm install`, then `npm run smoke` and a test build). The game itself lives in `../prototype` and is copied in at build time, so there is only ever one copy of the game to work on. [steamworks-ffi-node](https://www.npmjs.com/package/steamworks-ffi-node) connects it to Steam (Steamworks SDK 1.64) for achievements, leaderboards, Steam Cloud saves, friends, lobbies and co-op networking.
 
 ## What's in here
 
@@ -13,6 +13,7 @@ This folder builds MURDER.EXE as a desktop game for Steam using [Electron](https
 | `copy-game.js` | Copies `../prototype` into `game/` and bundles the fonts, so the build works offline |
 | `package.json` | Versions, scripts and the electron-builder settings |
 | `build/icon.png` | The app icon (512×512); remake it with `node tools/make-app-icon.js` |
+| `tools/set-app-id.js` | `npm run set-app-id -- APP_ID` points the build, `steam_appid.txt` and the SteamPipe scripts at your Steam app |
 | `steam_appid.txt` | Your Steam App ID for local testing (starts as `480`, Valve's test app) |
 | `achievements.csv`, `achievements.json`, `icons/` | Everything to enter on the Steamworks partner site; remake with `node tools/make-icons.js` |
 | `steampipe/` | SteamPipe scripts for uploading builds with `steamcmd` |
@@ -160,14 +161,20 @@ zip -r redist.zip redistributable_bin && base64 -w0 redist.zip > redist.b64
 
 Without the secret, the workflow still builds, with a warning, but those builds have no Steam features.
 
-Before a release build, set `"steamAppId"` in `package.json` to your real App ID (it starts as 480, Valve's test app). Steam supplies the App ID when it launches the game, but the build needs its own id to relaunch through Steam when someone opens the executable directly.
+Before a release build, point the build at your Steam app. Everything starts as 480 (Valve's test app) and placeholder depot IDs; one command sets them all, using the IDs on your app's **SteamPipe → Depots** page:
+
+```bash
+npm run set-app-id -- YOUR_APP_ID WINDOWS_DEPOT_ID LINUX_DEPOT_ID
+```
+
+This updates `steamAppId` in `package.json` (release builds use it to relaunch through Steam when someone opens the executable directly), `steam_appid.txt` and the SteamPipe scripts. The depot IDs are optional and default to the App ID + 1 and + 2. Commit the changed files.
 
 Don't ship `steam_appid.txt`; Steam supplies the App ID when it launches the game. Release builds relaunch through Steam if someone opens the .exe directly (set `STEAM_DEV=1` to skip that while developing).
 
 ## 7. Upload to Steam (SteamPipe)
 
 1. On Steamworks, open **SteamPipe → Depots** and note the App ID and one depot ID each for Windows and Linux.
-2. Put those IDs into `steampipe/app_build.vdf`, `steampipe/depot_windows.vdf` and `steampipe/depot_linux.vdf` (they start as 1234560, 1234561 and 1234562).
+2. Put those IDs in with `npm run set-app-id -- APP_ID WINDOWS_DEPOT_ID LINUX_DEPOT_ID` (see step 6), or edit `steampipe/app_build.vdf`, `steampipe/depot_windows.vdf` and `steampipe/depot_linux.vdf` by hand (they start as 1234560, 1234561 and 1234562).
 3. Build (step 6) so that `dist/win-unpacked` and `dist/linux-unpacked` exist.
 4. Install [steamcmd](https://developer.valvesoftware.com/wiki/SteamCMD) and run, from this folder:
 

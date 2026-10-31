@@ -15,15 +15,16 @@
     "dist:win": "npm run game && electron-builder --win dir",
     "dist:linux": "npm run game && electron-builder --linux dir",
     "dist:mac": "npm run game && electron-builder --mac dir",
-    "dist": "npm run game && electron-builder --win dir --linux dir"
+    "dist": "npm run game && electron-builder --win dir --linux dir",
+    "set-app-id": "node tools/set-app-id.js"
   },
   "dependencies": {
     "steamworks-ffi-node": "^0.11.3"
   },
   "devDependencies": {
-    "cross-env": "^7.0.3",
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.0"
+    "cross-env": "10.1.0",
+    "electron": "44.9.3",
+    "electron-builder": "26.17.0"
   },
   "build": {
     "appId": "com.murderexe.game",
