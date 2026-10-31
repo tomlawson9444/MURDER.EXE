@@ -58,6 +58,10 @@ The title screen has four choices, with a one-line description under the selecte
 - **OPERATIVE:** the BODYSHOP (or CREATE OPERATIVE before your first game).
 - **MAGPIE'S:** the shop.
 
+## Steam
+
+The `steam/` folder packages the game as a desktop app with **Steam achievements**: all 39 in-game achievements map to Steam API names (`MURDER_CH1` … `MURDER_RUSHFAST`), unlock on Steam as you earn them, and re-sync on every launch. The folder has the Electron + steamworks.js app, a ready-made achievement list and 64×64 icons for the Steamworks partner site, and step-by-step setup in [steam/README.md](steam/README.md).
+
 ## Challenges
 
 Pick CHALLENGES on the title screen.
@@ -185,6 +189,7 @@ Progress (operative and look, scrip, owned gear and cosmetics, loadout, mileston
 | `g-talk.js` | Conversation screen, reply choices, trust and Resonance, and in-game radio chatter |
 | `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, the docks fog, escort and guard objectives, hold and extract objectives, Halvorsen Wardens and crossfire, THE FERRYMAN, CINDER, the WIDOW CRANE, THE ARCHIVIST, SCARECROW, DIRECTOR VANE, THE CHOIR and MOTHER CORVINA, climbing, allies, the Nest's rewriting floor, the endings, the campaign menu, archive and chapter-complete screen |
 | `g-extras.js` | Achievements, the Daily Challenge, Boss Rush and the CHALLENGES screen |
+| `g-platform.js` | Platform layer: Steam achievement unlocks in the Steam build (nothing in a browser) |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |

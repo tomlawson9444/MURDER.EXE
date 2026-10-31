@@ -166,6 +166,7 @@
   // Shared seed links: #seed-ABC123 or #seed-ABC123-rookery queue that map for the next run.
   const sq = location.hash.match(/^#seed-([0-9a-z]{1,6})(?:-(\w+))?$/i); if (sq) { G.queuedSeed = PG.parseSeed(sq[1]); SAVE.mapMode = "gen"; if (sq[2] && DORDER.indexOf(sq[2].toLowerCase()) >= 0 && DORDER.indexOf(sq[2].toLowerCase()) < (G.unlocked || 1)) G.sel = DORDER.indexOf(sq[2].toLowerCase()); }
   const fonts = Promise.race([Promise.all([document.fonts.load('8px "Silkscreen"'), document.fonts.load('32px "Silkscreen"'), document.fonts.load('700 44px "Chakra Petch"')]), new Promise(r => setTimeout(r, 2500))]);
+  PLATFORM.sync(Object.keys(SAVE.ach)); // Steam build: make sure Steam has every achievement this save already earned
   BANK.build(); fonts.then(() => { updateHelp(); buildSprites(); reset("market"); G.mode = "title"; if (location.hash.startsWith("#autostart")) start(qs ? qs[1] : "market"); else if (sq && SAVE.char.created) openArcade();
     const cq = location.hash.match(/chapter-(\d+)/); if (cq && CHAPTERS[+cq[1]]) { SAVE.camp.cur = Math.max(SAVE.camp.cur, +cq[1]); startChapter(+cq[1], location.hash.includes("nobrief")); } requestAnimationFrame(frame); });
   window.__G = G;

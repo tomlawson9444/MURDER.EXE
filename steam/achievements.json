@@ -1,0 +1,314 @@
+[
+  {
+    "api": "MURDER_CH1",
+    "name": "FIRST BLOOD",
+    "description": "Finish Chapter 1",
+    "icon": "icons/MURDER_CH1.jpg",
+    "icon_locked": "icons/MURDER_CH1_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ACT1",
+    "name": "WET FEATHERS",
+    "description": "Finish Act 1",
+    "icon": "icons/MURDER_ACT1.jpg",
+    "icon_locked": "icons/MURDER_ACT1_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ACT2",
+    "name": "THE ROOST",
+    "description": "Finish Act 2",
+    "icon": "icons/MURDER_ACT2.jpg",
+    "icon_locked": "icons/MURDER_ACT2_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ACT3",
+    "name": "COLD STORAGE",
+    "description": "Finish Act 3",
+    "icon": "icons/MURDER_ACT3.jpg",
+    "icon_locked": "icons/MURDER_ACT3_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ACT4",
+    "name": "BAD DEBTS",
+    "description": "Finish Act 4",
+    "icon": "icons/MURDER_ACT4.jpg",
+    "icon_locked": "icons/MURDER_ACT4_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ACT5",
+    "name": "TEN THOUSAND EYES",
+    "description": "Finish the story",
+    "icon": "icons/MURDER_ACT5.jpg",
+    "icon_locked": "icons/MURDER_ACT5_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ENDINGS",
+    "name": "EVERY WAY OUT",
+    "description": "See all three endings",
+    "icon": "icons/MURDER_ENDINGS.jpg",
+    "icon_locked": "icons/MURDER_ENDINGS_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_SHARDS",
+    "name": "THE WHOLE ARCHIVE",
+    "description": "Recover all 30 datashards",
+    "icon": "icons/MURDER_SHARDS.jpg",
+    "icon_locked": "icons/MURDER_SHARDS_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_STALL",
+    "name": "GOOD FOR BUSINESS",
+    "description": "Finish Chapter 2, stall above 75%",
+    "icon": "icons/MURDER_STALL.jpg",
+    "icon_locked": "icons/MURDER_STALL_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_RACKS",
+    "name": "NOTHING WENT DARK",
+    "description": "Save all four racks in Chapter 16",
+    "icon": "icons/MURDER_RACKS.jpg",
+    "icon_locked": "icons/MURDER_RACKS_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_RESONANCE",
+    "name": "TOO CLOSE",
+    "description": "Reach CORVUS Resonance 6",
+    "icon": "icons/MURDER_RESONANCE.jpg",
+    "icon_locked": "icons/MURDER_RESONANCE_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_K100",
+    "name": "CROW HUNTER",
+    "description": "Get 100 kills",
+    "icon": "icons/MURDER_K100.jpg",
+    "icon_locked": "icons/MURDER_K100_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_K1000",
+    "name": "MURDER OF ONE",
+    "description": "Get 1,000 kills",
+    "icon": "icons/MURDER_K1000.jpg",
+    "icon_locked": "icons/MURDER_K1000_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_K5000",
+    "name": "EXTINCTION EVENT",
+    "description": "Get 5,000 kills",
+    "icon": "icons/MURDER_K5000.jpg",
+    "icon_locked": "icons/MURDER_K5000_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_HACKS",
+    "name": "SHORT CIRCUIT",
+    "description": "Kill 50 enemies with hacks",
+    "icon": "icons/MURDER_HACKS.jpg",
+    "icon_locked": "icons/MURDER_HACKS_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ARC3",
+    "name": "PASS IT ON",
+    "description": "Kill three with one hack",
+    "icon": "icons/MURDER_ARC3.jpg",
+    "icon_locked": "icons/MURDER_ARC3_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_BLAST5",
+    "name": "BLAST RADIUS",
+    "description": "Kill 5 enemies with one explosion",
+    "icon": "icons/MURDER_BLAST5.jpg",
+    "icon_locked": "icons/MURDER_BLAST5_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_VOLLEY",
+    "name": "FULL VOLLEY",
+    "description": "Kill 6 with one Overclock",
+    "icon": "icons/MURDER_VOLLEY.jpg",
+    "icon_locked": "icons/MURDER_VOLLEY_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_MASS",
+    "name": "MASS DELETE",
+    "description": "Kill 10 with one Overclock volley",
+    "icon": "icons/MURDER_MASS.jpg",
+    "icon_locked": "icons/MURDER_MASS_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_GRAZE",
+    "name": "GRAZE ARTIST",
+    "description": "Graze 100 bullets",
+    "icon": "icons/MURDER_GRAZE.jpg",
+    "icon_locked": "icons/MURDER_GRAZE_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_FALLS",
+    "name": "MIND THE GAP",
+    "description": "Knock 25 enemies into the chasm",
+    "icon": "icons/MURDER_FALLS.jpg",
+    "icon_locked": "icons/MURDER_FALLS_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_DASHKILL",
+    "name": "TOLL PAID",
+    "description": "Kill an enemy by dashing through it",
+    "icon": "icons/MURDER_DASHKILL.jpg",
+    "icon_locked": "icons/MURDER_DASHKILL_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_FREEZE",
+    "name": "ICE AGE",
+    "description": "Freeze 6 enemies at once",
+    "icon": "icons/MURDER_FREEZE.jpg",
+    "icon_locked": "icons/MURDER_FREEZE_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_RICOCHET",
+    "name": "TRICK SHOT",
+    "description": "Kill an enemy with a bounced round",
+    "icon": "icons/MURDER_RICOCHET.jpg",
+    "icon_locked": "icons/MURDER_RICOCHET_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_LONGSHOT",
+    "name": "SKEWER",
+    "description": "Kill 4 enemies with one round",
+    "icon": "icons/MURDER_LONGSHOT.jpg",
+    "icon_locked": "icons/MURDER_LONGSHOT_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_HEAT5",
+    "name": "BURNING UP",
+    "description": "Reach Heat 5",
+    "icon": "icons/MURDER_HEAT5.jpg",
+    "icon_locked": "icons/MURDER_HEAT5_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_MARKET",
+    "name": "RAIN CHECK",
+    "description": "Clear the Rain Market in Arcade",
+    "icon": "icons/MURDER_MARKET.jpg",
+    "icon_locked": "icons/MURDER_MARKET_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_ROOKERY",
+    "name": "ROOST RULER",
+    "description": "Clear the Chrome Rookery in Arcade",
+    "icon": "icons/MURDER_ROOKERY.jpg",
+    "icon_locked": "icons/MURDER_ROOKERY_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_DEEP",
+    "name": "DEEP DIVE",
+    "description": "Reach Endless district 5",
+    "icon": "icons/MURDER_DEEP.jpg",
+    "icon_locked": "icons/MURDER_DEEP_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_SCORE",
+    "name": "HIGH ROLLER",
+    "description": "Score 250,000 in one Arcade run",
+    "icon": "icons/MURDER_SCORE.jpg",
+    "icon_locked": "icons/MURDER_SCORE_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_GEAR",
+    "name": "COLLECTOR",
+    "description": "Own 25 pieces of gear",
+    "icon": "icons/MURDER_GEAR.jpg",
+    "icon_locked": "icons/MURDER_GEAR_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_STYLE",
+    "name": "DRESSED TO KILL",
+    "description": "Own 25 styles",
+    "icon": "icons/MURDER_STYLE.jpg",
+    "icon_locked": "icons/MURDER_STYLE_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_RANGE",
+    "name": "TRY BEFORE YOU BUY",
+    "description": "Test something in the firing range",
+    "icon": "icons/MURDER_RANGE.jpg",
+    "icon_locked": "icons/MURDER_RANGE_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_BUILD",
+    "name": "BLUEPRINT",
+    "description": "Save a build",
+    "icon": "icons/MURDER_BUILD.jpg",
+    "icon_locked": "icons/MURDER_BUILD_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_RANDOM",
+    "name": "IDENTITY CRISIS",
+    "description": "Randomise your operative 10 times",
+    "icon": "icons/MURDER_RANDOM.jpg",
+    "icon_locked": "icons/MURDER_RANDOM_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_DAILY",
+    "name": "DAILY GRIND",
+    "description": "Play a Daily Challenge",
+    "icon": "icons/MURDER_DAILY.jpg",
+    "icon_locked": "icons/MURDER_DAILY_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_DAILY3",
+    "name": "REGULAR",
+    "description": "Play three different Daily Challenges",
+    "icon": "icons/MURDER_DAILY3.jpg",
+    "icon_locked": "icons/MURDER_DAILY3_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_RUSH",
+    "name": "BOSS RUSH",
+    "description": "Beat Boss Rush",
+    "icon": "icons/MURDER_RUSH.jpg",
+    "icon_locked": "icons/MURDER_RUSH_locked.jpg",
+    "hidden": false
+  },
+  {
+    "api": "MURDER_RUSHFAST",
+    "name": "NO TIME TO WASTE",
+    "description": "Beat Boss Rush in under 15 minutes",
+    "icon": "icons/MURDER_RUSHFAST.jpg",
+    "icon_locked": "icons/MURDER_RUSHFAST_locked.jpg",
+    "hidden": false
+  }
+]
