@@ -61,7 +61,7 @@ function pollPad(rdt) {
   if (!PAD.active) { mouse.padDown = mouse.padRdown = false; PAD.prev = gp.buttons.map(x => x.pressed); return; }
   PAD.mx = dx || dy ? dx / (Math.hypot(dx, dy) || 1) : lx; PAD.my = dx || dy ? dy / (Math.hypot(dx, dy) || 1) : ly; PAD.mag = dx || dy ? 1 : lm;
   const p = G.p, ox = p ? p.x + p.face * 12 : GW / 2, oy = p ? p.y - BODY - 2 : GH / 2;
-  if (G.mode === "shop") { /* menu: sticks navigate, no aim */ } else if (G.mode === "play" && G.oc) {
+  if (G.mode === "shop") { /* menu: sticks navigate, no aim */ } else if (G.mode === "play" && ocIn(G.p)) {
     // Overclock cursor: faster the further you push, and pulled onto enemies you haven't locked yet.
     const sp = 240 + 560 * rm * rm; mouse.x = Math.max(4, Math.min(GW - 4, mouse.x + rx * sp * rdt)); mouse.y = Math.max(4, Math.min(GH - 4, mouse.y + ry * sp * rdt));
     if (rm < .5) { let n = null, nd = 30; for (const e of G.en) { if (!e.alive || G.oc.locks.includes(e)) continue; const d = Math.hypot(e.x - mouse.x, e.y - (e.alt || 0) - 10 - mouse.y); if (d < nd) { nd = d; n = e; } }
@@ -78,7 +78,7 @@ function pollPad(rdt) {
   } else if (G.mode === "play") {
     if (press(BTN.RT)) G.pressed.add("lmb"); if (press(BTN.LT)) G.pressed.add("rmb");
     if (press(BTN.A) || press(BTN.LB)) G.pressed.add(" "); if (press(BTN.X)) G.pressed.add("r");
-    if (press(BTN.Y) || press(BTN.RB)) G.pressed.add(G.oc ? "oclock" : "q"); if (press(BTN.START) || press(BTN.BACK)) G.pressed.add("p");
+    if (press(BTN.Y) || press(BTN.RB)) G.pressed.add(ocIn(G.p) ? "oclock" : "q"); if (press(BTN.START) || press(BTN.BACK)) G.pressed.add("p");
   } else if (G.mode === "body") {
     if (press(BTN.X)) G.pressed.add("r"); if (press(BTN.Y)) G.pressed.add("x");
     if (press(BTN.A)) G.pressed.add("enter"); if (press(BTN.START)) G.pressed.add(" "); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");

@@ -72,15 +72,24 @@ function drawWorld(c, t) {
 }
 
 function drawOC(c, t) {
-  const p = G.p, o = G.oc; c.save(); c.globalCompositeOperation = "saturation"; c.fillStyle = "#808080"; c.globalAlpha = .85; c.fillRect(0, 0, GW, GH); c.globalCompositeOperation = "multiply"; c.globalAlpha = .55; c.fillStyle = "#6fb4d8"; c.fillRect(0, 0, GW, GH); c.restore();
+  const p = G.p, o = G.oc, me = ocIn(p), host = !!o.starter, L = lab(); c.save(); c.globalCompositeOperation = "saturation"; c.fillStyle = "#808080"; c.globalAlpha = me ? .85 : .5; c.fillRect(0, 0, GW, GH); c.globalCompositeOperation = "multiply"; c.globalAlpha = me ? .55 : .35; c.fillStyle = "#6fb4d8"; c.fillRect(0, 0, GW, GH); c.restore();
+  // Teammates' locks (co-op): amber, so you can spread out instead of doubling up.
+  const others = host ? o.parts.filter(q => q !== p).flatMap(q => q.ocLocks || []) : o.others || [];
+  others.forEach(e => { if (e.alive) reticle(c, e.x, e.y - BODY - (e.alt || 0), 9, COL.amber); });
+  const coop = host ? o.parts.length > 1 || !!G.crew : true, pool = host ? ocPool(o) : o.pool, taken = host ? ocTaken() : o.taken, starter = host ? o.starter === p : o.starterMe, sname = host ? o.starter.name : o.starterName;
+  panel(c, GW / 2 - 110, 36, 220, 18, me ? COL.cyan : COL.amber);
+  if (!me) { // someone else's Overclock: link in, or keep moving in slow motion
+    txt(c, (sname || "TEAMMATE") + " OVERCLOCKED", GW / 2, 41, COL.amber, 8, "center");
+    txt(c, p.oc >= OC_JOIN ? `${L.ocShort}: LINK IN (${OC_JOIN} OC) · ${taken}/${pool} LOCKS USED` : `NEED ${OC_JOIN} OC TO LINK IN`, GW / 2, 58, rgba(COL.ink, .85), 8, "center");
+    c.fillStyle = COL.amber; c.fillRect(GW / 2 - 60, 70, 120 * Math.max(0, 1 - o.t / 3), 1); return; }
   const s = sprOf("vesper", p.face); c.save(); c.globalCompositeOperation = "lighter"; glow(c, p.x, p.y - 16, 30, COL.cyan, .4); c.restore(); drawSpr(c, s, p.x - s.w / 2, p.y - s.h + 2);
   const gx = p.x + p.face * 12, gy = p.y - BODY - 2, pulse = Math.round(Math.sin(t * .01) * 1.5);
   o.locks.forEach((e, i) => { if (!e.alive) return; const ey = e.y - BODY - (e.alt || 0); c.save(); c.globalAlpha = .7; pline(c, gx, gy, e.x, ey, COL.cyan, 3, 6); c.restore(); reticle(c, e.x, ey, 10 + pulse, COL.cyan, "0" + (i + 1)); });
   reticle(c, mouse.x, mouse.y, 6, "#ffffff");
   c.fillStyle = "rgba(0,0,0,.16)"; for (let y = 0; y < GH; y += 2) c.fillRect(0, y, GW, 1);
-  panel(c, GW / 2 - 92, 36, 184, 18, COL.cyan); txt(c, "OVERCLOCK // DEADLINK.SYS", GW / 2, 41, COL.cyan, 8, "center");
-  txt(c, `LOCKS ${o.locks.length}/6 · RELEASE TO FIRE`, GW / 2, 58, rgba(COL.ink, .85), 8, "center");
-  c.fillStyle = COL.cyan; c.fillRect(GW / 2 - 60, 70, 120 * (1 - o.t / 3), 1);
+  txt(c, coop ? (starter ? "LINKED OVERCLOCK // YOU STARTED IT" : "LINKED OVERCLOCK // " + (sname || "")) : "OVERCLOCK // DEADLINK.SYS", GW / 2, 41, COL.cyan, 8, "center");
+  txt(c, `LOCKS ${o.locks.length}/${p.maxLocks || 6}` + (coop ? ` · TEAM ${taken}/${pool}` : "") + (starter ? " · RELEASE TO FIRE" : " · FIRES WITH " + (sname || "THE TEAM")), GW / 2, 58, rgba(COL.ink, .85), 8, "center");
+  c.fillStyle = COL.cyan; c.fillRect(GW / 2 - 60, 70, 120 * Math.max(0, 1 - o.t / 3), 1);
 }
 
 // Firing range: what you're trying, kills and kills per minute, and how to leave.
@@ -112,10 +121,10 @@ function drawHUD(c, t) {
   const fx2 = W - 32; c.strokeStyle = p.oc >= 50 ? COL.cyan : "#3a3456"; c.strokeRect(fx2 + .5, H - 33.5, 21, 17); txt(c, lab().ocShort, fx2 + 11, H - 14, COL.dim, 8, "center"); reticle(c, fx2 + 11, H - 25, 4, p.oc >= 50 ? COL.cyan : "#3a3456");
   if (G.hexed > 0) { c.fillStyle = rgba(COL.magenta, .5); for (let i = 0; i < 6; i++) c.fillRect(6 + rnd(0, 150), H - 42 + rnd(0, 34), rnd(10, 60), 1); txt(c, "HEXED " + G.hexed.toFixed(1), 110, H - 39, COL.magenta); c.restore(); }
   if (G.trace > 1 && G.mode === "play") { const k = Math.min(1, (G.trace - 1) / 3); c.fillStyle = "#2a2640"; c.fillRect(Math.round(p.x - 12), Math.round(p.y - 40), 24, 2); c.fillStyle = k > .7 && Math.floor(t / 90) % 2 ? "#ffffff" : COL.magenta; c.fillRect(Math.round(p.x - 12), Math.round(p.y - 40), Math.round(24 * k), 2); txt(c, "TRACE", p.x, p.y - 50, rgba(COL.magenta, .5 + k * .5), 8, "center"); }
-  if (!G.oc && p.ram >= 3 && !(G.hexed > 0)) { const tg = hackPick(); if (tg) { reticle(c, tg.x, tg.y, tg.r + Math.round(Math.sin(t * .012)), COL.magenta); txt(c, lab().hackShort, tg.x + tg.r + 3, tg.y + tg.r - 4, COL.magenta); } }
-  if (!G.oc && PAD.active && padCfg().aimline && G.mode === "play") { const gx = p.x + p.face * 12, gy = p.y - BODY - 2, a = Math.atan2(mouse.y - gy, mouse.x - gx), L2 = Math.min(150, Math.hypot(mouse.x - gx, mouse.y - gy));
+  if (!ocIn(p) && p.ram >= 3 && !(G.hexed > 0)) { const tg = hackPick(); if (tg) { reticle(c, tg.x, tg.y, tg.r + Math.round(Math.sin(t * .012)), COL.magenta); txt(c, lab().hackShort, tg.x + tg.r + 3, tg.y + tg.r - 4, COL.magenta); } }
+  if (!ocIn(p) && PAD.active && padCfg().aimline && G.mode === "play") { const gx = p.x + p.face * 12, gy = p.y - BODY - 2, a = Math.atan2(mouse.y - gy, mouse.x - gx), L2 = Math.min(150, Math.hypot(mouse.x - gx, mouse.y - gy));
     for (let k = 10; k < L2 - 6; k += 6) { c.fillStyle = rgba(COL.cyan, .65 * (1 - k / 170)); c.fillRect(Math.round(gx + Math.cos(a) * k), Math.round(gy + Math.sin(a) * k), 2, 1); } }
-  if (!G.oc) { reticle(c, mouse.x, mouse.y, 5, COL.cyan); c.fillStyle = COL.cyan; c.fillRect(Math.round(mouse.x), Math.round(mouse.y), 1, 1); }
+  if (!ocIn(p)) { reticle(c, mouse.x, mouse.y, 5, COL.cyan); c.fillStyle = COL.cyan; c.fillRect(Math.round(mouse.x), Math.round(mouse.y), 1, 1); }
   for (const q of G.texts) txt(c, q.txt, q.x, q.y, rgba(q.col.startsWith("#") ? q.col : "#e9e6f5", Math.min(1, q.life * 2)), 8, "center");
   drawRadio(c, t);
   if (G.banner) { const b = G.banner; c.globalAlpha = Math.min(1, b.life * 2); c.font = "8px Silkscreen"; const bw = Math.max(160, c.measureText(b.txt).width + 24); panel(c, W / 2 - bw / 2, 84, bw, 22, b.col); txt(c, b.txt, W / 2, 91, b.col, 8, "center"); c.globalAlpha = 1; }

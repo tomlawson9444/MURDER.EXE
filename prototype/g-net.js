@@ -28,7 +28,7 @@ const NET = (() => {
 /* ---- Session state ---- */
 // role: null (solo), "host" or "client". members: the host's list of friends in the lobby, by id.
 const COOP = { role: null, members: new Map(), hostId: null, hostName: "", joined: false, lobby: [], view: "menu", msg: null, sel: 0, friends: null, invited: new Set(),
-  cl: null, seq: 0, cnt: { dash: 0, r: 0, q: 0, oc: 0, lmb: 0 }, lastHeard: 0, sendT: 0, lobbyT: 0, rewT: 0, helloT: 0, sfx: [] };
+  cl: null, seq: 0, cnt: { dash: 0, r: 0, q: 0, oc: 0, lmb: 0, lock: 0 }, lastHeard: 0, sendT: 0, lobbyT: 0, rewT: 0, helloT: 0, sfx: [] };
 const coopName = () => String(SAVE.char.name || "OPERATIVE").slice(0, 16).toUpperCase();
 const cleanName = s => String(s || "FRIEND").replace(/[^\w .'-]/g, "").slice(0, 16).toUpperCase() || "FRIEND";
 const isHost = () => COOP.role === "host", isClient = () => COOP.role === "client" && COOP.joined;
@@ -53,6 +53,7 @@ function matePlayer(m, x, y) { const q = newPlayer(x, y); q.mate = m; q.name = m
 // Called by enterDistrict: put everyone in at the start of each district (fresh players on a new run).
 function coopPlaceCrew(ps, fresh) {
   if (!coopRunOK()) { G.crew = null; return; }
+  if (fresh) G.ocCool = 0;
   G.p.name = coopName(); G.p.look = SAVE.char.look; G.p.down = false; G.p.revive = 0; const crew = [G.p], used = [{ x: G.p.x, y: G.p.y }]; let k = 0;
   for (const m of COOP.members.values()) { const s = spotNear(ps.x, ps.y, k++, used);
     if (fresh || !m.p) matePlayer(m, s.x, s.y); else { Object.assign(m.p, { x: s.x, y: s.y, trail: [], dash: 0, iframes: .5, down: false, revive: 0 }); applyLoadoutFrom(m.p, m.loadout, false); }
@@ -66,16 +67,16 @@ function coopDropIn(m) { if (!G.p || !RUN_MODES.has(G.mode) || !coopRunOK() || (
 function coopDropOut(m) { if (!G.crew) return; G.crew = G.crew.filter(q => q.mate !== m); if (G.crew.length < 2 && !COOP.members.size) G.crew = null; }
 
 // Controls from a friend, applied to their player while the single-player update runs for them.
-const PRESS_KEYS = { dash: " ", r: "r", q: "q", oc: "rmb", lmb: "lmb" };
+const PRESS_KEYS = { dash: " ", r: "r", q: "q", oc: "rmb", lmb: "lmb", lock: "oclock" };
 function takeInput(m, inp) {
   if (!inp || typeof inp !== "object") return; const c = inp.c || {}, seen = m.cnt || (m.cnt = {});
   for (const k in PRESS_KEYS) { const n = +c[k] || 0; if (seen[k] == null) seen[k] = n; else if (n > seen[k]) { (m.presses || (m.presses = [])).push(PRESS_KEYS[k]); seen[k] = n; } }
-  m.input = { mx: Math.max(-1, Math.min(1, +inp.mx || 0)), my: Math.max(-1, Math.min(1, +inp.my || 0)), ax: +inp.ax || 0, ay: +inp.ay || 0, fire: !!inp.fire, seq: +inp.s || 0 };
+  m.input = { mx: Math.max(-1, Math.min(1, +inp.mx || 0)), my: Math.max(-1, Math.min(1, +inp.my || 0)), ax: +inp.ax || 0, ay: +inp.ay || 0, fire: !!inp.fire, och: !!inp.och, seq: +inp.s || 0 };
 }
 function withInput(q, fn) {
   const m = q.mate, inp = m.input || { mx: 0, my: 0, ax: q.x + 20, ay: q.y - BODY, fire: false, seq: 0 };
   const save = { keys: [...keys], mouse: Object.assign({}, mouse), pressed: G.pressed, pad: { active: PAD.active, mx: PAD.mx, my: PAD.my, mag: PAD.mag, aimA: PAD.aimA, lockE: PAD.lockE }, echo: G.echoShots, flash: G.flash, kick: G.kick, shake: G.shake };
-  keys.clear(); Object.assign(mouse, { x: inp.ax, y: inp.ay, down: inp.fire, rdown: false, padDown: false, padRdown: false });
+  keys.clear(); Object.assign(mouse, { x: inp.ax, y: inp.ay, down: inp.fire, rdown: inp.och, padDown: false, padRdown: false });
   G.pressed = new Set(m.presses || []); m.presses = []; const mv = Math.hypot(inp.mx, inp.my), k = mv > 1 ? 1 / mv : 1;
   Object.assign(PAD, { active: true, mx: inp.mx * k, my: inp.my * k, mag: Math.min(1, mv), aimA: Math.atan2(inp.ay - (q.y - BODY - 2), inp.ax - (q.x + q.face * 12)), lockE: null });
   G.echoShots = q.echoShots || []; G.noRumble = true; m.ack = inp.seq;
@@ -87,7 +88,7 @@ function coopUpdateMates(dt, rdt) {
   for (const q of crewMates()) {
     if (q.down) { q.iframes = 0; continue; }
     if (tileOf(q.x, q.y) !== "o") q.safe = { x: q.x, y: q.y };
-    withInput(q, () => { const before = G.oc; updatePlayer(dt, rdt); if (G.oc && !before) updateOC(0); }); // a friend's Overclock fires at once at the nearest targets (no slow-motion for one player)
+    withInput(q, () => updatePlayer(dt, rdt)); // starting or linking into an Overclock happens in here too
   }
 }
 // Enemies go for the nearest player who is still up, and stick with them for a second or two.
@@ -171,13 +172,15 @@ function takeNew(list, fn, cap) { const out = []; for (const o of list || []) { 
 function talkView() { const T = G.talk; if (!T) return null;
   return { title: T.title, cur: T.cur, shown: Math.min(999, T.shown), sel: T.sel, t: round1(T.t), notes: plain(T.notes, 3),
     choice: T.choice ? { timer: T.choice.timer, t: round1(T.choice.t), opts: T.choice.opts.map(o => ({ t: fillName(o.t), s: o.s, o: o.o, silent: !!o.silent })) } : null }; }
+function ocView() { const o = G.oc; if (!o || !o.parts) return null; const locks = {}; o.parts.forEach(q => { locks[playerId(q)] = (q.ocLocks || []).filter(e => e.alive && e.nid).map(e => e.nid); });
+  return { t: round1(o.t), s: playerId(o.starter), sn: o.starter.name || coopName(), parts: o.parts.map(playerId), pool: ocPool(o), locks }; }
 const gridString = () => G.grid ? G.grid.map(r => r.join("")).join("") : "";
 let lastGrid = "", gridT = 0;
 function worldView(rdt) {
   const inRun = RUN_MODES.has(G.mode) && !!G.crew, W = { mode: G.mode, run: inRun, paused: !!G.paused, solo: RUN_MODES.has(G.mode) && !G.crew };
   if (!inRun) return W;
   const g = gridString(); gridT -= rdt; const sendGrid = g !== lastGrid || gridT <= 0; if (sendGrid) { lastGrid = g; gridT = 1; }
-  Object.assign(W, { district: G.district, seed: G.runSeed, score: G.score, kills: G.kills, dStart: G.dStart, heat: G.heat, mult: round1(G.mult), boss: !!G.boss, phase2: !!G.phase2, oc: !!G.oc, hexed: round1(G.hexed || 0),
+  Object.assign(W, { district: G.district, seed: G.runSeed, score: G.score, kills: G.kills, dStart: G.dStart, heat: G.heat, mult: round1(G.mult), boss: !!G.boss, phase2: !!G.phase2, oc: !!G.oc, ocs: ocView(), ocCool: round1(G.ocCool || 0), hexed: round1(G.hexed || 0),
     shake: round1(G.shake), time: round1(G.time), banner: G.banner ? plain(G.banner, 2) : null, introT: round1(G.introT || 0), clearT: round1(G.clearT || 0), deadT: round1(G.deadT || 0), killer: G.killer || "",
     lull: !!G.lull, fog: G.fog || 0, hazard: G.hazard || null, dropName: G.dropName || null, choirRounds: G.choirRounds || 0,
     camp: G.camp ? { n: G.camp.n, t: round1(G.camp.t), won: G.camp.won, floor: G.camp.floor, wave: G.camp.wave } : null, goal: G.rules ? plain(G.rules.goal, 2) : null,
@@ -262,6 +265,7 @@ function coopAfterStep(rdt) {
     if (!COOP.members.size) return; coopRevive(rdt);
     COOP.sendT -= rdt; if (COOP.sendT <= 0) { COOP.sendT = RUN_MODES.has(G.mode) ? 1 / SNAP_HZ : .25; hostSnapshot(rdt); }
     COOP.lobbyT -= rdt; if (COOP.lobbyT <= 0) { COOP.lobbyT = 2; broadcastLobby(); }
+    if (G.ocCool > 0 && G.mode === "play" && !G.paused) G.ocCool -= rdt;
     COOP.rewT -= rdt; if (COOP.rewT <= 0) { COOP.rewT = 1; for (const m of COOP.members.values()) if (m.scrip || (m.tracks && m.tracks.length) || (m.ach && m.ach.length)) { NET.send(m.id, { t: "rew", scrip: m.scrip || 0, tracks: m.tracks || [], ach: m.ach || [] }, true); m.scrip = 0; m.tracks = []; m.ach = []; } }
   } else if (COOP.role === "client") {
     if (performance.now() - COOP.lastHeard > (COOP.joined ? 10000 : 8000)) return COOP.leave(COOP.joined ? "LOST THE CONNECTION TO THE HOST" : "NO GAME FOUND · HOST ONE IN ANOTHER TAB FIRST");
@@ -289,7 +293,7 @@ function applySnapshot(S) {
   C.hostMode = W.mode; C.hostPaused = W.paused; C.solo = W.solo;
   if (!W.run) { if (G.mode !== "coopwait") { G.mode = "coopwait"; AU.stop(); AU.ambience("off"); AU.setOC(false); C.runOn = false; } return; }
   if (W.seed !== G.runSeed) resetEndless();
-  Object.assign(G, { district: W.district, runSeed: W.seed, score: W.score, kills: W.kills, dStart: W.dStart, heat: W.heat, mult: W.mult, boss: W.boss, phase2: W.phase2, hexed: W.hexed, shake: Math.max(G.shake || 0, W.shake),
+  Object.assign(G, { district: W.district, runSeed: W.seed, score: W.score, kills: W.kills, dStart: W.dStart, heat: W.heat, mult: W.mult, boss: W.boss, phase2: W.phase2, hexed: W.hexed, ocCool: W.ocCool || 0, shake: Math.max(G.shake || 0, W.shake),
     time: W.time, banner: W.banner, introT: W.introT, clearT: W.clearT, deadT: W.deadT, killer: W.killer, lull: W.lull, fog: W.fog, hazard: W.hazard, dropName: W.dropName, choirRounds: W.choirRounds, paused: false });
   ["stalls", "gates", "zone", "exit", "shard", "flood", "vents", "drops", "rw", "allies", "echoAlly", "tram", "wind", "collapse", "pending", "radioQ"].forEach(k => { G[k] = W[k] === undefined ? null : W[k]; });
   if (!G.allies) G.allies = []; if (!G.pending) G.pending = []; if (!G.radioQ) G.radioQ = [];
@@ -313,6 +317,11 @@ function applySnapshot(S) {
   const prev = new Map(C.others.map(q => [q.id, q]));
   C.others = (S.pl || []).filter(q => q.id !== S.you).map(v => { const o = prev.get(v.id) || { x: v.x, y: v.y, trail: [] }; return Object.assign(o, v, { x: o.x, y: o.y, tx: v.x, ty: v.y, look: lookOf(v.id) }); });
   const seen = new Map(); G.en = (S.en || []).map(v => { const o = C.en.get(v.nid) || { x: v.x, y: v.y }; const x = o.x, y = o.y; Object.assign(o, v, { alive: true, x, y, tx: v.x, ty: v.y }); seen.set(v.nid, o); return o; }); C.en = seen;
+  // A Linked Overclock in progress: my locks (if I linked in) and my teammates' locks, as enemies on this side.
+  const O = W.ocs, byNid = nid => C.en.get(nid);
+  G.oc = O ? { t: O.t, pool: O.pool, starterName: O.sn, starterMe: O.s === S.you, parts: O.parts.includes(S.you) ? [G.p] : [],
+    locks: (O.locks[S.you] || []).map(byNid).filter(Boolean), others: Object.keys(O.locks).filter(id => id !== S.you).flatMap(id => O.locks[id]).map(byNid).filter(Boolean) } : null;
+  if (O) G.oc.taken = G.oc.locks.length + G.oc.others.length;
   G.bul = (S.b || []).map(a => ({ x: a[0], y: a[1], vx: a[2], vy: a[3], owner: a[4], col: a[5] || undefined, rail: !!(a[6] & 1), big: !!(a[6] & 2) }));
   const F = S.fx || {}; (F.parts || []).forEach(a => G.parts.push({ x: a[0], y: a[1], vx: a[2], vy: a[3], life: a[4], max: a[5], col: a[6], g: a[7] }));
   ["texts", "blasts", "zaps", "tracers", "pings"].forEach(k => (F[k] || []).forEach(o => G[k].push(o)));
@@ -328,8 +337,8 @@ function clientInput(rdt) {
   const ml = Math.hypot(mx, my); if (ml) { mx /= ml; my /= ml; } if (PAD.active && PAD.mag > 0) { mx = PAD.mx; my = PAD.my; }
   const live = G.mode === "play" && !C.menu && !p.down, c = COOP.cnt;
   if (!live) mx = my = 0;
-  if (live) { if (hit(" ") || hit("shift")) c.dash++; if (hit("r")) c.r++; if (hit("q")) c.q++; if (hit("rmb") || hit("f")) c.oc++; if (hit("lmb")) c.lmb++; }
-  const s = ++COOP.seq; NET.send(COOP.hostId, { t: "in", s, mx: round1(mx), my: round1(my), ax: Math.round(mouse.x), ay: Math.round(mouse.y), fire: live && fireHeld(), c }, false);
+  if (live) { if (hit(" ") || hit("shift")) c.dash++; if (hit("r")) c.r++; if (hit("q")) c.q++; if (hit("rmb") || hit("f")) c.oc++; if (hit("lmb")) c.lmb++; if (hit("oclock")) c.lock++; }
+  const s = ++COOP.seq; NET.send(COOP.hostId, { t: "in", s, mx: round1(mx), my: round1(my), ax: Math.round(mouse.x), ay: Math.round(mouse.y), fire: live && fireHeld(), och: live && ocHeld(), c }, false);
   // Move my own operative straight away (the host's copy catches up), so walking and dashing feel instant.
   p.face = mouse.x < p.x ? -1 : 1; p.dashCdL = (p.dashCdL || 0) - rdt; p.trail.forEach(t => t.life -= rdt); p.trail = p.trail.filter(t => t.life > 0);
   if (live && !C.oc) {
@@ -365,7 +374,7 @@ function coopClientDraw(c, t) {
   try {
     if (m === "talk" && G.talk) { drawTalk(c, t); c.fillStyle = "#05040b"; c.fillRect(0, GH - 20, GW, 20); txt(c, COOP.hostName + " PICKS THE REPLIES · ESC: MENU", GW / 2, GH - 14, rgba(COL.amber, .85), 8, "center"); }
     else if (RUN_MODES.has(m) && G.base && G.grid) {
-      drawWorld(c, t); drawFog(c, t); if (C.oc) { c.save(); c.globalCompositeOperation = "multiply"; c.fillStyle = "#6a7ad0"; c.fillRect(0, 0, GW, GH); c.restore(); txt(c, "OVERCLOCK · TIME SLOWS", GW / 2, 40, COL.red, 8, "center"); }
+      drawWorld(c, t); drawFog(c, t); if (G.oc) drawOC(c, t);
       if (m === "play" || m === "intro") { drawHUD(c, t); drawCoopHud(c, t); }
       if (m === "dead") { G.menu = null; G.deadT = 0; drawDead(c, t); txt(c, COOP.hostName + " IS CHOOSING WHAT'S NEXT", GW / 2, 190, COL.cyan, 8, "center"); }
       if (m === "intro") drawIntro(c, t);
@@ -419,6 +428,7 @@ function nameTag(c, q, t) {
 function drawCoopHud(c, t) {
   const list = (isClient() ? [G.p].concat(COOP.cl.others) : G.crew) || []; if (list.length < 2) return;
   list.forEach((q, i) => { const y = 46 + i * 10, me = q === G.p; txt(c, (q.down ? "DOWN · " : "") + (me ? "YOU" : q.name || "PLAYER"), GW - 8, y, q.down ? COL.red : me ? rgba(COL.ink, .8) : mateCol(q), 8, "right"); });
+  if (G.ocCool > 0 && !G.oc) txt(c, "OVERCLOCK LINK READY IN " + Math.ceil(G.ocCool) + "S", GW - 8, 46 + list.length * 10 + 2, rgba(COL.red, .85), 8, "right");
 }
 
 /* ---- The CO-OP screen: host a game, invite friends, join ---- */

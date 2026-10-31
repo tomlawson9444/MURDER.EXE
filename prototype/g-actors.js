@@ -73,7 +73,7 @@ function updatePlayer(dt, rdt) {
   const p = G.p; p.iframes = Math.max(0, p.iframes - dt); p.fireCd -= dt; p.dashCd -= dt; p.tollCd = (p.tollCd || 0) - dt; p.shockCd = (p.shockCd || 0) - dt; p.berserk = Math.max(0, (p.berserk || 0) - dt);
   p.ram = Math.min(p.ramMax, p.ram + dt * .25);
   if (hasImp("redline") && p.oc > 0) p.oc = Math.max(0, p.oc - dt * 1.5);
-  if (G.oc) return;
+  if (ocIn(p)) return; // aiming an Overclock (anyone else just moves in slow motion)
   let mx = (held("d") || held("arrowright") ? 1 : 0) - (held("a") || held("arrowleft") ? 1 : 0), my = (held("s") || held("arrowdown") ? 1 : 0) - (held("w") || held("arrowup") ? 1 : 0);
   let ml = Math.hypot(mx, my); if (ml) { mx /= ml; my /= ml; }
   if (PAD.active && PAD.mag > 0) { mx = PAD.mx; my = PAD.my; ml = Math.hypot(mx, my); }
@@ -104,38 +104,79 @@ function updatePlayer(dt, rdt) {
   for (const q of G.echoShots || []) { q.t -= dt; if (q.t <= 0) { const g = p.gun, gx = p.x + p.face * 12, gy = p.y - BODY - 2; if (q.burst) shoot(gx, gy, q.a + rnd(-.03, .03), g.speed, "p", shotOpts(g)); else shoot(gx, gy, q.a, g.speed, "p", { life: g.life, col: "#9fd8ff" }); AU.sfx("kestrel", 0); fx(gx, gy, 4, [q.burst ? COL.cyan : "#9fd8ff", "#ffffff"], 50, .15); } }
   if (G.echoShots) G.echoShots = G.echoShots.filter(q => q.t > 0);
   if (hit("q")) hack();
-  if ((hit("rmb") || hit("f")) && p.oc >= 50 && G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); }
-  else if ((hit("rmb") || hit("f")) && p.oc >= 50) { G.oc = { locks: [], t: 0 }; p.oc -= 50; track("oc", 0); AU.sfx("ocIn"); AU.setOC(true); }
+  ocTrigger(p);
 }
-function updateOC(rdt) {
-  const o = G.oc; o.t += rdt;
+/* ---- Overclock ----
+   Solo: slow time, sweep the cursor over targets, release to fire. In co-op it's a LINKED OVERCLOCK: anyone can start it,
+   and teammates can link in (25 OC) to lock targets with their own cursor while it runs. Everyone fires together when the
+   starter lets go or time runs out. Limits keep it fair: one shared pool of locks (the starter's own number, +2 per
+   teammate who links in), each enemy locked once, bosses take one hit per Overclock, and an 8 second team cooldown after. */
+const OC_JOIN = 25, OC_COOL = 8;
+const ocIn = q => !!(G.oc && G.oc.parts && G.oc.parts.includes(q));
+const ocTaken = () => G.oc.parts.reduce((n, q) => n + (q.ocLocks || []).length, 0);
+const ocPool = o => o.starter.maxLocks + 2 * (o.parts.length - 1);
+const ocLocked = e => G.oc.parts.some(q => (q.ocLocks || []).includes(e));
+function ocTrigger(p) {
+  if (!(hit("rmb") || hit("f"))) return;
+  if (G.oc) { // link in to a teammate's Overclock
+    if (ocIn(p)) return; if (p.oc < OC_JOIN) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "NEED " + OC_JOIN + " OC TO LINK", COL.red); return; }
+    p.oc -= OC_JOIN; p.ocPaid = OC_JOIN; p.ocLocks = []; G.oc.parts.push(p); track("oc", 0); AU.sfx("ocIn"); pop(p.x, p.y - 34, "LINKED", COL.cyan); fx(p.x, p.y - BODY, 14, [COL.cyan, "#ffffff"], 60, .4); return; }
+  if (p.oc < 50) return;
+  if (G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); return; }
+  if (G.crew && (G.ocCool || 0) > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "OVERCLOCK COOLING " + Math.ceil(G.ocCool) + "S", COL.red); return; }
+  p.oc -= 50; p.ocPaid = 50; p.ocLocks = [];
+  G.oc = { t: 0, starter: p, parts: [p], bossHit: new Set() };
+  Object.defineProperty(G.oc, "locks", { get: () => G.p.ocLocks || (G.p.ocLocks = []), set: v => { G.p.ocLocks = v; } }); // whoever G.p is right now
+  track("oc", 0); AU.sfx("ocIn"); AU.setOC(true);
+}
+// Locking for the current G.p, with that player's own cursor.
+function ocLockStep() {
+  const o = G.oc, L = G.p.ocLocks, room = () => L.length < G.p.maxLocks && ocTaken() < ocPool(o);
   // Pad quick-lock (Y / RB): the nearest unlocked enemy to the cursor.
-  if (hit("oclock") && o.locks.length < G.p.maxLocks) { const n = G.en.filter(e => e.alive && !o.locks.includes(e) && !e.dummyHidden).sort((a, b) => Math.hypot(a.x - mouse.x, a.y - mouse.y) - Math.hypot(b.x - mouse.x, b.y - mouse.y))[0]; if (n) { o.locks.push(n); AU.sfx("lock", o.locks.length - 1); mouse.x = n.x; mouse.y = n.y - (n.alt || 0) - 10; } }
-  for (const e of G.en) if (e.alive && o.locks.length < G.p.maxLocks && !o.locks.includes(e) && Math.hypot(e.x - mouse.x, e.y - (e.alt || 0) - 10 - mouse.y) < 14) { o.locks.push(e); AU.sfx("lock", o.locks.length - 1); }
-  if (!ocHeld() || o.t > 3) {
-    const p = G.p, gx = p.x + p.face * 12, gy = p.y - BODY - 2; G.tracers = [];
-    // Pad: a quick tap of the trigger locks the nearest enemies you can see and fires at once.
-    if (PAD.active && !o.locks.length && o.t < .35) o.locks = G.en.filter(e => e.alive && los(gx, gy, e.x, e.y - BODY - (e.alt || 0), 1e9)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, p.maxLocks);
-    const prog = p.ocId; if (o.locks.length >= 6) { SAVE.stats.ocFull++; checkMilestones(); }
-    p.ocRefund = 0; G.scripMul = prog === "reaper" ? 3 : 1; const k0 = G.kills;
-    o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 });
-      if (prog === "crown" && e.alive && e.hp > 1) { hurtBoss(e); return; } // the crown cracks a story boss's armour; the last hit is still yours to land
-      if (armored(e)) { AU.sfx("bulwark"); return; }
-      if (G.crew && e.hp > 1) { hurtBoss(e); return; } // co-op bosses take every hit they're owed, Overclock included
-      if (prog === "swarm") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 30, "swarm"); } // every lock detonates, even if a neighbour's blast got it first
-      else if (prog === "arc") { killEnemy(e, "oc"); arcFrom(e, 2, "oc"); }
-      else if (prog === "hydra") { killEnemy(e, "oc"); arcFrom(e, 4, "oc"); }
-      else if (prog === "nova") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 42, "nova", true); }
-      else if (prog === "mirror") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); ringShots(ex, ey, 6, "#9ff3ff"); }
-      else if (prog === "leech") { killEnemy(e, "oc"); p.ocRefund = (p.ocRefund || 0) + 12; p.ram = Math.min(p.ramMax, p.ram + 1); }
-      else killEnemy(e, "oc"); });
-    G.scripMul = 1; if (G.kills - k0 >= 6) achieve("volley"); if (G.kills - k0 >= 10) achieve("mass");
-    if (prog === "blackout") { G.bul = G.bul.filter(q => q.owner === "p" || q.owner === "a"); stunAround(p.x, p.y, 9999, 1.5); G.flash = .2; }
-    if (prog === "bastion") { p.iframes = 2.5; p.ram = p.ramMax; fx(p.x, p.y - BODY, 30, [COL.amber, "#ffffff"], 90, .7); pop(p.x, p.y - 36, "BASTION", COL.amber); }
-    if (prog === "ghost" && o.locks.length) { const t = o.locks[o.locks.length - 1]; if (!boxBlocked(t.x, t.y, p.r, false) && tileOf(t.x, t.y) !== "o") { fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); p.trail.push({ x: p.x, y: p.y, life: .3 }); p.x = t.x; p.y = t.y; p.iframes = .6; fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); } }
-    AU.sfx("ocFire", o.locks.length); rumble(.8, .8, 220); if (!o.locks.length) p.oc = Math.min(p.ocMax, p.oc + 50); else if (p.ocRefund) { p.oc = Math.min(p.ocMax, p.oc + p.ocRefund); pop(p.x, p.y - 34, "+" + p.ocRefund + " OC", COL.red); p.ocRefund = 0; }
-    p.ammo = p.gun.mag; p.reload = 0; G.oc = null; AU.setOC(false); G.shake = 3;
-  }
+  if (hit("oclock") && room()) { const n = G.en.filter(e => e.alive && !ocLocked(e) && !e.dummyHidden).sort((a, b) => Math.hypot(a.x - mouse.x, a.y - mouse.y) - Math.hypot(b.x - mouse.x, b.y - mouse.y))[0]; if (n) { L.push(n); AU.sfx("lock", L.length - 1); mouse.x = n.x; mouse.y = n.y - (n.alt || 0) - 10; } }
+  for (const e of G.en) if (e.alive && room() && !ocLocked(e) && Math.hypot(e.x - mouse.x, e.y - (e.alt || 0) - 10 - mouse.y) < 14) { L.push(e); AU.sfx("lock", L.length - 1); }
+}
+// Run fn as player q, with their own controls (a co-op friend) or as they are (the player at this keyboard).
+const asPlayer = (q, fn) => q.mate ? withInput(q, fn) : withP(q, fn);
+function updateOC(rdt) {
+  const o = G.oc; o.t += rdt; o.parts = o.parts.filter(q => q === G.p || (G.crew && G.crew.includes(q) && !q.down));
+  for (const q of o.parts.slice()) asPlayer(q, ocLockStep);
+  const S = o.starter, gone = !o.parts.includes(S) || S.down, held = S.mate ? !!(S.mate.input && S.mate.input.och) : ocHeld();
+  if (!gone && held && o.t <= 3) return;
+  G.tracers = []; let fired = 0;
+  for (const q of o.parts) asPlayer(q, () => { if (ocFire(o, q === S)) fired++; });
+  if (fired >= 2) for (const q of o.parts) if (q.ocLocks && q.ocLocks.length) { q.oc = Math.min(q.ocMax, q.oc + 15); pop(q.x, q.y - 44, "SYNC +15 OC", COL.cyan); } // teamwork pays a little back
+  if (fired >= 2) G.banner = { txt: "LINKED OVERCLOCK · SYNC x" + fired, col: COL.cyan, life: 1.6 };
+  for (const q of o.parts) q.ocLocks = [];
+  G.oc = null; AU.setOC(false); G.shake = 3; if (G.crew) G.ocCool = OC_COOL;
+}
+// Fire the current player's locks. Returns true if they had any.
+function ocFire(o, starter) {
+  const p = G.p, gx = p.x + p.face * 12, gy = p.y - BODY - 2; let locks = p.ocLocks || [];
+  const near = n => G.en.filter(e => e.alive && !ocLocked(e) && los(gx, gy, e.x, e.y - BODY - (e.alt || 0), 1e9)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, n);
+  // Pad: a quick tap of the trigger locks the nearest enemies you can see and fires at once. A teammate who linked in
+  // without locking anything gets the nearest targets left in the pool.
+  if (!locks.length && ((starter && PAD.active && o.t < .35) || !starter)) locks = p.ocLocks = near(Math.max(0, Math.min(p.maxLocks, ocPool(o) - ocTaken())));
+  const prog = p.ocId; if (locks.length >= 6 && !p.mate) { SAVE.stats.ocFull++; checkMilestones(); }
+  p.ocRefund = 0; G.scripMul = prog === "reaper" ? 3 : 1; const k0 = G.kills;
+  const bossOnce = e => { if (o.bossHit.has(e)) return false; o.bossHit.add(e); hurtBoss(e); return true; }; // one hit per boss per Overclock
+  locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 });
+    if (prog === "crown" && e.alive && e.hp > 1) { bossOnce(e); return; } // the crown cracks a story boss's armour; the last hit is still yours to land
+    if (armored(e)) { AU.sfx("bulwark"); return; }
+    if (G.crew && e.hp > 1) { bossOnce(e); return; } // co-op bosses take every hit they're owed, Overclock included
+    if (prog === "swarm") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 30, "swarm"); } // every lock detonates, even if a neighbour's blast got it first
+    else if (prog === "arc") { killEnemy(e, "oc"); arcFrom(e, 2, "oc"); }
+    else if (prog === "hydra") { killEnemy(e, "oc"); arcFrom(e, 4, "oc"); }
+    else if (prog === "nova") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 42, "nova", true); }
+    else if (prog === "mirror") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); ringShots(ex, ey, 6, "#9ff3ff"); }
+    else if (prog === "leech") { killEnemy(e, "oc"); p.ocRefund = (p.ocRefund || 0) + 12; p.ram = Math.min(p.ramMax, p.ram + 1); }
+    else killEnemy(e, "oc"); });
+  G.scripMul = 1; if (G.kills - k0 >= 6) achieve("volley"); if (G.kills - k0 >= 10) achieve("mass");
+  if (prog === "blackout") { G.bul = G.bul.filter(q => q.owner === "p" || q.owner === "a"); stunAround(p.x, p.y, 9999, 1.5); G.flash = .2; }
+  if (prog === "bastion") { p.iframes = 2.5; p.ram = p.ramMax; fx(p.x, p.y - BODY, 30, [COL.amber, "#ffffff"], 90, .7); pop(p.x, p.y - 36, "BASTION", COL.amber); }
+  if (prog === "ghost" && locks.length) { const t = locks[locks.length - 1]; if (!boxBlocked(t.x, t.y, p.r, false) && tileOf(t.x, t.y) !== "o") { fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); p.trail.push({ x: p.x, y: p.y, life: .3 }); p.x = t.x; p.y = t.y; p.iframes = .6; fx(p.x, p.y - 12, 16, [COL.cyan, "#ffffff"], 60, .4); } }
+  AU.sfx("ocFire", locks.length); rumble(.8, .8, 220); if (!locks.length) p.oc = Math.min(p.ocMax, p.oc + (p.ocPaid || 50)); else if (p.ocRefund) { p.oc = Math.min(p.ocMax, p.oc + p.ocRefund); pop(p.x, p.y - 34, "+" + p.ocRefund + " OC", COL.red); p.ocRefund = 0; }
+  p.ammo = p.gun.mag; p.reload = 0; return locks.length > 0;
 }
 // With a pad the reticle is only a point along your aim, so an enemy in the aim direction beats a barrel or sign that happens to sit under it.
 function hackPick() { const t = hackTarget(); if (!PAD.active || (t && t.kind !== "b" && t.kind !== "n")) return t; const p = G.p; return padHackTarget(p.x + p.face * 12, p.y - BODY - 2) || t; }
