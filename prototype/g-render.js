@@ -80,7 +80,7 @@ function drawOC(c, t) {
   panel(c, GW / 2 - 110, 36, 220, 18, me ? COL.cyan : COL.amber);
   if (!me) { // someone else's Overclock: link in, or keep moving in slow motion
     txt(c, (sname || "TEAMMATE") + " OVERCLOCKED", GW / 2, 41, COL.amber, 8, "center");
-    txt(c, p.oc >= OC_JOIN ? `${L.ocShort}: LINK IN (${OC_JOIN} OC) · ${taken}/${pool} LOCKS USED` : `NEED ${OC_JOIN} OC TO LINK IN`, GW / 2, 58, rgba(COL.ink, .85), 8, "center");
+    txt(c, p.oc >= OC_JOIN || COOP.couch ? `${COOP.couch ? "PRESS OVERCLOCK TO LINK IN" : L.ocShort + ": LINK IN"} (${OC_JOIN} OC) · ${taken}/${pool} LOCKS USED` : `NEED ${OC_JOIN} OC TO LINK IN`, GW / 2, 58, rgba(COL.ink, .85), 8, "center");
     c.fillStyle = COL.amber; c.fillRect(GW / 2 - 60, 70, 120 * Math.max(0, 1 - o.t / 3), 1); return; }
   const s = sprOf("vesper", p.face); c.save(); c.globalCompositeOperation = "lighter"; glow(c, p.x, p.y - 16, 30, COL.cyan, .4); c.restore(); drawSpr(c, s, p.x - s.w / 2, p.y - s.h + 2);
   const gx = p.x + p.face * 12, gy = p.y - BODY - 2, pulse = Math.round(Math.sin(t * .01) * 1.5);

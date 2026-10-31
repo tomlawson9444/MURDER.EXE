@@ -72,6 +72,10 @@ Up to four players can play **Arcade** and the **story** together. One player ho
 - **Linked Overclock:** anyone can start an Overclock (50 OC). Time slows for everyone, and teammates can press Overclock to **link in for 25 OC** and lock targets with their own cursor (yours show in blue, teammates' in amber). Everyone fires together when the starter lets go or after 3 seconds. Players who don't link in keep moving, in slow motion. To keep it fair, the team shares one pool of locks (the starter's own number plus 2 for each player who links in), each enemy can only be locked once, a boss takes one hit per Overclock however many lock it, and there's an 8 second team cooldown before anyone can start another. If two or more players land locks in the same Overclock, each of them gets 15 OC back (SYNC). Linking in without locking anything takes the nearest targets left in the pool.
 - Friends can drop into a run already in progress. The Daily Challenge, Boss Rush and the firing range stay solo, and co-op runs don't post to the leaderboards.
 
+### Local co-op (same screen)
+
+Plug in up to three extra controllers and play together on one screen: CO-OP → LOCAL CO-OP · SAME SCREEN, then press **A** on each extra controller to join (B leaves again, X rolls a new look). Player 1 keeps their own keyboard and mouse or controller (whichever they used to open the screen). Then PLAY ARCADE TOGETHER or PLAY STORY TOGETHER. Each extra player has the full twin-stick controls with aim assist (left stick move, right stick aim, RT shoot, LT Overclock or link in, A or LB dash, X reload, Y or RB hack, Start pauses), their own reticle colour and a small panel along the bottom with ammo, Overclock and RAM. They use the save's equipped loadout and everything earned goes into that one save. Revives, the Linked Overclock and the difficulty scaling all work the same as online. Works in the browser and the Steam Build, with or without Steam.
+
 Online co-op uses Steam, so it's in the Steam Build. In a browser you can try it with two tabs: in one, CO-OP → HOST ON THIS COMPUTER (TEST); in the other, JOIN ON THIS COMPUTER (TEST). The two tabs share one save, so this is for testing only.
 
 ## Steam Build
@@ -209,6 +213,7 @@ The Steam version saves to `save.json` in the app-data folder instead (`%APPDATA
 | `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, the docks fog, escort and guard objectives, hold and extract objectives, Halvorsen Wardens and crossfire, THE FERRYMAN, CINDER, the WIDOW CRANE, THE ARCHIVIST, SCARECROW, DIRECTOR VANE, THE CHOIR and MOTHER CORVINA, climbing, allies, the Nest's rewriting floor, the endings, the campaign menu, archive and chapter-complete screen |
 | `g-extras.js` | Achievements, the Daily Challenge, Boss Rush and the CHALLENGES screen |
 | `g-platform.js` | Platform layer: Steam achievements and leaderboards in the Steam build, local bests in a browser |
+| `g-local.js` | Local co-op: extra controllers join on one screen, their twin-stick controls, and their panels |
 | `g-net.js` | Co-op: Steam or two-tab transport, lobby and invites, the host running friends' players, snapshots, and the friend's view |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |

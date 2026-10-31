@@ -50,7 +50,9 @@ function menuNav(rdt, lx, ly, b, horiz) {
   if (horiz) { navRepeat(rdt, b(BTN.LEFT) || lx < -.6, "arrowleft"); navRepeat(rdt, b(BTN.RIGHT) || lx > .6, "arrowright"); }
 }
 function pollPad(rdt) {
-  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(g => g && g.connected) : []; const gp = pads[0];
+  // Player 1 gets the first controller that a local co-op player hasn't claimed.
+  const claimed = typeof localPads === "function" ? localPads() : new Set(), pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(g => g && g.connected && !claimed.has(g.index)) : [];
+  const gp = pads.find(g => g.index === PAD.idx) || pads[0]; if (gp) PAD.idx = gp.index;
   if (!gp) { mouse.padDown = mouse.padRdown = false; if (PAD.active) { PAD.active = false; updateHelp(); } return; }
   const b = i => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > .35)), was = i => !!PAD.prev[i];
   const press = i => b(i) && !was(i);

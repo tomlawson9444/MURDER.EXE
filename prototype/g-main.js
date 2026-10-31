@@ -165,7 +165,7 @@
     if (G.mode === "play" && G.paused) drawPause(c);
   }
   let last = 0;
-  function frame(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollPad(rdt); step(rdt, t); coopAfterStep(rdt); G.pressed.clear(); draw(t); requestAnimationFrame(frame); }
+  function frame(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollLocals(rdt); pollPad(rdt); step(rdt, t); coopAfterStep(rdt); G.pressed.clear(); draw(t); requestAnimationFrame(frame); }
   setupInput(cv);
   G.best = SAVE.best || 0; G.unlocked = SAVE.unlocked || 1;
   const qs = location.hash.match(/district=(\w+)/);

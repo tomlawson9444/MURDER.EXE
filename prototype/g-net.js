@@ -146,9 +146,9 @@ function coopScaleRules() {
 const coopReviveAll = () => { for (const q of allPlayers()) if (q && q.down) { q.down = false; q.revive = 0; q.iframes = 1; } };
 
 /* ---- Host: what friends earn (each friend banks scrip, stats and achievements in their own save) ---- */
-function coopEarn(n) { for (const q of crewMates()) q.mate.scrip = (q.mate.scrip || 0) + n; } // team scrip: every kill pays everyone
-function coopTrack(ev, a) { const m = G.p && G.p.mate; if (!m) return false; (m.tracks || (m.tracks = [])).push([ev, a]); return true; }
-function coopAchieve(id) { const m = G.p && G.p.mate; if (!m) return false; (m.ach || (m.ach = [])).push(id); return true; }
+function coopEarn(n) { for (const q of crewMates()) if (!q.mate.local) q.mate.scrip = (q.mate.scrip || 0) + n; } // team scrip: every kill pays everyone
+function coopTrack(ev, a) { const m = G.p && G.p.mate; if (!m || m.local) return false; /* players on this machine share its save */ (m.tracks || (m.tracks = [])).push([ev, a]); return true; }
+function coopAchieve(id) { const m = G.p && G.p.mate; if (!m || m.local) return false; (m.ach || (m.ach = [])).push(id); return true; }
 
 /* ---- Host: snapshots ---- */
 const round1 = v => Math.round(v * 10) / 10;
@@ -196,12 +196,12 @@ function hostSnapshot(rdt) {
     b: G.bul.map(b => [Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.col || 0, (b.rail ? 1 : 0) | (b.big ? 2 : 0), b.pl && b.pl.mate ? b.pl.mate.id : 0]),
     fx: { parts: takeNew(G.parts, q => [round1(q.x), round1(q.y), Math.round(q.vx), Math.round(q.vy), round1(q.life), round1(q.max), q.col, q.g], 160), texts: takeNew(G.texts, q => plain(q, 2), 12),
       blasts: takeNew(G.blasts, q => plain(q, 2), 12), zaps: takeNew(G.zaps, q => plain(q, 2), 12), tracers: takeNew(G.tracers, q => plain(q, 2), 16), pings: takeNew(G.pings, q => plain(q, 2), 8) } });
-  for (const m of COOP.members.values()) { const msg = Object.assign({}, common); if (W.run && m.p && G.crew.includes(m.p)) { msg.you = playerId(m.p); msg.me = statsView(m.p); msg.ack = m.ack || 0; } NET.send(m.id, msg, false); }
+  for (const m of COOP.members.values()) { if (m.local) continue; const msg = Object.assign({}, common); if (W.run && m.p && G.crew.includes(m.p)) { msg.you = playerId(m.p); msg.me = statsView(m.p); msg.ack = m.ack || 0; } NET.send(m.id, msg, false); }
 }
 // Every sound the host's game plays is passed on, so friends hear the fight too.
 (() => { const play = AU.sfx; AU.sfx = function (...a) { if (isHost() && COOP.members.size && RUN_MODES.has(G.mode) && COOP.sfx.length < 32) COOP.sfx.push(a); return play.apply(this, a); }; AU.sfxLocal = play; })();
-const lobbyList = () => [{ id: "host", name: coopName(), look: SAVE.char.look, host: true }].concat([...COOP.members.values()].map(m => ({ id: m.id, name: m.name, look: m.look })));
-function broadcastLobby() { const msg = { t: "lobby", members: lobbyList() }; for (const m of COOP.members.values()) NET.send(m.id, msg, true); }
+const lobbyList = () => [{ id: "host", name: coopName(), look: SAVE.char.look, host: true }].concat([...COOP.members.values()].map(m => ({ id: m.id, name: m.name, look: m.look, pad: m.local ? m.pad : undefined })));
+function broadcastLobby() { const msg = { t: "lobby", members: lobbyList() }; for (const m of COOP.members.values()) if (!m.local) NET.send(m.id, msg, true); }
 
 /* ---- Messages ---- */
 NET.on((from, m) => {
@@ -233,7 +233,7 @@ const sendHello = () => NET.send(COOP.hostId, { t: "hello", name: coopName(), lo
 /* ---- Starting, joining and leaving ---- */
 Object.assign(COOP, {
   async host(kind) {
-    COOP.leave(); NET.open(kind); COOP.msg = kind === "steam" ? "CREATING A STEAM LOBBY…" : null;
+    COOP.leave(); if (kind === "couch") NET.close(); else NET.open(kind); COOP.msg = kind === "steam" ? "CREATING A STEAM LOBBY…" : null; COOP.couch = kind === "couch";
     if (kind === "steam") { const r = await NET.sb().host().catch(e => ({ ok: false, error: e.message })); if (!r || !r.ok) { NET.close(); COOP.msg = "COULDN'T CREATE A LOBBY: " + String((r && r.error) || "STEAM ERROR").toUpperCase(); return; } COOP.lobbyId = r.lobbyId; }
     COOP.role = "host"; COOP.members.clear(); COOP.view = "lobby"; COOP.sel = 0; COOP.msg = null; COOP.invited.clear();
   },
@@ -251,7 +251,7 @@ Object.assign(COOP, {
     const was = COOP.role, wasClient = was === "client" && COOP.joined;
     if (was === "host") for (const m of COOP.members.values()) NET.send(m.id, { t: "bye" }, true); else if (was === "client" && COOP.hostId) NET.send(COOP.hostId, { t: "bye" }, true);
     if (NET.kind === "steam" && NET.sb()) NET.sb().leave().catch(() => {});
-    NET.close(); COOP.role = null; COOP.joined = false; COOP.hostId = null; COOP.members.clear(); COOP.lobby = []; COOP.cl = null; G.crew = null; COOP.view = "menu"; COOP.sel = 0; COOP.friends = null;
+    NET.close(); COOP.role = null; COOP.couch = false; COOP.joined = false; COOP.hostId = null; COOP.members.clear(); COOP.lobby = []; COOP.cl = null; G.crew = null; COOP.view = "menu"; COOP.sel = 0; COOP.friends = null;
     if (wasClient || was === "client") { RUN.leave(); G.p = null; G.en = []; G.bul = []; G.talk = null; resetEndless(); RUN.reset("market"); AU.stop(); AU.ambience("off"); G.oc = null; AU.setOC(false); G.mode = "title"; G.menuMode = null; }
     if (msg) { G.titleMsg = { txt: msg, life: 4 }; COOP.msg = msg; }
   },
@@ -261,12 +261,12 @@ addEventListener("beforeunload", () => { if (COOP.role) COOP.leave(); });
 /* ---- Host: once a frame ---- */
 function coopAfterStep(rdt) {
   if (isHost()) {
-    const now = performance.now(); for (const m of [...COOP.members.values()]) if (now - (m.heard || now) > 10000) COOP.peerLeft(m.id); // gone quiet: dropped
+    const now = performance.now(); for (const m of [...COOP.members.values()]) if (!m.local && now - (m.heard || now) > 10000) COOP.peerLeft(m.id); // gone quiet: dropped
     if (!COOP.members.size) return; coopRevive(rdt);
-    COOP.sendT -= rdt; if (COOP.sendT <= 0) { COOP.sendT = RUN_MODES.has(G.mode) ? 1 / SNAP_HZ : .25; hostSnapshot(rdt); }
+    COOP.sendT -= rdt; if (COOP.sendT <= 0 && NET.kind) { COOP.sendT = RUN_MODES.has(G.mode) ? 1 / SNAP_HZ : .25; hostSnapshot(rdt); }
     COOP.lobbyT -= rdt; if (COOP.lobbyT <= 0) { COOP.lobbyT = 2; broadcastLobby(); }
     if (G.ocCool > 0 && G.mode === "play" && !G.paused) G.ocCool -= rdt;
-    COOP.rewT -= rdt; if (COOP.rewT <= 0) { COOP.rewT = 1; for (const m of COOP.members.values()) if (m.scrip || (m.tracks && m.tracks.length) || (m.ach && m.ach.length)) { NET.send(m.id, { t: "rew", scrip: m.scrip || 0, tracks: m.tracks || [], ach: m.ach || [] }, true); m.scrip = 0; m.tracks = []; m.ach = []; } }
+    COOP.rewT -= rdt; if (COOP.rewT <= 0) { COOP.rewT = 1; for (const m of COOP.members.values()) if (!m.local && m.scrip || (m.tracks && m.tracks.length) || (m.ach && m.ach.length)) { NET.send(m.id, { t: "rew", scrip: m.scrip || 0, tracks: m.tracks || [], ach: m.ach || [] }, true); m.scrip = 0; m.tracks = []; m.ach = []; } }
   } else if (COOP.role === "client") {
     if (performance.now() - COOP.lastHeard > (COOP.joined ? 10000 : 8000)) return COOP.leave(COOP.joined ? "LOST THE CONNECTION TO THE HOST" : "NO GAME FOUND · HOST ONE IN ANOTHER TAB FIRST");
     if (!COOP.joined) { COOP.helloT -= rdt; if (COOP.helloT <= 0) { COOP.helloT = 1; if (COOP.hostId) sendHello(); else NET.send("*", { t: "find" }, true); } }
@@ -401,7 +401,7 @@ function drawMembers(c, t, list, y) {
   for (let i = 0; i < COOP_MAX; i++) { const m = list[i], yy = y + 20 + i * 22;
     if (!m) { txt(c, "· OPEN SLOT ·", GW / 2, yy + 6, "#3a3456", 8, "center"); continue; }
     const s = m.look ? lookSprites(m.look) : null; if (s) { const f = Math.floor(t / 400) % 2 ? s.SP.vesperB : s.SP.vesper; c.save(); c.beginPath(); c.rect(GW / 2 - 120, yy - 2, 26, 20); c.clip(); drawSpr(c, f, GW / 2 - 120, yy - 4); c.restore(); }
-    txt(c, m.name, GW / 2 - 88, yy + 6, COL.ink); txt(c, m.host ? "HOST" : "READY", GW / 2 + 120, yy + 6, m.host ? COL.amber : COL.cyan, 8, "right"); }
+    txt(c, m.name, GW / 2 - 88, yy + 6, COL.ink); txt(c, m.host ? (COOP.couch ? "PLAYER 1" : "HOST") : m.pad != null ? "CONTROLLER " + (m.pad + 1) : "READY", GW / 2 + 120, yy + 6, m.host ? COL.amber : COL.cyan, 8, "right"); }
 }
 
 /* ---- Drawing other players (both sides) ---- */
@@ -428,6 +428,7 @@ function nameTag(c, q, t) {
   if (q.down && q.revive > 0) { c.strokeStyle = COL.cyan; c.lineWidth = 2; c.beginPath(); c.arc(q.x, q.y - 14, 13, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, q.revive / 1.6)); c.stroke(); c.lineWidth = 1; }
 }
 function drawCoopHud(c, t) {
+  if (isHost()) drawLocalHud(c, t);
   const list = (isClient() ? [G.p].concat(COOP.cl.others) : G.crew) || []; if (list.length < 2) return;
   list.forEach((q, i) => { const y = 46 + i * 10, me = q === G.p; txt(c, (q.down ? "DOWN · " : "") + (me ? "YOU" : q.name || "PLAYER"), GW - 8, y, q.down ? COL.red : me ? rgba(COL.ink, .8) : mateCol(q), 8, "right"); });
   if (G.ocCool > 0 && !G.oc) txt(c, "OVERCLOCK LINK READY IN " + Math.ceil(G.ocCool) + "S", GW - 8, 46 + list.length * 10 + 2, rgba(COL.red, .85), 8, "right");
@@ -441,12 +442,14 @@ function coopItems() {
     const F = COOP.friends || []; return [{ label: "STEAM OVERLAY · INVITE ANYONE", col: COL.amber, act: () => NET.sb().inviteOverlay() }]
       .concat(F.slice(0, 9).map(f => ({ label: (COOP.invited.has(f.id) ? "INVITED · " : "INVITE ") + cleanName(f.name), act: () => { NET.sb().invite(f.id); COOP.invited.add(f.id); AU.sfx("lock", 3); } })),
         [{ label: "DONE", col: COL.dim, act: () => { COOP.view = "lobby"; G.menuMode = null; } }]); }
+  if (isHost() && COOP.couch) return [{ label: "PLAY ARCADE TOGETHER", act: () => openArcade() }, { label: "PLAY STORY TOGETHER", act: () => openCamp() },
+    { label: "END LOCAL CO-OP", col: COL.magenta, act: () => COOP.leave("LOCAL CO-OP ENDED") }, back];
   if (isHost()) return [
     { label: steam && NET.kind === "steam" ? "INVITE FRIENDS" : "HOW FRIENDS JOIN", col: COL.amber, act: () => { if (NET.kind === "steam") { COOP.view = "friends"; G.menuMode = null; COOP.friends = null; NET.sb().friends().then(f => { COOP.friends = Array.isArray(f) ? f : []; }).catch(() => { COOP.friends = []; }); } else COOP.msg = "OPEN THE GAME IN ANOTHER TAB, PICK CO-OP, THEN JOIN ON THIS COMPUTER"; } },
     { label: "PLAY ARCADE TOGETHER", act: () => openArcade() },
     { label: "PLAY STORY TOGETHER", act: () => openCamp() },
     { label: "CLOSE THE GAME", col: COL.magenta, act: () => COOP.leave("CO-OP GAME CLOSED") }, back];
-  const items = [];
+  const items = [{ label: "LOCAL CO-OP · SAME SCREEN", col: COL.cyan, act: () => COOP.host("couch") }];
   if (steam) items.push({ label: "HOST A GAME · STEAM", act: () => COOP.host("steam") }, { label: "JOIN A FRIEND", col: COL.amber, act: () => { COOP.msg = "ACCEPT A STEAM INVITE, OR PICK JOIN GAME ON A FRIEND IN YOUR STEAM FRIENDS LIST"; } });
   if (web && NET.localReady()) items.push({ label: "HOST ON THIS COMPUTER (TEST)", act: () => COOP.host("local") }, { label: "JOIN ON THIS COMPUTER (TEST)", col: COL.amber, act: () => COOP.joinLocal() });
   return items.concat([back]);
@@ -454,17 +457,19 @@ function coopItems() {
 function updateCoop(rdt) {
   if (COOP.role === "client" && !COOP.joined) { if (hit("escape")) COOP.leave(); return; }
   if (hit("escape")) { if (COOP.view === "friends") { COOP.view = "lobby"; G.menuMode = null; } else { G.mode = "title"; G.menuMode = null; } return; }
-  G.menu = layoutMenu(coopItems(), COOP.view === "friends" ? 64 : isHost() ? 160 : 124, COOP.view === "friends" ? 13 : 12); runMenu(G.menu);
+  G.menu = layoutMenu(coopItems(), COOP.view === "friends" ? 64 : isHost() ? 160 : 118, COOP.view === "friends" ? 13 : 12); runMenu(G.menu);
 }
 function drawCoop(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .8);
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, "CO-OP", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 12, col, 16, "center"));
   if (COOP.role === "client" && !COOP.joined) { txt(c, COOP.msg || "CONNECTING…", GW / 2, 120, COL.ink, 8, "center"); txt(c, "ESC: CANCEL", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center"); return; }
   if (COOP.view === "friends") { txt(c, "INVITE FRIENDS · " + (COOP.friends ? COOP.friends.length + " ONLINE" : "LOADING…"), GW / 2, 40, COL.dim, 8, "center"); if (COOP.friends && !COOP.friends.length) txt(c, "NO FRIENDS ONLINE · TRY THE STEAM OVERLAY", GW / 2, 50, COL.amber, 8, "center"); }
+  else if (isHost() && COOP.couch) { txt(c, COOP.members.size < COOP_MAX - 1 ? "CONTROLLERS: PRESS A TO JOIN · UP TO 4 PLAYERS ON ONE SCREEN" : "FULL · 4 PLAYERS", GW / 2, 34, COL.cyan, 8, "center"); drawMembers(c, t, lobbyList(), 46);
+    txt(c, "ON A JOINED CONTROLLER: X NEW LOOK · B LEAVE" + (PAD.active ? " · PLAYER 1 IS ON " + lab().name : " · PLAYER 1 IS ON KEYBOARD AND MOUSE"), GW / 2, 222, rgba(COL.dim, .85), 8, "center"); }
   else if (isHost()) { txt(c, (NET.kind === "steam" ? "STEAM LOBBY · FRIENDS ONLY" : "TEST GAME ON THIS COMPUTER") + " · UP TO 4 PLAYERS", GW / 2, 34, COL.dim, 8, "center"); drawMembers(c, t, lobbyList(), 46); }
   else { txt(c, "PLAY ARCADE AND THE STORY WITH UP TO THREE FRIENDS", GW / 2, 34, COL.dim, 8, "center");
     wrapText(c, "THE HOST PICKS THE RUN OR CHAPTER AND MAKES THE STORY CHOICES. EVERYONE BRINGS THEIR OWN OPERATIVE AND LOADOUT, AND KEEPS THE SCRIP AND ACHIEVEMENTS THEY EARN. GO DOWN AND A TEAMMATE CAN REVIVE YOU; THE RUN ENDS WHEN EVERYONE IS DOWN.", 380).forEach((l, i) => txt(c, l, GW / 2, 56 + i * 11, rgba(COL.ink, .85), 8, "center"));
-    if (!NET.steamReady()) txt(c, window.steamBridge ? "STEAM ISN'T RUNNING · START STEAM TO PLAY ONLINE" : "ONLINE CO-OP WITH STEAM FRIENDS IS IN THE STEAM VERSION", GW / 2, 108, COL.amber, 8, "center"); }
+    if (!NET.steamReady()) txt(c, window.steamBridge ? "STEAM ISN'T RUNNING · LOCAL CO-OP STILL WORKS" : "ONLINE CO-OP WITH STEAM FRIENDS IS IN THE STEAM VERSION", GW / 2, 104, COL.amber, 8, "center"); }
   drawMenu(c, G.menu, t);
   if (COOP.msg) txt(c, COOP.msg, GW / 2, 236, COL.amber, 8, "center");
   const L = lab(); txt(c, PAD.active ? "UP / DOWN + " + L.confirm + " · B: BACK" : "W / S + ENTER OR CLICK · ESC: BACK", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
