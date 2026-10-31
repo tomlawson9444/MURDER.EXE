@@ -422,7 +422,9 @@ function drawMate(c, q, t) {
 }
 function nameTag(c, q, t) {
   const col = q.down ? COL.red : mateCol(q), label = q.down ? (q.name || "") + " · DOWN" : q.name || "";
-  c.font = "8px Silkscreen"; const w = c.measureText(label).width + 6; c.fillStyle = "rgba(6,5,14,.7)"; c.fillRect(Math.round(q.x - w / 2), Math.round(q.y - 45), Math.round(w), 10); txt(c, label, q.x, q.y - 44, col, 8, "center");
+  c.font = "8px Silkscreen"; const w = c.measureText(label).width + 6, R = G.tagRects || (G.tagRects = []); let y = q.y - 45; // players side by side: stack the tags
+  for (let n = 0; n < 4 && R.some(r => Math.abs(r.x - q.x) < (r.w + w) / 2 && Math.abs(r.y - y) < 11); n++) y -= 11; R.push({ x: q.x, y, w });
+  c.fillStyle = "rgba(6,5,14,.7)"; c.fillRect(Math.round(q.x - w / 2), Math.round(y), Math.round(w), 10); txt(c, label, q.x, y + 1, col, 8, "center");
   if (q.down && q.revive > 0) { c.strokeStyle = COL.cyan; c.lineWidth = 2; c.beginPath(); c.arc(q.x, q.y - 14, 13, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, q.revive / 1.6)); c.stroke(); c.lineWidth = 1; }
 }
 function drawCoopHud(c, t) {

@@ -123,7 +123,7 @@ function ocTrigger(p) {
     p.oc -= OC_JOIN; p.ocPaid = OC_JOIN; p.ocLocks = []; G.oc.parts.push(p); track("oc", 0); AU.sfx("ocIn"); pop(p.x, p.y - 34, "LINKED", COL.cyan); fx(p.x, p.y - BODY, 14, [COL.cyan, "#ffffff"], 60, .4); return; }
   if (p.oc < 50) return;
   if (G.hexed > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "HEXED", COL.magenta); return; }
-  if (G.crew && (G.ocCool || 0) > 0) { AU.sfx("hackFail"); pop(p.x, p.y - 30, "OVERCLOCK COOLING " + Math.ceil(G.ocCool) + "S", COL.red); return; }
+  if (G.crew && (G.ocCool || 0) > 0) { if (G.time - (p.coolPop || -9) > 1) { p.coolPop = G.time; AU.sfx("hackFail"); pop(p.x, p.y - 30, "OVERCLOCK COOLING " + Math.ceil(G.ocCool) + "S", COL.red); } return; }
   p.oc -= 50; p.ocPaid = 50; p.ocLocks = [];
   G.oc = { t: 0, starter: p, parts: [p], bossHit: new Set() };
   Object.defineProperty(G.oc, "locks", { get: () => G.p.ocLocks || (G.p.ocLocks = []), set: v => { G.p.ocLocks = v; } }); // whoever G.p is right now
@@ -145,7 +145,7 @@ function updateOC(rdt) {
   if (!gone && held && o.t <= 3) return;
   G.tracers = []; let fired = 0;
   for (const q of o.parts) asPlayer(q, () => { if (ocFire(o, q === S)) fired++; });
-  if (fired >= 2) for (const q of o.parts) if (q.ocLocks && q.ocLocks.length) { q.oc = Math.min(q.ocMax, q.oc + 15); pop(q.x, q.y - 44, "SYNC +15 OC", COL.cyan); } // teamwork pays a little back
+  if (fired >= 2) o.parts.filter(q => q.ocLocks && q.ocLocks.length).forEach((q, i) => { q.oc = Math.min(q.ocMax, q.oc + 15); pop(q.x, q.y - 56 - i * 10, "SYNC +15 OC", COL.cyan); }); // teamwork pays a little back
   if (fired >= 2) G.banner = { txt: "LINKED OVERCLOCK · SYNC x" + fired, col: COL.cyan, life: 1.6 };
   for (const q of o.parts) q.ocLocks = [];
   G.oc = null; AU.setOC(false); G.shake = 3; if (G.crew) G.ocCool = OC_COOL;

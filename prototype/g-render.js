@@ -15,7 +15,7 @@ function panel(c, x, y, w, h, edge) { c.fillStyle = "rgba(6,5,14,.82)"; poly(c, 
 function reticle(c, x, y, r, col, n) { c.fillStyle = col; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => { const ox = Math.round(x + sx * r), oy = Math.round(y + sy * r); c.fillRect(Math.min(ox, ox - sx * 4), oy, 4, 1); c.fillRect(ox, Math.min(oy, oy - sy * 4), 1, 4); }); if (n) txt(c, n, x + r + 3, y - r - 3, col); }
 
 function drawWorld(c, t) {
-  const p = G.p; c.save();
+  const p = G.p; c.save(); G.tagRects = [];
   if (G.shake > 0) c.translate(Math.round(rnd(-G.shake, G.shake)), Math.round(rnd(-G.shake, G.shake)));
   if (G.kick && G.kick.t > 0) c.translate(Math.round(G.kick.x), Math.round(G.kick.y));
   c.drawImage(G.base.C, 0, 0); G.base.steam.forEach(([x, y]) => steam(c, x, y, t));
@@ -102,7 +102,8 @@ function drawHUD(c, t) {
   panel(c, 6, 6, pw, 24, "#3a3456"); txt(c, nm, 12, 9, COL.ink); if (G.camp) txt(c, chLabel(G.camp.n) + " · " + G.camp.ch.title, 12, 19, COL.amber); else txt(c, D().code + (G.runSeed != null && G.mapKey === "run" ? " · " + PG.seedName(G.runSeed) : "") + (G.phase2 ? " · PHASE 2" : ""), 12, 19, G.phase2 ? COL.red : COL.dim);
   if (G.range) rangeHud(c, t); else if (G.camp) campHudCenter(c, t); else {
   panel(c, W / 2 - 54, 6, 108, 24, "#3a3456"); txt(c, G.boss ? D().bossName : `${String(Math.min(dk(), 100)).padStart(3, "0")}/100`, W / 2, 9, G.boss ? COL.magenta : COL.ink, 8, "center");
-  for (let i = 0; i < 20; i++) { c.fillStyle = i < Math.min(dk(), 100) / 5 ? COL.magenta : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); } }
+  const bossE = G.boss && G.en.find(e => e.alive && e.type === D().boss && e.hpMax), fill = bossE ? bossE.hp / bossE.hpMax * 20 : Math.min(dk(), 100) / 5; // co-op bosses take several hits: show what's left
+  for (let i = 0; i < 20; i++) { c.fillStyle = i < fill ? COL.magenta : "#2a2640"; c.fillRect(W / 2 - 49 + i * 5, 21, 4, 3); } }
   panel(c, W - 108, 6, 102, 24, "#3a3456"); txt(c, String(G.score).padStart(7, "0"), W - 100, 9, COL.ink); txt(c, "x" + G.mult.toFixed(1), W - 12, 9, COL.cyan, 8, "right");
   for (let i = 0; i < 5; i++) { c.fillStyle = i < G.heat ? COL.amber : "#2a2640"; c.fillRect(W - 100 + i * 7, 21, 5, 3); } txt(c, "HEAT", W - 12, 19, COL.dim, 8, "right");
   if (!G.range) txt(c, "+" + (G.runScrip || 0) + " SCRIP", W - 8, 34, rgba(COL.amber, .85), 8, "right");
@@ -190,7 +191,7 @@ function drawIntro(c, t) {
   txt(c, G.camp ? `${chLabel(G.camp.n)} · ${B.name}` : `DISTRICT 0${B.n} · ${B.name} · KILL 100`, 220, 96, COL.magenta);
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, B.bossName, 220 + (i === 0 ? -2 : i === 1 ? 2 : 0), 110, col, 24));
   c.font = "8px Silkscreen"; const cw = c.measureText(B.bossLine).width + 8; c.fillStyle = COL.amber; c.fillRect(220, 152, cw, 14); txt(c, B.bossLine, 224, 155, "#120c02");
-  txt(c, B.bossTip, 220, 174, COL.dim); c.restore();
+  wrapText(c, B.bossTip, 250).forEach((l, i) => txt(c, l, 220, 174 + i * 10, COL.dim)); c.restore();
 }
 function drawClear(c, t) {
   veil(c, .78); txt(c, "DISTRICT CLEAR", GW / 2, 78, COL.cyan, 32, "center");
