@@ -39,9 +39,11 @@ function drawWorld(c, t) {
   }
   // sprites, sorted by feet
   const list = G.en.filter(e => e.alive && e.type !== "nest" && !(e.type === "blackwing" && (e.state === "air" || e.state === "target" || e.state === "lock"))).map(e => ({ e, y: e.y }));
-  if (G.mode !== "dead") list.push({ e: p, y: p.y, me: 1 }); list.sort((a, b) => a.y - b.y);
+  if (G.mode !== "dead") { list.push({ e: p, y: p.y, me: 1 }); for (const q of coopOthers()) list.push({ e: q, y: q.y, mate: 1 }); } list.sort((a, b) => a.y - b.y);
   p.trail.forEach((tr, i) => { const tl = p.face < 0 ? SPF.trails : SP.trails; c.globalAlpha = tr.life * 2.5; c.drawImage(tl[i % tl.length], Math.round(tr.x - 14), Math.round(tr.y - 33)); c.globalAlpha = 1; });
-  for (const { e, me } of list) {
+  for (const { e, me, mate } of list) {
+    if (mate) { drawMate(c, e, t); continue; }
+    if (me && p.down) { const s = sprOf("vesper", p.face); c.globalAlpha = .45; drawSpr(c, s, p.x - s.w / 2, p.y - s.h + 2); c.globalAlpha = 1; nameTag(c, p, t); continue; }
     if (me) { const k = p.moving ? (Math.floor(t / 110) % 2 ? "run1" : "run2") : (Math.floor(t / 400) % 2 ? "vesperB" : "vesper"); const s = sprOf(k, p.face); shadowUnder(c, p.x - s.w / 2, p.y - s.h + 2, s);
       if (p.iframes > 0 && p.dash <= 0 && Math.floor(t / 50) % 2) continue; drawSpr(c, s, p.x - s.w / 2, p.y - s.h + 2); continue; }
     const holo = e.type === "holo", s = sprOf(holo ? "augur" : e.type, e.face), fly = e.type === "corvid", bob = (e.state === "walk" || fly) ? Math.round(Math.sin((e.anim || 0) * 12) * .8) : 0;

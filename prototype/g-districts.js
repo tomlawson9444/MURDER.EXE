@@ -28,11 +28,13 @@ const FLYING = new Set(["corvid", "hexer", "augur", "holo", "nest", "blackwing"]
 
 function perchSpot() { const g = groups(G.grid).find(x => x[0] === "S"); if (!g) return null; const [, x, y, w] = g; return { x: (x + w / 2) * TS, y: (y + 1) * TS + 6 }; }
 // Generated maps are built per district from the run seed; classic maps use the hand-made layouts.
+// G.mapRecipe is how co-op friends rebuild the same map on their side.
 function chooseMap(key) {
-  if (G.chapMap) { const m = G.chapMap; if (m.key) return m.key; PG.generate(storyStyle(m), m.seed, "run"); return "run"; }
-  if (/^x\d+$/.test(key)) { const e = getDist(key).endless; PG.generate(e.style, e.seed, "run"); return "run"; }
-  if (SAVE.mapMode === "gen" && G.runSeed != null) { PG.generate(key, G.runSeed, "run"); return "run"; }
-  return key;
+  const gen = (style, seed) => { G.mapRecipe = { style, seed }; PG.generate(style, seed, "run"); return "run"; };
+  if (G.chapMap) { const m = G.chapMap; if (m.key) { G.mapRecipe = { key: m.key }; return m.key; } return gen(storyStyle(m), m.seed); }
+  if (/^x\d+$/.test(key)) { const e = getDist(key).endless; return gen(e.style, e.seed); }
+  if (SAVE.mapMode === "gen" && G.runSeed != null) return gen(key, G.runSeed);
+  G.mapRecipe = { key }; return key;
 }
 const mapName = () => G.mapKey === "run" ? MAPS.run.name : D().name;
 function gapTiles() { const out = []; for (let y = 2; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) if (G.grid[y][x] === "o") out.push([x, y]); return out; }

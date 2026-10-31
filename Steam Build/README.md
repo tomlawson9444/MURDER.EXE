@@ -132,7 +132,16 @@ Steam creates each board the first time a score is posted, so there's nothing to
 
 Only your best is kept. Players see the boards from **CHALLENGES → LEADERBOARDS**, with Global, Friends and Around Me tabs; offline, it shows their own best runs. Co-op runs aren't posted.
 
-## 5. Build for release
+## 5. Co-op
+
+Co-op needs no Steamworks setup: it uses friends-only Steam lobbies (up to 4 players) and Steam's peer-to-peer networking, which work for any app ID, including 480 while you test.
+
+- **Hosting:** CO-OP → HOST A GAME creates the lobby and sets Rich Presence, so friends see **Join Game** on the host in their Steam friends list. INVITE FRIENDS lists online friends to invite, or opens the Steam overlay's invite dialog.
+- **Joining:** accepting an invite (or Join Game) while MURDER.EXE is running joins straight away. If the game isn't running, Steam starts it with `+connect_lobby <id>` and it joins once it has loaded.
+- **How it works:** the host's game runs the world. Each friend sends their controls about 60 times a second and receives the world about 20 times a second (around 2 KB each). Friends' own movement is shown immediately and corrected towards the host's copy. Only lobby members can connect to the host.
+- **Testing:** you need two Steam accounts on two machines (Steam allows one account per machine). Set the same App ID on both (`steam_appid.txt`), host on one, and invite the other.
+
+## 6. Build for release
 
 | Command | Builds | Where |
 |---|---|---|
@@ -153,11 +162,11 @@ Without the secret, the workflow still builds, with a warning, but those builds 
 
 Don't ship `steam_appid.txt`; Steam supplies the App ID when it launches the game. Release builds relaunch through Steam if someone opens the .exe directly (set `STEAM_DEV=1` to skip that while developing).
 
-## 6. Upload to Steam (SteamPipe)
+## 7. Upload to Steam (SteamPipe)
 
 1. On Steamworks, open **SteamPipe → Depots** and note the App ID and one depot ID each for Windows and Linux.
 2. Put those IDs into `steampipe/app_build.vdf`, `steampipe/depot_windows.vdf` and `steampipe/depot_linux.vdf` (they start as 1234560, 1234561 and 1234562).
-3. Build (step 5) so that `dist/win-unpacked` and `dist/linux-unpacked` exist.
+3. Build (step 6) so that `dist/win-unpacked` and `dist/linux-unpacked` exist.
 4. Install [steamcmd](https://developer.valvesoftware.com/wiki/SteamCMD) and run, from this folder:
 
 ```bash

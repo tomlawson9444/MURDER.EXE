@@ -733,7 +733,7 @@ function startChapter(n, retry) {
   G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.raidFields = null; G.lull = false; G.zone = null; G.exit = null; G.allies = []; G.rw = null; G.choirRounds = 0; storySprites(); propSprites(); G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
   AU.init(); BANK.attach(); RUN.reset(ch.district);
   G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; G.lastHeat = G.heat;
-  G.p.shield = SAVE.camp.diff === "story" ? 2 : 0;
+  for (const q of allPlayers()) q.shield = SAVE.camp.diff === "story" ? 2 : 0; // co-op friends get the host's difficulty
   const g = G.rules.goal; if (g.type === "stall" || g.type === "guard" || g.type === "escort") placeStalls(); if (g.type === "hold") placeZone();
   G.camp.floor = 1; G.rwT = G.rules.rewrite || 0; if (G.rules.allies) spawnAllies(G.rules.allies[0], G.rules.allies[1]); if (g.type === "gates") placeGates(g.n);
   G.floodT = G.rules.flood || 0; G.ventT = G.rules.vents || 0;
@@ -748,7 +748,7 @@ function campTick(dt) {
   ch.radio.forEach((r, i) => { if (C.fired.has(i) || (r.if && !r.if(SAVE.camp)) || !trig(r.on)) return; C.fired.add(i); radio(r.who, typeof r.t === "function" ? r.t() : r.t); });
   if (ch.shard && !G.rush && !C.shardOut && !SAVE.camp.shards[C.n] && trig(ch.shard.on)) { C.shardOut = true; placeShard(); }
   if (ch.shard && !C.shardOut && SAVE.camp.shards[C.n] && trig(ch.shard.on)) C.shardOut = true; // already found on an earlier run
-  if (G.shard && Math.hypot(G.shard.x - G.p.x, G.shard.y - G.p.y) < 12) { SAVE.camp.shards[C.n] = true; C.gotShard = true; G.shard = null; persist(); AU.sfx("milestone"); G.banner = { txt: "DATASHARD RECOVERED · CHECK THE ARCHIVE", col: COL.magenta, life: 2.4 }; }
+  if (G.shard && nearPlayer(G.shard.x, G.shard.y, 12)) { SAVE.camp.shards[C.n] = true; C.gotShard = true; G.shard = null; persist(); AU.sfx("milestone"); G.banner = { txt: "DATASHARD RECOVERED · CHECK THE ARCHIVE", col: COL.magenta, life: 2.4 }; }
   const p = G.p; if (tileOf(p.x, p.y) !== "o" && !onVent(p.x, p.y)) p.safe = { x: p.x, y: p.y };
   C.recT = (C.recT || 0) - dt; if (C.recT <= 0) { C.recT = .1; (C.rec || (C.rec = [])).push({ x: p.x, y: p.y }); if (C.rec.length > 900) C.rec.shift(); }
   updateDrops(dt);
@@ -765,30 +765,30 @@ function campTick(dt) {
   C.huntCallT = (C.huntCallT || 0) - dt; assignRaiders(dt);
   for (const S of G.stalls || []) { S.hurtT = Math.max(0, S.hurtT - dt); S.alarmT = Math.max(0, (S.alarmT || 0) - dt); let contested = false;
     // Rebooting: stand beside a damaged rack to restore it.
-    S.fixing = S.kind === "rack" && !S.dead && S.hp < S.max && Math.hypot(p.x - S.x, p.y - S.y) < 22;
+    S.fixing = S.kind === "rack" && !S.dead && S.hp < S.max && nearPlayer(S.x, S.y, 22);
     if (S.fixing) { S.hp = Math.min(S.max, S.hp + 9 * dt); if (Math.random() < .3) G.parts.push({ x: S.x + rnd(-8, 8), y: S.y - rnd(4, 26), vx: 0, vy: -30, life: .4, max: .4, col: COL.cyan, g: 0 }); }
     for (const e of G.en) { if (!e.alive || BOSSY.has(e.type)) continue; const d = Math.hypot(e.x - S.x, e.y - S.y); if (d < 24) contested = true;
       if (e.type === "corvid") { if (e.state === "dive" && !e.dv) { e.dv = true; if (Math.random() < .35) e.la = Math.atan2(S.y - 10 - e.y, S.x - e.x); } if (e.state !== "dive") e.dv = false; if (e.state === "dive" && d < 14) { hurtStall(S, 12); killEnemy(e, "blast"); } }
       else if (d < 16 && S.kind !== "rack" && !e.raid) hurtStall(S, 14 * dt); } // racks only take stray shots and blasts; raiders use their own attacks
     // The cargo crane only rolls while you're beside it and nothing is on top of it.
-    if (S.path) { S.moving = !contested && Math.hypot(p.x - S.x, p.y - S.y) < 56 && S.idx < S.path.length - 1;
+    if (S.path) { S.moving = !contested && nearPlayer(S.x, S.y, 56) && S.idx < S.path.length - 1;
       if (S.moving) { const tg = S.path[S.idx + 1], dx = tg.x - S.x, dy = tg.y - S.y, l = Math.hypot(dx, dy), st = 15 * dt; if (l <= st) { S.x = tg.x; S.y = tg.y; S.idx++; } else { S.x += dx / l * st; S.y += dy / l * st; } }
       S.prog = S.idx / (S.path.length - 1); S.contested = contested; } }
   if (G.gates) G.gates.forEach(q => { q.contested = gateActive(q) && G.en.some(e => e.alive && !FLYING.has(e.type) && !BOSSY.has(e.type) && Math.hypot(e.x - q.x, e.y - q.y) < 30);
-    if (gateActive(q) && !q.contested && Math.hypot(q.x - p.x, q.y - p.y) < 18) gateProgress(q, dt / gateGoal().secs); }); // an enemy at the terminal blocks it
-  if (G.zone) { const Z = G.zone, inside = Math.hypot(p.x - Z.x, p.y - Z.y) < Z.r; Z.contested = inside && G.en.some(e => e.alive && !FLYING.has(e.type) && Math.hypot(e.x - Z.x, e.y - Z.y) < Z.r); Z.inside = inside;
+    if (gateActive(q) && !q.contested && nearPlayer(q.x, q.y, 18)) gateProgress(q, dt / gateGoal().secs); }); // an enemy at the terminal blocks it
+  if (G.zone) { const Z = G.zone, inside = nearPlayer(Z.x, Z.y, Z.r); Z.contested = inside && G.en.some(e => e.alive && !FLYING.has(e.type) && Math.hypot(e.x - Z.x, e.y - Z.y) < Z.r); Z.inside = inside;
     if (inside && !Z.contested) Z.prog = Math.min(1, Z.prog + dt / g.secs);
     if (R.wrenAt != null && SAVE.camp.flags.leftThem && !C.wrenOut && Z.prog >= R.wrenAt) { C.wrenOut = true; spawnWrenc(); } }
   if (g.type === "extract" && !G.exit && C.t >= g.secs) placeExit();
   if (g.type === "climb" && !G.exit && dk() >= g.kills) placeLift();
-  if (g.type === "climb" && G.exit && G.exit.open && C.floor < g.floors && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 20) nextFloor();
+  if (g.type === "climb" && G.exit && G.exit.open && C.floor < g.floors && nearPlayer(G.exit.x, G.exit.y, 20)) nextFloor();
   updateVan(dt); updateAllies(dt);
   if (G.rules.rewrite) { G.rwT -= dt; if (G.rwT <= 0) { G.rwT = G.rules.rewrite; rewriteStage(); } } updateRewrite(dt);
-  const win = (g.type === "kills" && dk() >= g.n) || (g.type === "hold" && G.zone.prog >= 1) || (g.type === "climb" && C.floor >= g.floors && G.exit && G.exit.open && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 20) || (g.type === "extract" && G.exit && G.exit.open && Math.hypot(p.x - G.exit.x, p.y - G.exit.y) < 24) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
+  const win = (g.type === "kills" && dk() >= g.n) || (g.type === "hold" && G.zone.prog >= 1) || (g.type === "climb" && C.floor >= g.floors && G.exit && G.exit.open && nearPlayer(G.exit.x, G.exit.y, 20)) || (g.type === "extract" && G.exit && G.exit.open && nearPlayer(G.exit.x, G.exit.y, 24)) || ((g.type === "survive" || g.type === "stall" || g.type === "guard") && C.t >= g.secs) || (g.type === "escort" && G.stalls[0].prog >= 1) || (g.type === "gates" && G.gates.every(q => q.done));
   if (win) campWin();
 }
 function campWin() {
-  const C = G.camp; if (!C || C.won) return; C.won = true; C.winT = 1.6; if (G.stalls) SAVE.camp.stallHp = Math.round(stallPct()); G.lull = false; if (C.n === 2 && G.stalls && stallPct() >= 75) achieve("stall");
+  const C = G.camp; if (!C || C.won) return; C.won = true; coopReviveAll(); C.winT = 1.6; if (G.stalls) SAVE.camp.stallHp = Math.round(stallPct()); G.lull = false; if (C.n === 2 && G.stalls && stallPct() >= 75) achieve("stall");
   if (G.rackFlow) { const saved = G.stalls.filter(S => !S.dead).length; SAVE.camp.racksSaved = saved; if (saved === G.stalls.length) SAVE.camp.flags.allRacks = true; else delete SAVE.camp.flags.allRacks; } G.god = true; G.flood = null; G.vents = null;
   for (const e of G.en) if (e.alive && e.type !== "nest") { e.alive = false; fx(e.x, e.y - 10, 8, ["#2a2440", COL.magenta], 50, .5); }
   G.pending = []; G.bul = []; G.banner = { txt: "OBJECTIVE COMPLETE", col: COL.cyan, life: 1.6 }; AU.sfx("milestone"); G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best;

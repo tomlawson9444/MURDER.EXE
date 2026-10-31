@@ -17,7 +17,7 @@ Everything is plain HTML and JavaScript with no build step. All art and audio is
 
 Open `prototype/index.html` in Chrome, Edge or Firefox. For the design document, open `design/index.html`. To browse procedurally generated maps, open `prototype/maplab.html`.
 
-The pages load fonts from Google Fonts, so the first load needs an internet connection. If your browser blocks scripts on `file://` pages, serve the folder instead:
+Everything works offline: the Chakra Petch and Silkscreen fonts are bundled in `prototype/fonts/` (SIL Open Font License). If your browser blocks scripts on `file://` pages, serve the folder instead:
 
 ```bash
 python3 -m http.server 8000
@@ -51,16 +51,31 @@ Browsers only detect a controller after you press one of its buttons. Rumble wor
 
 ## Title screen
 
-The title screen has four choices, with a one-line description under the selected one:
+The title screen lists these choices, with a one-line description under the selected one:
 
 - **STORY:** the campaign. It shows the next chapter to play and opens the chapter list.
 - **ARCADE:** score runs. With MAP set to NEW EVERY RUN, each run builds fresh districts and starts at District 1, and ENDLESS RUN jumps straight into the Endless Sprawl once it's unlocked. With MAP set to CLASSIC LAYOUT, you pick the district (Rain Market or Chrome Rookery) on a card. MAGPIE'S FIRST opens the shop before the run. Seed links open this screen with the seed and its district ready.
 - **OPERATIVE:** the BODYSHOP (or CREATE OPERATIVE before your first game).
 - **MAGPIE'S:** the shop.
+- **CHALLENGES:** the Daily Challenge, Boss Rush, leaderboards and achievements.
+- **CO-OP:** play Arcade or the story with friends (see below).
+
+## Co-op
+
+Up to four players can play **Arcade** and the **story** together. One player hosts: their game runs the world and the others send their controls and see it live.
+
+- **Hosting:** CO-OP → HOST A GAME, then INVITE FRIENDS (your online Steam friends, or the Steam overlay). Friends can also join from your name in their Steam friends list. Then PLAY ARCADE TOGETHER or PLAY STORY TOGETHER takes you to the normal Arcade or chapter screens.
+- **Everyone brings their own operative, look and loadout.** Scrip from every kill is shared with the whole team; each player's kills, milestones and achievements go into their own save.
+- **Down, not out:** when you'd flatline and a teammate is still standing, you go DOWN instead. Stand beside a downed teammate for about two seconds to revive them. The run ends when everyone is down. Clearing a district or an objective brings everyone back up.
+- **Story:** the host chooses the chapter and the dialogue replies, and the chapter counts on the host's save. Any player can work objectives: stand in the hold zone, hack gates, reboot racks, push the cargo crane or reach the exit.
+- **Overclock for friends** fires straight away at the nearest targets (the slow-motion is the host's alone).
+- Friends can drop into a run already in progress. The Daily Challenge, Boss Rush and the firing range stay solo, and co-op runs don't post to the leaderboards.
+
+Online co-op uses Steam, so it's in the Steam Build. In a browser you can try it with two tabs: in one, CO-OP → HOST ON THIS COMPUTER (TEST); in the other, JOIN ON THIS COMPUTER (TEST). The two tabs share one save, so this is for testing only.
 
 ## Steam Build
 
-The `Steam Build/` folder builds the game as a desktop app for Steam with [Electron](https://www.electronjs.org/): fullscreen, offline, an app icon, a QUIT GAME option, and **Steam achievements** (all 39 map to Steam API names like `MURDER_CH1` and re-sync on every launch). It also holds the Steamworks achievement list and icons, SteamPipe upload scripts, and a GitHub Actions workflow that builds Windows and Linux for you. Start with [Steam Build/README.md](Steam%20Build/README.md).
+The `Steam Build/` folder builds the game as a desktop app for Steam with [Electron](https://www.electronjs.org/): fullscreen, offline, an app icon, a QUIT GAME option, **Steam achievements** (all 39 map to Steam API names like `MURDER_CH1` and re-sync on every launch), **Steam leaderboards**, **Steam Cloud saves** and **co-op with Steam invites**. It also holds the Steamworks achievement list and icons, SteamPipe upload scripts, and a GitHub Actions workflow that builds Windows and Linux for you. Start with [Steam Build/README.md](Steam%20Build/README.md).
 
 ## Challenges
 
@@ -68,6 +83,7 @@ Pick CHALLENGES on the title screen.
 
 - **Daily Challenge:** today's date picks the map seed, a twist and a fixed kit (any sidearm, Overclock and two implants, even ones you don't own), so everyone gets the same run. The twists are BOOM TOWN (every kill explodes), COLD SNAP (kills freeze nearby enemies), BOTTOMLESS (no ammo use, Heat starts at 3), GLASS JAW (faster enemy bullets, double score), SWARM (half again as many enemies, double score), OVERCHARGED (Overclock charges three times faster) and RED ALERT (Heat starts at 3). It plays like Arcade with no shop stops; flatlining or ending the run banks the score, and the screen keeps your best five scores for the day.
 - **Boss Rush:** all ten story bosses back to back (Blackwing, the Ferryman, the Augur, Cinder, the Widow Crane, the Archivist, Scarecrow, Director Vane, the Choir and Mother Corvina) with your own gear and three shields for the whole run. The clock never stops, your best time is saved, and it never touches your story progress.
+- **Leaderboards:** best score, most kills and furthest district for solo Arcade runs, plus each day's Daily Challenge and the fastest Boss Rush. The Steam version ranks you against everyone and against your Steam friends (Global, Friends and Around Me); in a browser it shows your own best runs.
 - **Achievements:** 39 of them across the story, combat, Arcade, builds, the challenges and style (FIRST BLOOD, EVERY WAY OUT, BLAST RADIUS, MASS DELETE, ICE AGE, TRICK SHOT, SKEWER, DEEP DIVE, IDENTITY CRISIS, NO TIME TO WASTE and more). Each pays 100 to 1,500 scrip and pops up on any screen; the ACHIEVEMENTS list shows what's left.
 
 ## Campaign: Nine Nights of Rain
@@ -164,6 +180,8 @@ The story campaign is complete: **30 chapters across 10 districts in five acts, 
 
 Progress (operative and look, scrip, owned gear and cosmetics, loadout, milestones, best score, and campaign chapters, choices, trust and datashards) is saved in the browser's local storage under `murder-save-v1`. Clearing site data resets it.
 
+The Steam version saves to `save.json` in the app-data folder instead (`%APPDATA%\MURDER.EXE` on Windows, `~/.config/MURDER.EXE` on Linux and Steam Deck), which Steam Cloud syncs between PC and Deck. It moves an older save across the first time it runs. See [Steam Build/README.md](Steam%20Build/README.md).
+
 ## Code map (`prototype/`)
 
 | File | Responsibility |
@@ -189,7 +207,8 @@ Progress (operative and look, scrip, owned gear and cosmetics, loadout, mileston
 | `g-talk.js` | Conversation screen, reply choices, trust and Resonance, and in-game radio chatter |
 | `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, the docks fog, escort and guard objectives, hold and extract objectives, Halvorsen Wardens and crossfire, THE FERRYMAN, CINDER, the WIDOW CRANE, THE ARCHIVIST, SCARECROW, DIRECTOR VANE, THE CHOIR and MOTHER CORVINA, climbing, allies, the Nest's rewriting floor, the endings, the campaign menu, archive and chapter-complete screen |
 | `g-extras.js` | Achievements, the Daily Challenge, Boss Rush and the CHALLENGES screen |
-| `g-platform.js` | Platform layer: Steam achievement unlocks in the Steam build (nothing in a browser) |
+| `g-platform.js` | Platform layer: Steam achievements and leaderboards in the Steam build, local bests in a browser |
+| `g-net.js` | Co-op: Steam or two-tab transport, lobby and invites, the host running friends' players, snapshots, and the friend's view |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
 | `g-main.js` | Boot, run reset and the game loop |
@@ -197,7 +216,7 @@ Progress (operative and look, scrip, owned gear and cosmetics, loadout, mileston
 ## Roadmap
 
 1. Unique enemies and bosses per family, so endless districts differ in how they fight as well as how they look.
-2. Port to Godot 4 for a native Steam build (Steam Deck Verified, Steam Input, achievements and leaderboards).
+2. Steam Input action sets and Steam Deck Verified testing.
 3. Steam page and a free demo for Steam Next Fest.
 
 The full plan is in `design/index.html`.

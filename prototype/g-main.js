@@ -9,7 +9,7 @@
   // Load a district into the current run. Score, kills and Overclock carry across a breach.
   function enterDistrict(key) {
     G.district = key; G.mapKey = chooseMap(key); G.grid = buildGrid(MAPS[G.mapKey], false); G.base = renderMap(G.mapKey, false, SP, G.grid); G.dirty = false; G.perch = perchSpot(); G.gapTiles = gapTiles();
-    const ps = playerStart(); if (!G.p) { G.p = newPlayer(ps.x, ps.y); applyLoadout(G.p, true); } else { Object.assign(G.p, { x: ps.x, y: ps.y, trail: [], dash: 0, iframes: .5 }); applyLoadout(G.p, false); } placeEchoAlly();
+    const ps = playerStart(), fresh = !G.p; if (!G.p) { G.p = newPlayer(ps.x, ps.y); applyLoadout(G.p, true); } else { Object.assign(G.p, { x: ps.x, y: ps.y, trail: [], dash: 0, iframes: .5 }); applyLoadout(G.p, false); } coopPlaceCrew(ps, fresh); placeEchoAlly();
     Object.assign(G, { en: [], bul: [], echoShots: [], pending: [], parts: [], blasts: [], zaps: [], tracers: [], pings: [], dStart: G.kills, phase2: false, tram: null, wind: null, collapse: null,
       boss: false, oc: null, hexed: 0, trace: 0, anchor: null, crateHp: {}, spawnT: 1.5 });
     G.heat = G.heatBase; G.lastHeat = G.heat; G.mult = 1 + G.heat * .5;
@@ -68,6 +68,7 @@
     back: () => { persist(); const f = G.shop.from; if (f === "clear") G.mode = "clear"; else if (f === "campNext") G.mode = "chap"; else if (f === "campRetry") toCamp(); else if (f === "arcade") G.mode = "arcade"; else { G.mode = "title"; AU.stop(); AU.ambience("off"); } },
   };
   function step(rdt, t) {
+    if (coopClientStep(rdt)) return; // in a friend's co-op game: their game runs it, this one sends controls and shows it
     if (G.mode === "play" || G.mode === "shop" || G.mode === "intro" || G.mode === "body" || G.mode === "talk") G.menuMode = null; // menus always reopen on their first option
     const wantStart = hit("lmb") || hit("r") || hit(" ");
     if (G.titleMsg && G.mode !== "title" && G.mode !== "body") G.titleMsg = null; // a title notice never outlives the title screen
@@ -82,8 +83,9 @@
         { label: "ARCADE", act: () => made ? openArcade() : openBodyshop("create"), desc: made ? "PICK A DISTRICT · KILL 100 · BEAT THE BOSS · GO DEEPER" : need },
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
         { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" },
-        { label: "CHALLENGES", col: COL.red, act: () => made ? openExtras() : openBodyshop("create"), desc: made ? `DAILY CHALLENGE · BOSS RUSH · ACHIEVEMENTS ${Object.keys(SAVE.ach).length}/${ACH.length}` : need }]
-        .concat(desktop ? [{ label: "QUIT GAME", col: COL.dim, act: () => { persist(); window.steamBridge.quit(); }, desc: "SEE YOU IN THE RAIN" }] : []), desktop ? 163 : 170, desktop ? 11 : 12); runMenu(G.menu); return; }
+        { label: "CHALLENGES", col: COL.red, act: () => made ? openExtras() : openBodyshop("create"), desc: made ? `DAILY CHALLENGE · BOSS RUSH · ACHIEVEMENTS ${Object.keys(SAVE.ach).length}/${ACH.length}` : need },
+        { label: COOP.role === "host" ? `CO-OP · ${COOP.members.size + 1} IN YOUR GAME` : "CO-OP", col: COL.cyan, act: () => made ? openCoop() : openBodyshop("create"), desc: made ? "PLAY ARCADE AND THE STORY WITH UP TO THREE FRIENDS" : need }]
+        .concat(desktop ? [{ label: "QUIT GAME", col: COL.dim, act: () => { persist(); window.steamBridge.quit(); }, desc: "SEE YOU IN THE RAIN" }] : []), desktop ? 162 : 163, desktop ? 10 : 11); runMenu(G.menu); return; }
     if (G.mode === "arcade") {
       // New maps every run: no district to pick, runs start at District 1 (or jump into the Endless Sprawl once unlocked).
       const n = Math.min(DORDER.length, G.unlocked || 1), fresh = arcadeFresh(), move = d => { G.sel = Math.max(0, Math.min(n - 1, (G.sel || 0) + d)); AU.sfx("lock", 1); };
@@ -97,6 +99,7 @@
         { label: "MAGPIE'S FIRST", col: COL.magenta, act: () => { if (fresh) G.sel = 0; openShop("arcade"); } },
         { label: "BACK", col: COL.dim, act: () => { G.mode = "title"; G.menuMode = null; } }]), fresh ? 134 : 174, 13); runMenu(G.menu); return; }
     if (G.mode === "extras") { updateExtras(rdt); return; }
+    if (G.mode === "coop") { updateCoop(rdt); return; }
     if (G.mode === "talk") { updateTalk(rdt); return; }
     if (G.mode === "camp") { updateCamp(rdt); return; }
     if (G.mode === "chap") { updateChap(rdt, chapActions); return; }
@@ -128,9 +131,9 @@
       if (G.hitstop > 0) { G.hitstop -= rdt; return; }
     }
     const dt = G.oc ? rdt * .12 : rdt;
-    if (G.mode === "play") { G.time += rdt; updatePlayer(dt, rdt); if (G.oc) updateOC(rdt); G.flowT -= dt; if (G.flowT <= 0) { buildFlow(); G.flowT = .25; }
+    if (G.mode === "play") { G.time += rdt; if (!G.p.down) updatePlayer(dt, rdt); if (G.oc) updateOC(rdt); coopUpdateMates(dt, rdt); G.flowT -= dt; if (G.flowT <= 0) { buildFlow(); G.flowT = .25; }
       updateDirector(dt); campTick(dt); if (!G.camp) updateAllies(dt); updateRadio(rdt); updateTram(dt); updateWind(dt); updateCollapse(dt); updateTrace(dt); G.hexed = Math.max(0, G.hexed - dt); }
-    for (const e of G.en) if (e.alive) updateEnemy(e, dt);
+    updateEnemies(dt); // each enemy goes for the nearest player (just you, solo)
     G.en = G.en.filter(e => e.alive);
     updateBullets(dt);
     for (const q of G.parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += q.g * dt; q.vx *= .96; q.life -= dt; } G.parts = G.parts.filter(q => q.life > 0);
@@ -143,6 +146,8 @@
   function draw(t) { drawScene(t); achTick(1 / 60); drawAchToast(c, t); } // achievement toasts sit on top of every screen
   function drawScene(t) {
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
+    if (coopClientDraw(c, t)) return;
+    if (G.mode === "coop") return drawCoop(c, t);
     if (G.mode === "extras") return drawExtras(c, t);
     if (G.mode === "title") return drawTitle(c, t);
     if (G.mode === "arcade") return drawArcade(c, t);
@@ -153,14 +158,14 @@
     if (G.mode === "chap") return drawChap(c, t);
     drawWorld(c, t); drawFog(c, t);
     if (G.oc) drawOC(c, t);
-    if (G.mode === "play" || G.mode === "intro") drawHUD(c, t);
+    if (G.mode === "play" || G.mode === "intro") { drawHUD(c, t); drawCoopHud(c, t); }
     if (G.mode === "dead") drawDead(c, t);
     if (G.mode === "intro") drawIntro(c, t);
     if (G.mode === "clear") drawClear(c, t);
     if (G.mode === "play" && G.paused) drawPause(c);
   }
   let last = 0;
-  function frame(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollPad(rdt); step(rdt, t); G.pressed.clear(); draw(t); requestAnimationFrame(frame); }
+  function frame(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollPad(rdt); step(rdt, t); coopAfterStep(rdt); G.pressed.clear(); draw(t); requestAnimationFrame(frame); }
   setupInput(cv);
   G.best = SAVE.best || 0; G.unlocked = SAVE.unlocked || 1;
   const qs = location.hash.match(/district=(\w+)/);

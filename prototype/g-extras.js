@@ -48,7 +48,7 @@ const ACH = [
 const ACH_BY = Object.fromEntries(ACH.map(a => [a[0], a]));
 // Unlock an achievement once: pays its scrip and shows a toast. Nothing counts in the firing range.
 function achieve(id) {
-  const A = ACH_BY[id]; if (!A || SAVE.ach[id] || G.range) return; SAVE.ach[id] = Date.now(); const reward = A[3] || 200; SAVE.scrip += reward; persist(); PLATFORM.unlock(id); // Steam, in the Steam build
+  const A = ACH_BY[id]; if (!A || G.range || coopAchieve(id) || SAVE.ach[id]) return; SAVE.ach[id] = Date.now(); const reward = A[3] || 200; SAVE.scrip += reward; persist(); PLATFORM.unlock(id); // Steam, in the Steam build
   (G.toasts || (G.toasts = [])).push({ txt: A[1], sub: A[2].toUpperCase() + " · +" + reward + " SCRIP", life: 4 }); AU.sfx("milestone");
 }
 function achTick(rdt) { G.achT = (G.achT || 0) - rdt; if (G.achT > 0) return; G.achT = 1; for (const A of ACH) if (A[4] && !SAVE.ach[A[0]]) { try { if (A[4]()) achieve(A[0]); } catch (e) {} } }
@@ -84,7 +84,7 @@ function recordDaily() {
 }
 // A solo Arcade run posts to the leaderboards once, when it ends (flatline or cash-out). Story, challenges, co-op and the range don't.
 function recordRun() {
-  if (G.runPosted || G.camp || G.daily || G.rush || G.range || G.coop || !G.p) return; G.runPosted = true;
+  if (G.runPosted || G.camp || G.daily || G.rush || G.range || G.crew || !G.p) return; G.runPosted = true;
   const depth = D().n || 1; PLATFORM.post("score", G.score, [G.kills, depth, Math.round(G.time)]); PLATFORM.post("kills", G.kills, [G.score, depth]); PLATFORM.post("depth", depth, [G.score, G.kills]);
 }
 

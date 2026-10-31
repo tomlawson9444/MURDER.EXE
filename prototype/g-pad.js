@@ -16,7 +16,7 @@ const padCfg = () => (SAVE.pad = Object.assign({ assist: 1, autofire: false, aim
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU; return d; };
 
 function rumble(strong, weak, ms) {
-  if (!PAD.active || !padCfg().rumble) return; const gp = navigator.getGamepads && [...navigator.getGamepads()].find(g => g && g.connected); const a = gp && gp.vibrationActuator;
+  if (!PAD.active || !padCfg().rumble || G.noRumble) return; const gp = navigator.getGamepads && [...navigator.getGamepads()].find(g => g && g.connected); const a = gp && gp.vibrationActuator;
   if (a && a.playEffect) a.playEffect("dual-rumble", { duration: ms, strongMagnitude: strong, weakMagnitude: weak }).catch(() => {});
 }
 // Radial deadzone with an outer edge, so a worn stick still reaches full speed.

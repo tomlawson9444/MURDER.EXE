@@ -9,13 +9,14 @@ function fx(x, y, n, cols, sp = 60, life = .5) { for (let i = 0; i < n; i++) { c
 function pop(x, y, txt, col = COL.ink) { G.texts.push({ x, y, txt, col, life: .9 }); }
 
 function playerDie(by) {
-  const p = G.p; if (G.mode !== "play" || p.iframes > 0 || G.god) return;
+  const p = G.p; if (G.mode !== "play" || p.iframes > 0 || G.god || p.down) return;
   if (hasImp("backup") && !p.egoUsed) { p.egoUsed = true; p.iframes = 2; G.bul = G.bul.filter(b => b.owner === "p"); G.shake = 6; rumble(1, 1, 300);
     fx(p.x, p.y - BODY, 30, [COL.cyan, "#ffffff"], 90, .8); G.banner = { txt: "BACKUP EGO RESTORED · MULTIPLIER HALVED", col: COL.cyan, life: 2.4 }; AU.sfx("ocSnap"); return; }
   if (hasImp("aegis") && p.aegis) { p.aegis = false; p.aegisK = 0; p.iframes = 1.6; G.bul = G.bul.filter(b => b.owner === "p"); G.shake = 6; rumble(1, 1, 300); AU.sfx("ocSnap");
     if ((by === "hole" || by === "vent") && p.safe) { p.x = p.safe.x; p.y = p.safe.y; }
     fx(p.x, p.y - BODY, 26, [COL.amber, "#ffffff"], 80, .6); G.banner = { txt: "AEGIS LATTICE BROKEN · 20 KILLS TO RECHARGE", col: COL.amber, life: 2 }; return; }
   if (campShield(by)) return;
+  if (coopDown(p, by)) return; // co-op: down, not out, while a teammate is still standing
   rumble(1, 1, 600); G.mode = "dead"; G.deadT = 0; G.killer = (by === "hole" && G.dropName) || NAMES[by] || by; fx(p.x, p.y - BODY, 30, [COL.cyan, COL.magenta, "#ffffff"], 90, .9);
   AU.sfx("flatline"); AU.stop(); AU.setOC(false); G.oc = null; G.shake = 6;
   G.best = Math.max(G.best || 0, G.score); SAVE.best = G.best; persist();
@@ -52,7 +53,7 @@ function explode(x, y, r, src, safe) {
   G.blasts.push({ x, y, r, life: .35 }); rumble(.9, .6, 300); G.shake = Math.max(G.shake, 5); AU.sfx("boom", panOf(x));
   fx(x, y, 34, [COL.amber, "#fff0c8", COL.red, "#2a2440"], 120, .8);
   for (const e of G.en) if (e.alive && Math.hypot(e.x - x, e.y - y) < r && !BOSSY.has(e.type)) killEnemy(e, "blast");
-  if (!safe && Math.hypot(G.p.x - x, G.p.y - y) < r) playerDie("blast");
+  if (!safe) for (const q of allPlayers()) if (Math.hypot(q.x - x, q.y - y) < r) withP(q, () => playerDie("blast"));
   if (src !== "kiln") blastStalls(x, y, r); // your own Kiln Rounds never hurt what you are guarding
   if (outer) { track("blast", G.blastCount); G.blastCount = null; }
   const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
@@ -61,9 +62,9 @@ function explode(x, y, r, src, safe) {
 function breakTile(i, j) { G.grid[j][i] = "."; G.dirty = true; fx(i * TS + 8, j * TS + 8, 14, ["#6e62a2", "#4a4274", "#b08a3a"], 60, .6); AU.sfx("crateBreak", panOf(i * TS)); }
 function detonateBarrel(i, j) { G.grid[j][i] = "."; G.dirty = true; explode(i * TS + 8, j * TS + 10, 34, "barrel"); }
 function dropSign(i, j) { G.grid[j][i] = "h"; G.dirty = true; AU.sfx("sign"); G.shake = 4; const x = i * TS + 8, y = j * TS + 10;
-  fx(x, y, 20, [COL.magenta, COL.cyan, "#ffffff"], 80, .7); for (const e of G.en) if (e.alive && Math.abs(e.x - x) < 20 && Math.abs(e.y - y) < 16) killEnemy(e, "blast"); if (Math.abs(G.p.x - x) < 14 && Math.abs(G.p.y - y) < 12) playerDie("blast"); }
+  fx(x, y, 20, [COL.magenta, COL.cyan, "#ffffff"], 80, .7); for (const e of G.en) if (e.alive && Math.abs(e.x - x) < 20 && Math.abs(e.y - y) < 16) killEnemy(e, "blast"); for (const q of allPlayers()) if (Math.abs(q.x - x) < 14 && Math.abs(q.y - y) < 12) withP(q, () => playerDie("blast")); }
 
-function shoot(x, y, a, spd, owner, o = {}) { if (owner === "e" && dailyMod("glass")) spd *= 1.35; G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [], col: o.col, big: o.big, homing: o.homing, feathers: o.feathers, blast: o.blast, arc: o.arc, freeze: o.freeze, vamp: o.vamp, split: o.split }); }
+function shoot(x, y, a, spd, owner, o = {}) { if (owner === "e" && dailyMod("glass")) spd *= 1.35; G.bul.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, owner, pl: owner === "p" ? G.p : null, d: 0, life: o.life || 2.5, rail: o.rail, grazed: false, by: o.by, seek: o.seek || 0, pierce: o.pierce || 0, bounce: o.bounce || 0, hits: [], col: o.col, big: o.big, homing: o.homing, feathers: o.feathers, blast: o.blast, arc: o.arc, freeze: o.freeze, vamp: o.vamp, split: o.split }); }
 // The traits a gun's rounds carry.
 function shotOpts(g, focus) { return { pierce: g.pierce, bounce: g.bounce, life: g.life, col: g.col, big: g.big, homing: g.homing, feathers: g.feathers, blast: g.blast, arc: g.arc, freeze: g.freeze, vamp: g.vamp, split: g.split }; }
 
@@ -255,8 +256,10 @@ function hugging(b) {
   return b.owner === "p" ? G.en.some(e => e.alive && !e.alt && near(e)) : near(G.p);
 }
 function updateBullets(dt) {
-  const p = G.p;
+  const P0 = G.p;
   for (const b of G.bul) {
+    // Co-op: your rounds count as yours (kills, Overclock, implants); enemy rounds go for whoever is nearest.
+    const p = G.p = b.owner === "p" ? (b.pl && G.crew && G.crew.includes(b.pl) ? b.pl : P0) : G.crew && b.owner !== "a" ? nearestAlive(b.x, b.y + BODY) || P0 : P0;
     // Homing rounds (Vane's missiles) turn towards you for a short while after launch.
     if (b.seek > 0) { b.seek -= dt; const sp = Math.hypot(b.vx, b.vy); let cur = Math.atan2(b.vy, b.vx), da = Math.atan2(p.y - BODY - b.y, p.x - b.x) - cur; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
       cur += Math.max(-2.4 * dt, Math.min(2.4 * dt, da)); b.vx = Math.cos(cur) * sp; b.vy = Math.sin(cur) * sp; }
@@ -306,5 +309,5 @@ function updateBullets(dt) {
     }
     b.life -= dt;
   }
-  G.bul = G.bul.filter(b => b.life > 0);
+  G.p = P0; G.bul = G.bul.filter(b => b.life > 0);
 }

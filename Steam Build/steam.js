@@ -70,7 +70,7 @@ async function host() {
 async function join(lobbyId) {
   if (!ready()) return { ok: false, error: "Steam isn't running" };
   try {
-    leave(); const r = await S.sdk.matchmaking.joinLobby(String(lobbyId)); if (!r || !r.success) return { ok: false, error: "could not join that lobby" };
+    leave(); S.retries = 0; S.everConnected = false; const r = await S.sdk.matchmaking.joinLobby(String(lobbyId)); if (!r || !r.success) return { ok: false, error: "could not join that lobby" };
     const hostId = idOf(S.sdk.matchmaking.getLobbyData(r.lobbyId, "host") || S.sdk.matchmaking.getLobbyOwner(r.lobbyId));
     S.lobby = { id: r.lobbyId, host: hostId }; watchConnections();
     const c = S.sdk.networkingSockets.connectP2P(hostId, 0); S.conns.set(hostId, c);
@@ -89,8 +89,11 @@ function watchConnections() {
   S.sdk.networkingSockets.onConnectionStateChange(ch => {
     const id = idOf(ch.info && ch.info.identityRemote), st = ch.newState, E = N.ESteamNetworkingConnectionState;
     if (st === E.Connecting && S.listen != null) { if (S.lobby && memberIds().includes(id)) S.sdk.networkingSockets.acceptConnection(ch.connection); else S.sdk.networkingSockets.closeConnection(ch.connection, 0, "not in lobby", false); }
-    if (st === E.Connected) S.conns.set(id, ch.connection);
-    if (st === E.ClosedByPeer || st === E.ProblemDetectedLocally) { S.conns.delete(id); safe(() => S.sdk.networkingSockets.closeConnection(ch.connection, 0, "", false)); if (S.onPeer) S.onPeer({ left: id }); }
+    if (st === E.Connected) { S.conns.set(id, ch.connection); S.everConnected = true; }
+    if (st === E.ClosedByPeer || st === E.ProblemDetectedLocally) { S.conns.delete(id); safe(() => S.sdk.networkingSockets.closeConnection(ch.connection, 0, "", false));
+      // A friend who has only just joined the lobby can reach the host before Steam tells the host they're a member: try again.
+      if (S.lobby && S.listen == null && id === S.lobby.host && !S.everConnected && (S.retries = (S.retries || 0) + 1) <= 5) { setTimeout(() => { if (S.lobby && S.lobby.host === id) S.conns.set(id, S.sdk.networkingSockets.connectP2P(id, 0)); }, 1000); return; }
+      if (S.onPeer) S.onPeer({ left: id }); }
     else if (st === E.Connected && S.onPeer) S.onPeer({ joined: id, name: personaOf(id) });
   });
 }
@@ -100,7 +103,7 @@ function friends() { if (!ready()) return []; return safe(() => S.sdk.friends.ge
 function invite(friendId) { if (!ready() || !S.lobby) return false; return safe(() => S.sdk.matchmaking.inviteUserToLobby(S.lobby.id, String(friendId)), false); }
 function inviteOverlay() { if (!ready() || !S.lobby) return false; safe(() => S.sdk.overlay.activateGameOverlayInviteDialog(S.lobby.id)); return true; }
 // Invites accepted from Steam (while running), or the lobby passed on the command line when Steam launches the game from one.
-function onJoinRequest(fn) { if (!ready()) return; safe(() => S.sdk.matchmaking.onGameLobbyJoinRequested(ev => fn(String(ev.lobbyId)))); const cl = safe(() => S.sdk.matchmaking.getConnectLobbyIdFromCommandLine(), null); if (cl) setTimeout(() => fn(String(cl)), 1500); }
+function onJoinRequest(fn) { if (!ready()) return; safe(() => S.sdk.matchmaking.onGameLobbyJoinRequested(ev => fn(String(ev.lobbyId)))); const cl = safe(() => S.sdk.matchmaking.getConnectLobbyIdFromCommandLine(), null); if (cl) fn(String(cl)); }
 
 /* ---- Messages ---- */
 // to: a Steam ID, or "*" for everyone connected. Reliable for events, unreliable for the fast world updates.

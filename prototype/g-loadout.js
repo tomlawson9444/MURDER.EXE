@@ -127,10 +127,11 @@ const priceOf = i => { const f = SAVE.camp && SAVE.camp.flags || {}; return Math
 const available = i => !i.relic && (!i.req || i.req(SAVE.stats));
 const hasImp = id => !!(G.p && G.p.imps && G.p.imps.includes(id));
 
-function earn(n) { n = Math.round(n); G.runScrip = (G.runScrip || 0) + n; SAVE.scrip += n; }
+function earn(n) { n = Math.round(n); if (G.crew) coopEarn(n); G.runScrip = (G.runScrip || 0) + n; SAVE.scrip += n; }
 function scripFor(e) { const base = e.type === D().boss ? 300 : e.type === "nest" ? 40 : 6; return base * (1 + G.heat * .2); }
 function track(ev, a) {
   if (G.range) return; // nothing in the firing range counts towards milestones
+  if (coopTrack(ev, a)) return; // a co-op friend's kill counts in their own save
   const s = SAVE.stats;
   if (ev === "kill") { s.kills++; s.byType[a] = (s.byType[a] || 0) + 1; }
   else if (ev === "hack") s.hackKills++; else if (ev === "graze") s.grazes++; else if (ev === "blast") s.blastMulti = Math.max(s.blastMulti, a);

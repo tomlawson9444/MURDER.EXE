@@ -62,7 +62,8 @@ function createWindow() {
     icon: path.join(__dirname, "build", "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false } });
   win.loadFile(path.join(__dirname, "game", "index.html"));
-  steam.onJoinRequest(lobbyId => { if (win && !win.isDestroyed()) win.webContents.send("coop:joinRequest", lobbyId); }); // accepted a Steam invite
+  // Accepted a Steam invite (or Steam started the game from one): passed on once the game has loaded.
+  win.webContents.once("did-finish-load", () => steam.onJoinRequest(lobbyId => { if (win && !win.isDestroyed()) win.webContents.send("coop:joinRequest", lobbyId); }));
   if (process.env.MURDER_SMOKE) smokeTest(win);
   win.webContents.on("before-input-event", (e, input) => { if (input.type === "keyDown" && (input.key === "F11" || (input.alt && input.key === "Enter"))) { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); } });
 }

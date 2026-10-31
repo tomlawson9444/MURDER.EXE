@@ -41,14 +41,16 @@ function los(x0, y0, x1, y1, skipLow = 20) {
 }
 
 /* Flow field from the player's tile, rebuilt a few times per second */
-function buildFlow() {
+// In co-op every player gets their own field, so enemies can path to whoever they are after.
+function buildFlow() { const f = flowFrom(G.p); if (f) G.flow = f; if (G.crew) for (const q of G.crew) q.flow = q === G.p ? G.flow : flowFrom(q) || q.flow; }
+function flowFrom(p) {
   const W = MW, H = MH, dist = new Int16Array(W * H).fill(-1), q = [];
-  const px = Math.floor(G.p.x / TS), py = Math.floor(G.p.y / TS); if (px < 0 || py < 0 || px >= W || py >= H) return;
+  const px = Math.floor(p.x / TS), py = Math.floor(p.y / TS); if (px < 0 || py < 0 || px >= W || py >= H) return null;
   dist[py * W + px] = 0; q.push(px, py);
   const ok = (x, y) => { const ch = G.grid.at(x, y); return ch !== null && !WALK_BLOCK.has(ch) && ch !== "o"; };
   for (let h = 0; h < q.length; h += 2) { const x = q[h], y = q[h + 1], d = dist[y * W + x];
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (ok(nx, ny) && dist[ny * W + nx] < 0) { dist[ny * W + nx] = d + 1; q.push(nx, ny); } } }
-  G.flow = dist;
+  return dist;
 }
 function flowDir(e) {
   const tx = Math.floor(e.x / TS), ty = Math.floor(e.y / TS), F = G.flow; if (!F) return [0, 0];
