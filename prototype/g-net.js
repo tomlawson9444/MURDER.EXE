@@ -146,9 +146,9 @@ function coopScaleRules() {
 const coopReviveAll = () => { for (const q of allPlayers()) if (q && q.down) { q.down = false; q.revive = 0; q.iframes = 1; } };
 
 /* ---- Host: what friends earn (each friend banks scrip, stats and achievements in their own save) ---- */
-function coopEarn(n) { for (const q of crewMates()) if (!q.mate.local) q.mate.scrip = (q.mate.scrip || 0) + n; } // team scrip: every kill pays everyone
-function coopTrack(ev, a) { const m = G.p && G.p.mate; if (!m || m.local) return false; /* players on this machine share its save */ (m.tracks || (m.tracks = [])).push([ev, a]); return true; }
-function coopAchieve(id) { const m = G.p && G.p.mate; if (!m || m.local) return false; (m.ach || (m.ach = [])).push(id); return true; }
+function coopEarn(n) { for (const q of crewMates()) if (!q.mate.local && !q.mate.via) q.mate.scrip = (q.mate.scrip || 0) + n; } // team scrip: every kill pays everyone
+function coopTrack(ev, a) { const m0 = G.p && G.p.mate; if (!m0 || m0.local) return false; /* players on this machine share its save */ const m = m0.via ? COOP.members.get(m0.via) || m0 : m0; (m.tracks || (m.tracks = [])).push([ev, a]); return true; }
+function coopAchieve(id) { const m0 = G.p && G.p.mate; if (!m0 || m0.local) return false; const m = m0.via ? COOP.members.get(m0.via) || m0 : m0; (m.ach || (m.ach = [])).push(id); return true; }
 
 /* ---- Host: snapshots ---- */
 const round1 = v => Math.round(v * 10) / 10;
@@ -196,34 +196,40 @@ function hostSnapshot(rdt) {
     b: G.bul.map(b => [Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.col || 0, (b.rail ? 1 : 0) | (b.big ? 2 : 0), b.pl && b.pl.mate ? b.pl.mate.id : 0]),
     fx: { parts: takeNew(G.parts, q => [round1(q.x), round1(q.y), Math.round(q.vx), Math.round(q.vy), round1(q.life), round1(q.max), q.col, q.g], 160), texts: takeNew(G.texts, q => plain(q, 2), 12),
       blasts: takeNew(G.blasts, q => plain(q, 2), 12), zaps: takeNew(G.zaps, q => plain(q, 2), 12), tracers: takeNew(G.tracers, q => plain(q, 2), 16), pings: takeNew(G.pings, q => plain(q, 2), 8) } });
-  for (const m of COOP.members.values()) { if (m.local) continue; const msg = Object.assign({}, common); if (W.run && m.p && G.crew.includes(m.p)) { msg.you = playerId(m.p); msg.me = statsView(m.p); msg.ack = m.ack || 0; } NET.send(m.id, msg, false); }
+  for (const m of COOP.members.values()) { if (m.local || m.via) continue; const msg = Object.assign({}, common); if (W.run && m.p && G.crew.includes(m.p)) { msg.you = playerId(m.p); msg.me = statsView(m.p); msg.ack = m.ack || 0; }
+    if (W.run) { const subs = {}; for (const s of COOP.members.values()) if (s.via === m.id && s.p && G.crew.includes(s.p)) subs[s.id] = statsView(s.p); msg.subs = subs; } NET.send(m.id, msg, false); }
 }
 // Every sound the host's game plays is passed on, so friends hear the fight too.
 (() => { const play = AU.sfx; AU.sfx = function (...a) { if (isHost() && COOP.members.size && RUN_MODES.has(G.mode) && COOP.sfx.length < 32) COOP.sfx.push(a); return play.apply(this, a); }; AU.sfxLocal = play; })();
 const lobbyList = () => [{ id: "host", name: coopName(), look: SAVE.char.look, host: true }].concat([...COOP.members.values()].map(m => ({ id: m.id, name: m.name, look: m.look, pad: m.local ? m.pad : undefined })));
-function broadcastLobby() { const msg = { t: "lobby", members: lobbyList() }; for (const m of COOP.members.values()) if (!m.local) NET.send(m.id, msg, true); }
+function broadcastLobby() { const msg = { t: "lobby", members: lobbyList() }; for (const m of COOP.members.values()) if (!m.local && !m.via) NET.send(m.id, msg, true); }
 
 /* ---- Messages ---- */
 NET.on((from, m) => {
   if (isHost()) {
     if (m.t === "find") return NET.send(from, { t: "here", name: coopName() }, true);
-    if (m.t === "hello") { let mm = COOP.members.get(from);
-      if (!mm && COOP.members.size >= COOP_MAX - 1) return NET.send(from, { t: "full" }, true);
-      if (!mm) { mm = { id: from, scrip: 0 }; COOP.members.set(from, mm); AU.sfx("milestone"); }
+    // A friend's extra controllers arrive over the friend's own connection, as "<friend id>/<controller>".
+    const sub = typeof m.sub === "string" ? m.sub.slice(0, 8) : null, key = sub ? from + "/" + sub : from;
+    if (m.t === "hello") { let mm = COOP.members.get(key);
+      if (sub && !COOP.members.has(from)) return; // the friend joins first
+      if (!mm && COOP.members.size >= COOP_MAX - 1) return NET.send(from, { t: "full", sub }, true);
+      if (!mm) { mm = { id: key, scrip: 0 }; if (sub) Object.assign(mm, { via: from, sub }); COOP.members.set(key, mm); AU.sfx("milestone"); }
       Object.assign(mm, { name: cleanName(m.name), look: m.look && typeof m.look === "object" ? m.look : SAVE.char.look, loadout: safeLoadout(m.loadout), heard: performance.now() });
-      NET.send(from, { t: "welcome", host: coopName() }, true); broadcastLobby(); if (G.mode === "title" || G.mode === "coop") G.titleMsg = { txt: mm.name + " JOINED YOUR GAME", life: 3 }; coopDropIn(mm); return; }
-    const mm = COOP.members.get(from); if (!mm) return; mm.heard = performance.now();
+      NET.send(from, { t: "welcome", host: coopName(), sub }, true); broadcastLobby(); if (G.mode === "title" || G.mode === "coop") G.titleMsg = { txt: mm.name + " JOINED YOUR GAME", life: 3 }; coopDropIn(mm); return; }
+    const mm = COOP.members.get(key); if (!mm) return; mm.heard = performance.now(); if (sub && COOP.members.get(from)) COOP.members.get(from).heard = mm.heard;
     if (m.t === "in") takeInput(mm, m);
-    else if (m.t === "bye") COOP.peerLeft(from);
+    else if (m.t === "bye") COOP.peerLeft(key);
     return;
   }
   if (COOP.role === "client") {
     if (m.t === "here" && !COOP.hostId) { COOP.hostId = from; COOP.hostName = cleanName(m.name); sendHello(); return; }
     if (from !== COOP.hostId) return; COOP.lastHeard = performance.now();
-    if (m.t === "welcome") { if (!COOP.joined) { COOP.joined = true; COOP.hostName = cleanName(m.host); clientStart(); } }
+    if (m.t === "welcome" && m.sub) { const s = [...COOP.subs.values()].find(x => x.sub === m.sub); if (s) s.joined = true; }
+    else if (m.t === "welcome") { if (!COOP.joined) { COOP.joined = true; COOP.hostName = cleanName(m.host); clientStart(); } }
     else if (m.t === "lobby") COOP.lobby = Array.isArray(m.members) ? m.members.slice(0, COOP_MAX) : [];
     else if (m.t === "s" && COOP.joined) applySnapshot(m);
     else if (m.t === "rew" && COOP.joined) applyRewards(m);
+    else if (m.t === "full" && m.sub) { for (const [k, s] of COOP.subs) if (s.sub === m.sub) COOP.subs.delete(k); renumberLocals(); G.banner = { txt: "THAT GAME IS FULL (4 PLAYERS)", col: COL.amber, life: 2 }; }
     else if (m.t === "full") COOP.leave("THAT GAME IS FULL (4 PLAYERS)");
     else if (m.t === "bye") COOP.leave("THE HOST CLOSED THE GAME");
   }
@@ -235,7 +241,7 @@ Object.assign(COOP, {
   async host(kind) {
     COOP.leave(); if (kind === "couch") NET.close(); else NET.open(kind); COOP.msg = kind === "steam" ? "CREATING A STEAM LOBBY…" : null; COOP.couch = kind === "couch";
     if (kind === "steam") { const r = await NET.sb().host().catch(e => ({ ok: false, error: e.message })); if (!r || !r.ok) { NET.close(); COOP.msg = "COULDN'T CREATE A LOBBY: " + String((r && r.error) || "STEAM ERROR").toUpperCase(); return; } COOP.lobbyId = r.lobbyId; }
-    COOP.role = "host"; COOP.members.clear(); COOP.view = "lobby"; COOP.sel = 0; COOP.msg = null; COOP.invited.clear();
+    COOP.role = "host"; COOP.members.clear(); COOP.view = "lobby"; COOP.sel = 0; COOP.msg = null; COOP.invited.clear(); G.menuMode = null; // the new menu starts on its first line
   },
   joinLocal() { COOP.leave(); NET.open("local"); COOP.role = "client"; COOP.joined = false; COOP.hostId = null; COOP.msg = "LOOKING FOR A GAME ON THIS COMPUTER…"; COOP.view = "joining"; COOP.lastHeard = performance.now();
     NET.send("*", { t: "find" }, true); },
@@ -245,13 +251,14 @@ Object.assign(COOP, {
     const r = await NET.sb().join(String(lobbyId)).catch(e => ({ ok: false, error: e.message }));
     if (!r || !r.ok) return COOP.leave("COULDN'T JOIN THAT GAME"); COOP.hostId = String(r.host); COOP.lastHeard = performance.now(); sendHello();
   },
-  peerLeft(id) { if (isHost()) { const m = COOP.members.get(id); if (!m) return; COOP.members.delete(id); coopDropOut(m); broadcastLobby(); G.banner = { txt: m.name + " LEFT", col: COL.dim, life: 2 }; if (G.mode === "title" || G.mode === "coop") G.titleMsg = { txt: m.name + " LEFT YOUR GAME", life: 3 }; }
+  peerLeft(id) { if (isHost()) { const m = COOP.members.get(id); if (!m) return; COOP.members.delete(id); coopDropOut(m);
+      for (const s of [...COOP.members.values()]) if (s.via === id) { COOP.members.delete(s.id); coopDropOut(s); } broadcastLobby(); G.banner = { txt: m.name + " LEFT", col: COL.dim, life: 2 }; if (G.mode === "title" || G.mode === "coop") G.titleMsg = { txt: m.name + " LEFT YOUR GAME", life: 3 }; }
     else if (COOP.role === "client" && id === COOP.hostId) COOP.leave("THE HOST LEFT"); },
   leave(msg) {
     const was = COOP.role, wasClient = was === "client" && COOP.joined;
     if (was === "host") for (const m of COOP.members.values()) NET.send(m.id, { t: "bye" }, true); else if (was === "client" && COOP.hostId) NET.send(COOP.hostId, { t: "bye" }, true);
     if (NET.kind === "steam" && NET.sb()) NET.sb().leave().catch(() => {});
-    NET.close(); COOP.role = null; COOP.couch = false; COOP.joined = false; COOP.hostId = null; COOP.members.clear(); COOP.lobby = []; COOP.cl = null; G.crew = null; COOP.view = "menu"; COOP.sel = 0; COOP.friends = null;
+    NET.close(); COOP.role = null; COOP.couch = false; COOP.subs.clear(); COOP.joined = false; COOP.hostId = null; COOP.members.clear(); COOP.lobby = []; COOP.cl = null; G.crew = null; COOP.view = "menu"; COOP.sel = 0; COOP.friends = null;
     if (wasClient || was === "client") { RUN.leave(); G.p = null; G.en = []; G.bul = []; G.talk = null; resetEndless(); RUN.reset("market"); AU.stop(); AU.ambience("off"); G.oc = null; AU.setOC(false); G.mode = "title"; G.menuMode = null; }
     if (msg) { G.titleMsg = { txt: msg, life: 4 }; COOP.msg = msg; }
   },
@@ -261,12 +268,12 @@ addEventListener("beforeunload", () => { if (COOP.role) COOP.leave(); });
 /* ---- Host: once a frame ---- */
 function coopAfterStep(rdt) {
   if (isHost()) {
-    const now = performance.now(); for (const m of [...COOP.members.values()]) if (!m.local && now - (m.heard || now) > 10000) COOP.peerLeft(m.id); // gone quiet: dropped
+    const now = performance.now(); for (const m of [...COOP.members.values()]) if (!m.local && !m.via && now - (m.heard || now) > 10000) COOP.peerLeft(m.id); // gone quiet: dropped
     if (!COOP.members.size) return; coopRevive(rdt);
     COOP.sendT -= rdt; if (COOP.sendT <= 0 && NET.kind) { COOP.sendT = RUN_MODES.has(G.mode) ? 1 / SNAP_HZ : .25; hostSnapshot(rdt); }
     COOP.lobbyT -= rdt; if (COOP.lobbyT <= 0) { COOP.lobbyT = 2; broadcastLobby(); }
     if (G.ocCool > 0 && G.mode === "play" && !G.paused) G.ocCool -= rdt;
-    COOP.rewT -= rdt; if (COOP.rewT <= 0) { COOP.rewT = 1; for (const m of COOP.members.values()) if (!m.local && m.scrip || (m.tracks && m.tracks.length) || (m.ach && m.ach.length)) { NET.send(m.id, { t: "rew", scrip: m.scrip || 0, tracks: m.tracks || [], ach: m.ach || [] }, true); m.scrip = 0; m.tracks = []; m.ach = []; } }
+    COOP.rewT -= rdt; if (COOP.rewT <= 0) { COOP.rewT = 1; for (const m of COOP.members.values()) if (!m.local && !m.via && (m.scrip || (m.tracks && m.tracks.length) || (m.ach && m.ach.length))) { NET.send(m.id, { t: "rew", scrip: m.scrip || 0, tracks: m.tracks || [], ach: m.ach || [] }, true); m.scrip = 0; m.tracks = []; m.ach = []; } }
   } else if (COOP.role === "client") {
     if (performance.now() - COOP.lastHeard > (COOP.joined ? 10000 : 8000)) return COOP.leave(COOP.joined ? "LOST THE CONNECTION TO THE HOST" : "NO GAME FOUND · HOST ONE IN ANOTHER TAB FIRST");
     if (!COOP.joined) { COOP.helloT -= rdt; if (COOP.helloT <= 0) { COOP.helloT = 1; if (COOP.hostId) sendHello(); else NET.send("*", { t: "find" }, true); } }
@@ -321,7 +328,8 @@ function applySnapshot(S) {
   const O = W.ocs, byNid = nid => C.en.get(nid);
   G.oc = O ? { t: O.t, pool: O.pool, starterName: O.sn, starterMe: O.s === S.you, parts: O.parts.includes(S.you) ? [G.p] : [],
     locks: (O.locks[S.you] || []).map(byNid).filter(Boolean), others: Object.keys(O.locks).filter(id => id !== S.you).flatMap(id => O.locks[id]).map(byNid).filter(Boolean) } : null;
-  if (O) G.oc.taken = G.oc.locks.length + G.oc.others.length;
+  if (O) { G.oc.taken = G.oc.locks.length + G.oc.others.length; G.oc.ids = O.parts; }
+  C.subStats = S.subs || {};
   G.bul = (S.b || []).map(a => ({ x: a[0], y: a[1], vx: a[2], vy: a[3], owner: a[4], col: a[5] || undefined, rail: !!(a[6] & 1), big: !!(a[6] & 2) }));
   const F = S.fx || {}; (F.parts || []).forEach(a => G.parts.push({ x: a[0], y: a[1], vx: a[2], vy: a[3], life: a[4], max: a[5], col: a[6], g: a[7] }));
   ["texts", "blasts", "zaps", "tracers", "pings"].forEach(k => (F[k] || []).forEach(o => G[k].push(o)));
@@ -391,18 +399,21 @@ function drawWait(c, t) {
   if (G.base) { c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); } else { c.fillStyle = "#05040b"; c.fillRect(0, 0, GW, GH); } veil(c, .8);
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, "CO-OP", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 30, col, 16, "center"));
   const C = COOP.cl || {}, what = C.solo ? "IS PLAYING A SOLO CHALLENGE · YOU'LL JOIN THE NEXT RUN" : WAIT_TXT[C.hostMode] || "IS GETTING READY";
-  txt(c, COOP.hostName + "'S GAME", GW / 2, 56, COL.amber, 8, "center"); txt(c, COOP.hostName + " " + what, GW / 2, 70, COL.ink, 8, "center");
-  drawMembers(c, t, COOP.lobby, 96);
-  txt(c, "YOU PLAY WITH YOUR OWN OPERATIVE AND LOADOUT · SCRIP AND ACHIEVEMENTS GO TO YOUR SAVE", GW / 2, 214, rgba(COL.cyan, .75), 8, "center");
+  const tall = tallRows(); txt(c, COOP.hostName + "'S GAME", GW / 2, tall ? 50 : 56, COL.amber, 8, "center"); txt(c, COOP.hostName + " " + what, GW / 2, tall ? 61 : 70, COL.ink, 8, "center");
+  drawMembers(c, t, COOP.lobby, tall ? 74 : 92);
+  txt(c, tall ? "YOUR CONTROLLERS: UP / DOWN PICK · LEFT / RIGHT CHANGE · X NEW LOOK · B LEAVE" : "MORE CONTROLLERS ON THIS COMPUTER? PRESS A ON ONE TO JOIN TOO", GW / 2, tall ? 222 : 212, rgba(COL.amber, .85), 8, "center");
+  txt(c, "YOU PLAY WITH YOUR OWN OPERATIVE AND LOADOUT · SCRIP AND ACHIEVEMENTS GO TO YOUR SAVE", GW / 2, tall ? 234 : 226, rgba(COL.cyan, .75), 8, "center");
   txt(c, (PAD.active ? lab().pause : "ESC") + ": MENU", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
+// Lobby rows grow to show a loadout editor when controllers on this computer have joined.
+const tallRows = () => (isHost() && (COOP.couch || localMembers().length > 0)) || (isClient() && COOP.subs.size > 0);
 function drawMembers(c, t, list, y) {
-  const rh = COOP.couch && isHost() ? 30 : 22; // local co-op rows have room for each controller's loadout
-  panel(c, GW / 2 - 130, y, 260, 16 + COOP_MAX * rh, "#3a3456"); txt(c, `PLAYERS ${list.length}/${COOP_MAX}`, GW / 2 - 120, y + 6, COL.dim);
-  for (let i = 0; i < COOP_MAX; i++) { const m = list[i], yy = y + 20 + i * rh, mm = m && m.pad != null && COOP.couch ? COOP.members.get(m.id) : null;
+  const rh = tallRows() ? 30 : 22; // rows for controllers on this computer have room for their loadout
+  panel(c, GW / 2 - 130, y, 260, 16 + COOP_MAX * rh + (rh > 22 ? 4 : 0), "#3a3456"); txt(c, `PLAYERS ${list.length}/${COOP_MAX}`, GW / 2 - 120, y + 6, COL.dim);
+  for (let i = 0; i < COOP_MAX; i++) { const m = list[i], yy = y + 20 + i * rh, mm = m && localRowOf(m);
     if (!m) { txt(c, "· OPEN SLOT ·", GW / 2, yy + 6, "#3a3456", 8, "center"); continue; }
     const s = m.look ? lookSprites(m.look) : null; if (s) { const f = Math.floor(t / 400) % 2 ? s.SP.vesperB : s.SP.vesper; c.save(); c.beginPath(); c.rect(GW / 2 - 120, yy - 2, 26, 20); c.clip(); drawSpr(c, f, GW / 2 - 120, yy - 4); c.restore(); }
-    if (mm) { drawLocalRow(c, mm, GW / 2 - 88, yy, t); txt(c, "CONTROLLER " + (m.pad + 1), GW / 2 + 120, yy + 1, COL.cyan, 8, "right"); continue; }
+    if (mm) { drawLocalRow(c, mm, GW / 2 - 88, yy, t); txt(c, "CONTROLLER " + (mm.pad + 1), GW / 2 + 120, yy + 1, mm.sub && !mm.joined ? COL.dim : COL.cyan, 8, "right"); continue; }
     txt(c, m.name, GW / 2 - 88, yy + 6, COL.ink); txt(c, m.host ? (COOP.couch ? "PLAYER 1" : "HOST") : m.pad != null ? "CONTROLLER " + (m.pad + 1) : "READY", GW / 2 + 120, yy + 6, m.host ? COL.amber : COL.cyan, 8, "right"); }
 }
 
@@ -430,7 +441,7 @@ function nameTag(c, q, t) {
   if (q.down && q.revive > 0) { c.strokeStyle = COL.cyan; c.lineWidth = 2; c.beginPath(); c.arc(q.x, q.y - 14, 13, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, q.revive / 1.6)); c.stroke(); c.lineWidth = 1; }
 }
 function drawCoopHud(c, t) {
-  if (isHost()) drawLocalHud(c, t);
+  drawLocalHud(c, t);
   const list = (isClient() ? [G.p].concat(COOP.cl.others) : G.crew) || []; if (list.length < 2) return;
   list.forEach((q, i) => { const y = 46 + i * 10, me = q === G.p; txt(c, (q.down ? "DOWN · " : "") + (me ? "YOU" : q.name || "PLAYER"), GW - 8, y, q.down ? COL.red : me ? rgba(COL.ink, .8) : mateCol(q), 8, "right"); });
   if (G.ocCool > 0 && !G.oc) txt(c, "OVERCLOCK LINK READY IN " + Math.ceil(G.ocCool) + "S", GW - 8, 46 + list.length * 10 + 2, rgba(COL.red, .85), 8, "right");
@@ -459,16 +470,17 @@ function coopItems() {
 function updateCoop(rdt) {
   if (COOP.role === "client" && !COOP.joined) { if (hit("escape")) COOP.leave(); return; }
   if (hit("escape")) { if (COOP.view === "friends") { COOP.view = "lobby"; G.menuMode = null; } else { G.mode = "title"; G.menuMode = null; } return; }
-  G.menu = layoutMenu(coopItems(), COOP.view === "friends" ? 64 : isHost() ? (COOP.couch ? 193 : 160) : 118, COOP.view === "friends" ? 13 : 12); runMenu(G.menu);
+  G.menu = layoutMenu(coopItems(), COOP.view === "friends" ? 64 : isHost() ? (tallRows() ? 193 : 164) : 118, COOP.view === "friends" ? 13 : isHost() && tallRows() ? 11 : 12); runMenu(G.menu);
 }
 function drawCoop(c, t) {
   c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); veil(c, .8);
   ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, "CO-OP", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 12, col, 16, "center"));
   if (COOP.role === "client" && !COOP.joined) { txt(c, COOP.msg || "CONNECTING…", GW / 2, 120, COL.ink, 8, "center"); txt(c, "ESC: CANCEL", GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center"); return; }
   if (COOP.view === "friends") { txt(c, "INVITE FRIENDS · " + (COOP.friends ? COOP.friends.length + " ONLINE" : "LOADING…"), GW / 2, 40, COL.dim, 8, "center"); if (COOP.friends && !COOP.friends.length) txt(c, "NO FRIENDS ONLINE · TRY THE STEAM OVERLAY", GW / 2, 50, COL.amber, 8, "center"); }
-  else if (isHost() && COOP.couch) { txt(c, COOP.members.size < COOP_MAX - 1 ? "CONTROLLERS: PRESS A TO JOIN · UP TO 4 PLAYERS ON ONE SCREEN" : "FULL · 4 PLAYERS", GW / 2, 30, COL.cyan, 8, "center"); drawMembers(c, t, lobbyList(), 50);
-    txt(c, "JOINED CONTROLLERS: UP / DOWN PICK · LEFT / RIGHT CHANGE · X NEW LOOK · B LEAVE", GW / 2, 241, rgba(COL.dim, .85), 8, "center"); txt(c, PAD.active ? "PLAYER 1 IS ON " + lab().name : "PLAYER 1 IS ON KEYBOARD AND MOUSE", GW / 2, 40, rgba(COL.dim, .85), 8, "center"); }
-  else if (isHost()) { txt(c, (NET.kind === "steam" ? "STEAM LOBBY · FRIENDS ONLY" : "TEST GAME ON THIS COMPUTER") + " · UP TO 4 PLAYERS", GW / 2, 34, COL.dim, 8, "center"); drawMembers(c, t, lobbyList(), 46); }
+  else if (isHost()) { const full = COOP.members.size >= COOP_MAX - 1; // same screen, online, or both: controllers on this computer can always join
+    txt(c, COOP.couch ? (full ? "FULL · 4 PLAYERS" : "CONTROLLERS: PRESS A TO JOIN · UP TO 4 PLAYERS ON ONE SCREEN") : (NET.kind === "steam" ? "STEAM LOBBY · FRIENDS ONLY" : "TEST GAME ON THIS COMPUTER") + (full ? " · FULL" : " · CONTROLLERS HERE: PRESS A TO JOIN"), GW / 2, 30, COL.cyan, 8, "center");
+    txt(c, PAD.active ? "PLAYER 1 IS ON " + lab().name : "PLAYER 1 IS ON KEYBOARD AND MOUSE", GW / 2, 40, rgba(COL.dim, .85), 8, "center"); drawMembers(c, t, lobbyList(), 50);
+    if (tallRows()) txt(c, "JOINED CONTROLLERS: UP / DOWN PICK · LEFT / RIGHT CHANGE · X NEW LOOK · B LEAVE", GW / 2, 246, rgba(COL.dim, .85), 8, "center"); }
   else { txt(c, "PLAY ARCADE AND THE STORY WITH UP TO THREE FRIENDS", GW / 2, 34, COL.dim, 8, "center");
     wrapText(c, "THE HOST PICKS THE RUN OR CHAPTER AND MAKES THE STORY CHOICES. EVERYONE BRINGS THEIR OWN OPERATIVE AND LOADOUT, AND KEEPS THE SCRIP AND ACHIEVEMENTS THEY EARN. GO DOWN AND A TEAMMATE CAN REVIVE YOU; THE RUN ENDS WHEN EVERYONE IS DOWN.", 380).forEach((l, i) => txt(c, l, GW / 2, 56 + i * 11, rgba(COL.ink, .85), 8, "center"));
     if (!NET.steamReady()) txt(c, window.steamBridge ? "STEAM ISN'T RUNNING · LOCAL CO-OP STILL WORKS" : "ONLINE CO-OP WITH STEAM FRIENDS IS IN THE STEAM VERSION", GW / 2, 104, COL.amber, 8, "center"); }
