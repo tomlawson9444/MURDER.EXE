@@ -1,0 +1,40 @@
+# Builds the Steam desktop app (Steam Build/) on Windows and Linux and attaches the folders to the run,
+# ready to upload through SteamPipe. Runs when the game or the build changes on main, or by hand from the Actions tab.
+name: Steam Build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["prototype/**", "Steam Build/**", ".github/workflows/steam-build.yml"]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win dir
+            out: win-unpacked
+          - os: ubuntu-latest
+            target: --linux dir
+            out: linux-unpacked
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: Steam Build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run game
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Smoke test (Linux)
+        if: runner.os == 'Linux'
+        working-directory: Steam Build/dist/linux-unpacked
+        run: MURDER_SMOKE=1 xvfb-run -a ./murder-exe --no-sandbox --disable-gpu
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MURDER.EXE-${{ matrix.out }}
+          path: Steam Build/dist/${{ matrix.out }}

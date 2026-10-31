@@ -2,7 +2,9 @@
 "use strict";
 (() => {
   const cv = document.getElementById("game"), c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
-  function fit() { const s = Math.min(innerWidth / GW, (innerHeight - 40) / GH); const k = s >= 1 ? Math.max(1, Math.floor(s * 2) / 2) : s; cv.style.width = GW * k + "px"; cv.style.height = GH * k + "px"; }
+  // The desktop (Steam) build has no help line under the game, so the game gets the whole window.
+  const desktop = !!window.steamBridge; if (desktop) document.body.classList.add("desktop");
+  function fit() { const s = Math.min(innerWidth / GW, (innerHeight - (desktop ? 0 : 40)) / GH); const k = s >= 1 ? Math.max(1, Math.floor(s * 2) / 2) : s; cv.style.width = GW * k + "px"; cv.style.height = GH * k + "px"; }
   addEventListener("resize", fit); fit();
   // Load a district into the current run. Score, kills and Overclock carry across a breach.
   function enterDistrict(key) {
@@ -80,7 +82,8 @@
         { label: "ARCADE", act: () => made ? openArcade() : openBodyshop("create"), desc: made ? "PICK A DISTRICT · KILL 100 · BEAT THE BOSS · GO DEEPER" : need },
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
         { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" },
-        { label: "CHALLENGES", col: COL.red, act: () => made ? openExtras() : openBodyshop("create"), desc: made ? `DAILY CHALLENGE · BOSS RUSH · ACHIEVEMENTS ${Object.keys(SAVE.ach).length}/${ACH.length}` : need }], 170, 12); runMenu(G.menu); return; }
+        { label: "CHALLENGES", col: COL.red, act: () => made ? openExtras() : openBodyshop("create"), desc: made ? `DAILY CHALLENGE · BOSS RUSH · ACHIEVEMENTS ${Object.keys(SAVE.ach).length}/${ACH.length}` : need }]
+        .concat(desktop ? [{ label: "QUIT GAME", col: COL.dim, act: () => { persist(); window.steamBridge.quit(); }, desc: "SEE YOU IN THE RAIN" }] : []), desktop ? 163 : 170, desktop ? 11 : 12); runMenu(G.menu); return; }
     if (G.mode === "arcade") {
       // New maps every run: no district to pick, runs start at District 1 (or jump into the Endless Sprawl once unlocked).
       const n = Math.min(DORDER.length, G.unlocked || 1), fresh = arcadeFresh(), move = d => { G.sel = Math.max(0, Math.min(n - 1, (G.sel || 0) + d)); AU.sfx("lock", 1); };

@@ -3,4 +3,5 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("steamBridge", {
   available: ipcRenderer.sendSync("steam:available"),
   activate: name => ipcRenderer.send("steam:activate", String(name)),
+  quit: () => ipcRenderer.send("app:quit"),
 });

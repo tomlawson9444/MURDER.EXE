@@ -58,9 +58,9 @@ The title screen has four choices, with a one-line description under the selecte
 - **OPERATIVE:** the BODYSHOP (or CREATE OPERATIVE before your first game).
 - **MAGPIE'S:** the shop.
 
-## Steam
+## Steam Build
 
-The `steam/` folder packages the game as a desktop app with **Steam achievements**: all 39 in-game achievements map to Steam API names (`MURDER_CH1` … `MURDER_RUSHFAST`), unlock on Steam as you earn them, and re-sync on every launch. The folder has the Electron + steamworks.js app, a ready-made achievement list and 64×64 icons for the Steamworks partner site, and step-by-step setup in [steam/README.md](steam/README.md).
+The `Steam Build/` folder builds the game as a desktop app for Steam with [Electron](https://www.electronjs.org/): fullscreen, offline, an app icon, a QUIT GAME option, and **Steam achievements** (all 39 map to Steam API names like `MURDER_CH1` and re-sync on every launch). It also holds the Steamworks achievement list and icons, SteamPipe upload scripts, and a GitHub Actions workflow that builds Windows and Linux for you. Start with [Steam Build/README.md](Steam%20Build/README.md).
 
 ## Challenges
 

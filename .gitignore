@@ -2,5 +2,5 @@
 Thumbs.db
 node_modules/
 *.log
-steam/game/
-steam/dist/
+Steam Build/game/
+Steam Build/dist/

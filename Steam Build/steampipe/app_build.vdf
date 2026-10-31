@@ -1,0 +1,16 @@
+// SteamPipe app build script. Replace 1234560 (App ID), 1234561 (Windows depot) and 1234562 (Linux depot)
+// with the IDs from your Steamworks app's SteamPipe > Depots page. Run with steamcmd (see README.md).
+"AppBuild"
+{
+	"AppID" "1234560"
+	"Desc" "MURDER.EXE build"
+	"ContentRoot" "../dist/"
+	"BuildOutput" "./output/"
+	"SetLive" ""
+	"Preview" "0"
+	"Depots"
+	{
+		"1234561" "depot_windows.vdf"
+		"1234562" "depot_linux.vdf"
+	}
+}

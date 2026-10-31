@@ -1,0 +1,13 @@
+// Windows depot: everything electron-builder put in dist/win-unpacked.
+"DepotBuild"
+{
+	"DepotID" "1234561"
+	"ContentRoot" "../dist/win-unpacked/"
+	"FileMapping"
+	{
+		"LocalPath" "*"
+		"DepotPath" "."
+		"Recursive" "1"
+	}
+	"FileExclusion" "*.pdb"
+}

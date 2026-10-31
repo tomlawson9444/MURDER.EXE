@@ -1,0 +1,60 @@
+{
+  "name": "murder-exe",
+  "productName": "MURDER.EXE",
+  "version": "0.1.0",
+  "description": "MURDER.EXE desktop build for Steam: the browser game in Electron, with Steam achievements through steamworks.js.",
+  "author": "MURDER.EXE",
+  "repository": "github:tomlawson9444/MURDER.EXE",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "game": "node copy-game.js",
+    "start": "npm run game && electron .",
+    "smoke": "npm run game && cross-env MURDER_SMOKE=1 MURDER_WINDOWED=1 electron .",
+    "dist:win": "npm run game && electron-builder --win dir",
+    "dist:linux": "npm run game && electron-builder --linux dir",
+    "dist:mac": "npm run game && electron-builder --mac dir",
+    "dist": "npm run game && electron-builder --win dir --linux dir"
+  },
+  "dependencies": {
+    "steamworks.js": "^0.4.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.0",
+    "cross-env": "^7.0.3"
+  },
+  "build": {
+    "appId": "com.murderexe.game",
+    "productName": "MURDER.EXE",
+    "files": [
+      "main.js",
+      "preload.js",
+      "game/**",
+      "build/icon.png"
+    ],
+    "asarUnpack": [
+      "node_modules/steamworks.js/dist/**"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": "dir",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "dir",
+      "icon": "build/icon.png",
+      "category": "Game",
+      "executableName": "murder-exe"
+    },
+    "icon": "build/icon.png",
+    "mac": {
+      "target": "dir",
+      "icon": "build/icon.png",
+      "category": "public.app-category.action-games"
+    }
+  }
+}

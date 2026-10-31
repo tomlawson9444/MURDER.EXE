@@ -1,0 +1,12 @@
+// Linux depot (also runs natively on Steam Deck): everything electron-builder put in dist/linux-unpacked.
+"DepotBuild"
+{
+	"DepotID" "1234562"
+	"ContentRoot" "../dist/linux-unpacked/"
+	"FileMapping"
+	{
+		"LocalPath" "*"
+		"DepotPath" "."
+		"Recursive" "1"
+	}
+}

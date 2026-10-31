@@ -18,6 +18,7 @@ body { margin: 0; background: var(--void); color: var(--ink); display: flex; fle
 .help b { color: var(--cyan); font-weight: 400; }
 .touch { display: none; font: 400 11px var(--f-pixel); color: #ffb22e; text-align: center; }
 @media (hover: none) and (pointer: coarse) { .touch { display: block; } }
+body.desktop { padding: 0; } body.desktop .help, body.desktop .touch { display: none; } body.desktop #game { box-shadow: none; }
 </style>
 <canvas id="game" width="480" height="272" tabindex="0" aria-label="MURDER.EXE game"></canvas>
 <p class="help"><b>WASD</b> move · <b>click</b> shoot · <b>space</b> dash · <b>hold right-click</b> Overclock · <b>Q</b> hack · <b>R</b> reload · <b>P</b> pause</p>

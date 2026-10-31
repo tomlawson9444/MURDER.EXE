@@ -20,16 +20,31 @@ function initSteam() {
 }
 
 ipcMain.on("steam:available", e => { e.returnValue = !!steam; });
+ipcMain.on("app:quit", () => app.quit());
 ipcMain.on("steam:activate", (e, name) => {
   if (!steam || typeof name !== "string" || !/^MURDER_[A-Z0-9_]+$/.test(name)) return;
   try { if (!steam.achievement.isActivated(name)) steam.achievement.activate(name); } catch (err) { console.warn("[steam] could not unlock", name, err.message); }
 });
 
 function createWindow() {
-  const win = new BrowserWindow({ width: 1440, height: 816, minWidth: 960, minHeight: 544, backgroundColor: "#05040b", title: "MURDER.EXE", autoHideMenuBar: true,
+  // Fullscreen by default (Steam Deck included); F11 or Alt+Enter switches to a window. MURDER_WINDOWED=1 starts windowed.
+  const win = new BrowserWindow({ width: 1440, height: 816, minWidth: 960, minHeight: 544, backgroundColor: "#05040b", title: "MURDER.EXE", autoHideMenuBar: true, fullscreen: !process.env.MURDER_WINDOWED,
+    icon: path.join(__dirname, "build", "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false } });
   win.loadFile(path.join(__dirname, "game", "index.html"));
-  win.webContents.on("before-input-event", (e, input) => { if (input.type === "keyDown" && input.key === "F11") { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); } });
+  if (process.env.MURDER_SMOKE) smokeTest(win);
+  win.webContents.on("before-input-event", (e, input) => { if (input.type === "keyDown" && (input.key === "F11" || (input.alt && input.key === "Enter"))) { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); } });
+}
+
+// Self-test for any build: MURDER_SMOKE=1 starts the game, checks it reached the title screen with the Steam bridge
+// in place, saves a screenshot to smoke-test.png beside the app, prints a JSON line and quits (exit code 1 on failure).
+function smokeTest(win) {
+  const errors = []; win.webContents.on("console-message", (e, level, msg) => { if (level >= 3) errors.push(msg); });
+  setTimeout(async () => {
+    let r = {}; try { r = await win.webContents.executeJavaScript(`({ mode: __G.mode, bridge: typeof window.steamBridge, steam: !!(window.steamBridge && window.steamBridge.available), platform: PLATFORM.name, achievements: ACH.length, font: document.fonts.check('8px "Silkscreen"') })`); } catch (e) { errors.push(String(e)); }
+    try { fs.writeFileSync(path.join(process.cwd(), "smoke-test.png"), (await win.webContents.capturePage()).toPNG()); } catch (e) { errors.push("screenshot: " + e.message); }
+    const ok = r.mode === "title" && r.bridge === "object" && !errors.length; console.log("SMOKE " + JSON.stringify(Object.assign(r, { ok, errors }))); app.exit(ok ? 0 : 1);
+  }, 6000);
 }
 
 initSteam();
