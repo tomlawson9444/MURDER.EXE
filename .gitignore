@@ -4,3 +4,5 @@ node_modules/
 *.log
 Steam Build/game/
 Steam Build/dist/
+Steam Build/steamworks_sdk/redistributable_bin/
+Steam Build/smoke-test.png

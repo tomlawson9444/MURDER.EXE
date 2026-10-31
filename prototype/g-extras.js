@@ -80,6 +80,12 @@ const dailyMod = id => !!(G.daily && G.daily.mod[0] === id);
 function recordDaily() {
   const D2 = G.daily; if (!D2 || D2.recorded) return; D2.recorded = true; const rec = SAVE.daily[D2.key] || (SAVE.daily[D2.key] = { best: 0, tries: 0, top: [] });
   rec.tries++; rec.best = Math.max(rec.best, G.score); rec.top = rec.top.concat([G.score]).sort((a, b) => b - a).slice(0, 5); persist(); achieve("daily");
+  PLATFORM.post("daily", G.score, [G.kills]);
+}
+// A solo Arcade run posts to the leaderboards once, when it ends (flatline or cash-out). Story, challenges, co-op and the range don't.
+function recordRun() {
+  if (G.runPosted || G.camp || G.daily || G.rush || G.range || G.coop || !G.p) return; G.runPosted = true;
+  const depth = D().n || 1; PLATFORM.post("score", G.score, [G.kills, depth, Math.round(G.time)]); PLATFORM.post("kills", G.kills, [G.score, depth]); PLATFORM.post("depth", depth, [G.score, G.kills]);
 }
 
 /* ---- Boss Rush: the ten story bosses back to back, with your own gear and three shields for the whole run ---- */
@@ -95,14 +101,38 @@ function rushBoss() {
 function rushNext() {
   const R = G.rush; R.total += G.time; R.shields = G.p.shield || 0; R.i++;
   if (R.i < RUSH.length) return rushBoss();
-  const best = SAVE.rush.best; SAVE.rush.best = best ? Math.min(best, R.total) : R.total; SAVE.rush.wins = (SAVE.rush.wins || 0) + 1; persist();
+  const best = SAVE.rush.best; SAVE.rush.best = best ? Math.min(best, R.total) : R.total; SAVE.rush.wins = (SAVE.rush.wins || 0) + 1; persist(); PLATFORM.post("rush", Math.max(1, Math.round(R.total)));
   achieve("rush"); if (R.total < 15 * 60) achieve("rushfast");
   G.rushDone = { total: R.total, newBest: !best || R.total < best }; G.rush = null; AU.stop(); openExtras("rushdone");
 }
 
 /* ---- CHALLENGES screen ---- */
 function openExtras(view) { G.mode = "extras"; G.xView = view || "menu"; G.menuMode = null; G.achScroll = 0; G.camp = null; G.rules = null; G.chapMap = null; }
+/* ---- Leaderboards view ---- */
+const LB_SCOPES = [["global", "GLOBAL TOP 10"], ["friends", "FRIENDS"], ["me", "AROUND ME"]];
+function lbLoad() { const B = BOARDS[G.lbTab || 0], sc = LB_SCOPES[G.lbScope || 0][0], key = B.id + "/" + sc; if (G.lbData && G.lbData.key === key) return;
+  const D2 = G.lbData = { key, loading: true, rows: [], source: "" }; PLATFORM.rows(B.id, sc).then(r => { if (G.lbData === D2) Object.assign(D2, r, { loading: false }); }); }
+function updateLeaderboards() {
+  const n = BOARDS.length; if (hit("arrowleft") || hit("a") || hit("q")) { G.lbTab = ((G.lbTab || 0) + n - 1) % n; AU.sfx("lock", 1); } if (hit("arrowright") || hit("d") || hit("e")) { G.lbTab = ((G.lbTab || 0) + 1) % n; AU.sfx("lock", 1); }
+  if (hit("arrowdown") || hit("s")) { G.lbScope = ((G.lbScope || 0) + 1) % 3; AU.sfx("lock", 0); } if (hit("arrowup") || hit("w")) { G.lbScope = ((G.lbScope || 0) + 2) % 3; AU.sfx("lock", 0); }
+  if (hit("lmb")) { for (let i = 0; i < n; i++) if (inBox([14 + i * 92, 32, 88, 13], mouse.x, mouse.y)) G.lbTab = i; for (let i = 0; i < 3; i++) if (inBox([14 + i * 152, 52, 148, 12], mouse.x, mouse.y)) G.lbScope = i; }
+  if (hit("escape") || hit("enter") || hit(" ")) { G.xView = "menu"; G.menuMode = null; return; } lbLoad();
+}
+function drawLeaderboards(c, t) {
+  const B = BOARDS[G.lbTab || 0], D2 = G.lbData || {}, steam = PLATFORM.name === "steam";
+  BOARDS.forEach((b, i) => { const on = i === (G.lbTab || 0); c.fillStyle = on ? COL.amber : "#16121f"; c.fillRect(14 + i * 92, 32, 88, 13); txt(c, b.name, 58 + i * 92, 35, on ? "#05040b" : COL.dim, 8, "center"); });
+  if (steam) LB_SCOPES.forEach(([, nm], i) => { const on = i === (G.lbScope || 0); txt(c, (on ? "> " : "") + nm + (on ? " <" : ""), 88 + i * 152, 54, on ? COL.cyan : COL.dim, 8, "center"); });
+  else txt(c, "YOUR BEST RUNS ON THIS DEVICE · STEAM LEADERBOARDS ARE IN THE STEAM VERSION", GW / 2, 54, rgba(COL.amber, .75), 8, "center");
+  c.fillStyle = "rgba(10,8,18,.85)"; c.fillRect(14, 66, 452, 168);
+  if (D2.loading) txt(c, "CONTACTING STEAM…", GW / 2, 140, COL.dim, 8, "center");
+  else if (!D2.rows || !D2.rows.length) txt(c, D2.source === "offline" ? "STEAM IS OFFLINE · NO LOCAL SCORES YET" : B.id === "rush" ? "NO TIMES YET · BEAT BOSS RUSH TO POST ONE" : "NO SCORES YET · " + (B.id === "daily" ? "PLAY TODAY'S DAILY" : "FINISH A SOLO ARCADE RUN") + " TO POST ONE", GW / 2, 140, COL.dim, 8, "center");
+  else D2.rows.slice(0, 10).forEach((r, i) => { const y = 72 + i * 16; if (r.me) { c.fillStyle = rgba(COL.cyan, .14); c.fillRect(16, y - 3, 448, 14); }
+    txt(c, "#" + r.rank, 24, y, r.rank <= 3 ? COL.amber : COL.dim); txt(c, String(r.name).toUpperCase().slice(0, 26), 70, y, r.me ? COL.cyan : COL.ink); txt(c, B.fmt(r.score), 456, y, r.me ? COL.cyan : COL.amber, 8, "right"); });
+  if (D2.source === "offline") txt(c, "STEAM DIDN'T ANSWER · SHOWING YOUR LOCAL BESTS", GW / 2, 238, rgba(COL.red, .8), 8, "center");
+  txt(c, PAD.active ? "LB / RB BOARD · UP / DOWN VIEW · B BACK" : "A / D BOARD · W / S VIEW · ESC BACK", GW / 2, GH - 12, rgba(COL.dim, .7), 8, "center");
+}
 function updateExtras(rdt) {
+  if (G.xView === "lb") return updateLeaderboards();
   if (G.xView === "ach") { const rows = Math.ceil(ACH.length / 2), vis = 9;
     if (hit("arrowdown") || hit("s")) G.achScroll = Math.min(rows - vis, (G.achScroll || 0) + 1); if (hit("arrowup") || hit("w")) G.achScroll = Math.max(0, (G.achScroll || 0) - 1);
     if (G.wheel) { G.achScroll = Math.max(0, Math.min(rows - vis, (G.achScroll || 0) + Math.sign(G.wheel))); G.wheel = 0; }
@@ -113,12 +143,14 @@ function updateExtras(rdt) {
     : [{ label: "DAILY CHALLENGE · " + d.mod[1], col: COL.amber, act: () => made ? RUN.startDaily() : openBodyshop("create") },
       { label: "BOSS RUSH", col: COL.red, act: () => { if (!made) return openBodyshop("create"); RUN.leave(); startRush(); } },
       { label: `ACHIEVEMENTS · ${Object.keys(SAVE.ach).length}/${ACH.length}`, col: COL.cyan, act: () => { G.xView = "ach"; G.achScroll = 0; } },
+      { label: "LEADERBOARDS", col: COL.amber, act: () => { G.xView = "lb"; G.lbData = null; } },
       { label: "BACK", col: COL.dim, act: () => { G.mode = "title"; G.menuMode = null; } }];
-  G.menu = layoutMenu(items, G.xView === "rushdone" ? 190 : 170, 13); runMenu(G.menu);
+  G.menu = layoutMenu(items, G.xView === "rushdone" ? 190 : 166, 12); runMenu(G.menu);
 }
 function drawExtras(c, t) {
   if (G.base) { c.drawImage(G.base.C, 0, 0); drawRain(c, G.base, t); } veil(c, .85);
-  ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, G.xView === "ach" ? "ACHIEVEMENTS" : G.xView === "rushdone" ? "BOSS RUSH COMPLETE" : "CHALLENGES", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 12, col, 16, "center"));
+  ["#ff2d8a", "#2be4ff", "#e9e6f5"].forEach((col, i) => txt(c, G.xView === "lb" ? "LEADERBOARDS" : G.xView === "ach" ? "ACHIEVEMENTS" : G.xView === "rushdone" ? "BOSS RUSH COMPLETE" : "CHALLENGES", GW / 2 + (i === 0 ? -1 : i === 1 ? 1 : 0), 12, col, 16, "center"));
+  if (G.xView === "lb") return drawLeaderboards(c, t);
   if (G.xView === "ach") {
     const got = Object.keys(SAVE.ach).length, earned = ACH.filter(a => SAVE.ach[a[0]]).reduce((s, a) => s + (a[3] || 200), 0); txt(c, `${got}/${ACH.length} UNLOCKED · ${earned} SCRIP EARNED`, GW / 2, 34, COL.amber, 8, "center");
     const sc = G.achScroll || 0; ACH.slice(sc * 2, sc * 2 + 18).forEach((A, k) => { const x = k % 2 ? 244 : 14, y = 50 + Math.floor(k / 2) * 22, on = !!SAVE.ach[A[0]];

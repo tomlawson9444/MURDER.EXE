@@ -28,6 +28,17 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      # Valve's Steam API libraries can't live in this public repo. Store a zip of the SDK's redistributable_bin folder,
+      # base64-encoded, as the STEAMWORKS_REDIST secret (see Steam Build/README.md). Without it the build still works,
+      # but Steam features (achievements, leaderboards, co-op) stay off in that build.
+      - name: Steamworks SDK redistributables
+        shell: bash
+        env:
+          STEAMWORKS_REDIST: ${{ secrets.STEAMWORKS_REDIST }}
+        run: |
+          if [ -z "$STEAMWORKS_REDIST" ]; then echo "::warning::STEAMWORKS_REDIST secret not set; this build has no Steam features"; exit 0; fi
+          echo "$STEAMWORKS_REDIST" | base64 -d > redist.zip && unzip -q -o redist.zip -d steamworks_sdk && rm redist.zip
+          ls steamworks_sdk/redistributable_bin
       - run: npm run game
       - run: npx electron-builder ${{ matrix.target }} --publish never
       - name: Smoke test (Linux)

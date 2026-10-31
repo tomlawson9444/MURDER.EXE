@@ -1,0 +1,4 @@
+/* Bundled fonts so the game never needs the internet. Both are SIL Open Font License 1.1 (see OFL-*.txt):
+   Chakra Petch Bold (Cadson Demak) and Silkscreen (Jason Kottke). */
+@font-face { font-family: 'Chakra Petch'; font-style: normal; font-weight: 700; font-display: block; src: url(ChakraPetch-Bold.ttf) format('truetype'); }
+@font-face { font-family: 'Silkscreen'; font-style: normal; font-weight: 400; font-display: block; src: url(Silkscreen-Regular.ttf) format('truetype'); }

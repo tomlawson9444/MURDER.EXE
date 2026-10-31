@@ -17,12 +17,12 @@
     "dist": "npm run game && electron-builder --win dir --linux dir"
   },
   "dependencies": {
-    "steamworks.js": "^0.4.0"
+    "steamworks-ffi-node": "^0.11.3"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "electron": "^31.0.0",
-    "electron-builder": "^24.13.0",
-    "cross-env": "^7.0.3"
+    "electron-builder": "^24.13.0"
   },
   "build": {
     "appId": "com.murderexe.game",
@@ -34,7 +34,8 @@
       "build/icon.png"
     ],
     "asarUnpack": [
-      "node_modules/steamworks.js/dist/**"
+      "node_modules/koffi/**",
+      "node_modules/steamworks-ffi-node/**"
     ],
     "directories": {
       "output": "dist",
@@ -55,6 +56,15 @@
       "target": "dir",
       "icon": "build/icon.png",
       "category": "public.app-category.action-games"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "steamworks_sdk",
+        "to": "steamworks_sdk",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   }
 }

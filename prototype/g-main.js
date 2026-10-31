@@ -19,10 +19,10 @@
   function reset(key) { Object.assign(G, { p: null, runScrip: 0, kills: 0, score: 0, time: 0, texts: [], shake: 0, hitstop: 0, flash: 0, flowT: 0, heatBase: key === "rookery" ? 1 : /^x\d+$/.test(key) ? 2 : 0 }); enterDistrict(key); }
   function music() { AU.setOC(false); AU.start(); AU.setHeat(Math.min(5, G.heat + 2)); setTimeout(() => AU.ambience(D().amb), 60); }
   const leaveCampaign = () => Object.assign(G, { camp: null, rules: null, chapMap: null, radioQ: [], stalls: null, gates: null, shard: null, flood: null, vents: null, drops: null, rackFlow: null, lull: false, fog: 0, hazard: null, dropName: null, god: false, allies: [], rw: null, zone: null, exit: null, choirRounds: 0, range: null, tryLoadout: null, daily: null, rush: null });
-  function start(key, sameSeed) { leaveCampaign(); if (key === "endless") key = "x3"; G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } resetEndless(); reset(key); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
+  function start(key, sameSeed) { leaveCampaign(); if (key === "endless") key = "x3"; G.startDistrict = key; if (!sameSeed) { G.runSeed = G.queuedSeed != null ? G.queuedSeed : PG.randomSeed(); G.queuedSeed = null; } resetEndless(); reset(key); G.runPosted = false; G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); }
   function breach() { const next = getDist(D().next); G.heatBase = Math.min(4, Math.min(2, G.heat) + Math.floor(Math.max(0, next.n - 2) / 2)); enterDistrict(D().next); G.mode = "play"; music(); buildFlow(); AU.sfx("ocIn"); }
   // The title screen always sits on the Rain Market ("endless" is a menu entry, not a map, so it can't be rebuilt).
-  function cashOut() { if (G.daily) recordDaily(); persist(); AU.stop(); AU.ambience("off"); leaveCampaign(); G.mode = "title"; reset("market"); }
+  function cashOut() { if (G.daily) recordDaily(); recordRun(); persist(); AU.stop(); AU.ambience("off"); leaveCampaign(); G.mode = "title"; reset("market"); }
   // FIRING RANGE: try any item from Magpie's (owned or not) on targets that never fight back. Nothing you do here pays or counts.
   function startRange(item) {
     const L = SAVE.loadout, T = { gun: L.gun, oc: L.oc, imp: L.imp.slice() }; if (item.cat === "gun") T.gun = item.id; else if (item.cat === "oc") T.oc = item.id; else if (item.cat === "imp" && !T.imp.includes(item.id)) { if (T.imp.length >= IMP_SLOTS) T.imp.shift(); T.imp.push(item.id); }
@@ -102,7 +102,7 @@
     if (G.mode === "chap") { updateChap(rdt, chapActions); return; }
     if (G.mode === "shop") { updateShop(rdt, shopActions); return; }
     if (G.mode === "body") { updateBodyshop(rdt, bodyActions); return; }
-    if (G.mode === "dead") { G.deadT += rdt; G.menu = null; if (G.daily) recordDaily();
+    if (G.mode === "dead") { G.deadT += rdt; G.menu = null; if (G.daily) recordDaily(); recordRun();
       if (G.deadT > .8 && G.rush) { const R = G.rush, again = () => { leaveCampaign(); startRush(); };
         if (hit("r")) again(); else if (hit("escape")) { leaveCampaign(); openExtras(); }
         else { G.menu = layoutMenu([{ label: "TRY THE RUSH AGAIN", act: again }, { label: "CHALLENGES", col: COL.dim, act: () => { leaveCampaign(); openExtras(); } }], 176); runMenu(G.menu); } }

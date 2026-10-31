@@ -106,8 +106,12 @@ const CATS = [["gun", "SIDEARMS"], ["oc", "OVERCLOCK"], ["imp", "IMPLANTS"]];
 const SAVE_KEY = "murder-save-v1";
 function defaultSave() { return { scrip: 300, owned: ["kestrel", "deadlink"], loadout: { gun: "kestrel", oc: "deadlink", imp: [] }, unlocked: 1, best: 0, mapMode: "gen", builds: [null, null, null], ach: {}, daily: {}, rush: {}, extra: {},
   stats: { kills: 0, byType: {}, hackKills: 0, grazes: 0, blastMulti: 0, falls: 0, ocCount: 0, ocFull: 0, dashes: 0, heatMax: 0, clears: {} }, seen: [] }; }
+// Where the save lives: save.json in the app-data folder in the Steam build (so Steam Cloud can sync it between PC and Deck),
+// the browser's localStorage everywhere else. The first Steam launch picks up an existing browser save and moves it into the file.
+const SAVE_FILE = typeof window !== "undefined" && window.steamBridge && window.steamBridge.readSave ? window.steamBridge : null;
+function readSaveText() { if (SAVE_FILE) { try { const t = SAVE_FILE.readSave(); if (t) return t; } catch (e) {} } try { return localStorage.getItem(SAVE_KEY); } catch (e) { return null; } }
 function loadSave() {
-  let s = null; try { s = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
+  let s = null; try { s = JSON.parse(readSaveText()); } catch (e) {}
   const d = defaultSave();
   if (!s) { s = d; try { s.best = +localStorage.getItem("murder-best") || 0; s.unlocked = +localStorage.getItem("murder-unlock") || 1; if (s.unlocked > 1) s.stats.clears.market = true; } catch (e) {} }
   for (const k in d) if (s[k] === undefined) s[k] = d[k];
@@ -116,7 +120,7 @@ function loadSave() {
   return s;
 }
 let SAVE = loadSave();
-function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
+function persist() { const t = JSON.stringify(SAVE); if (SAVE_FILE) { try { SAVE_FILE.writeSave(t); } catch (e) {} } try { localStorage.setItem(SAVE_KEY, t); } catch (e) {} }
 const owns = id => SAVE.owned.includes(id);
 // Magpie's prices: 20% off if you forgave her in the campaign, 20% more if you cut her off.
 const priceOf = i => { const f = SAVE.camp && SAVE.camp.flags || {}; return Math.round(i.price * (f.forgaveMagpie ? .8 : f.cutMagpie ? 1.2 : 1)); };
