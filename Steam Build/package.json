@@ -6,6 +6,7 @@
   "author": "MURDER.EXE",
   "repository": "github:tomlawson9444/MURDER.EXE",
   "main": "main.js",
+  "steamAppId": 480,
   "private": true,
   "scripts": {
     "game": "node copy-game.js",
@@ -29,6 +30,7 @@
     "productName": "MURDER.EXE",
     "files": [
       "main.js",
+      "steam.js",
       "preload.js",
       "game/**",
       "build/icon.png"

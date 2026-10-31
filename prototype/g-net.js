@@ -94,10 +94,17 @@ function coopUpdateMates(dt, rdt) {
 // Enemies go for the nearest player who is still up, and stick with them for a second or two.
 function updateEnemies(dt) {
   const crew = G.crew; if (!crew || crew.length < 2) { for (const e of G.en) if (e.alive) updateEnemy(e, dt); return; }
-  for (const e of G.en) { if (!e.alive) continue; let t = e.tgt; e.tgtT = (e.tgtT || 0) - dt;
+  for (const e of G.en) { if (!e.alive) continue; if (!FLYING.has(e.type) && tileOf(e.x, e.y) === "o") { updateEnemy(e, dt); continue; } // a fall is nobody's kill
+    let t = e.tgt; e.tgtT = (e.tgtT || 0) - dt; const was = e.state;
     if (!t || t.down || !crew.includes(t) || e.tgtT <= 0) { e.tgtT = 1 + Math.random(); let bd = 1e9; const cur = t;
       for (const q of crew) { if (q.down) continue; const d = Math.hypot(q.x - e.x, q.y - e.y) * (q === cur ? .8 : 1); if (d < bd) { bd = d; t = q; } } e.tgt = t; }
-    coopScaleBoss(e); if (!t || t.down) t = nearestAlive(e.x, e.y) || G.p; const edt = e.cs ? dt * bossSpeed() : dt; withP(t, () => updateEnemy(e, edt)); }
+    coopScaleBoss(e); if (!t || t.down) t = nearestAlive(e.x, e.y) || G.p; const edt = e.cs ? dt * bossSpeed() : dt; withP(t, () => updateEnemy(e, edt));
+    if (e.alive) contactOthers(e, t, was); }
+}
+// Enemies that hurt by touch hurt any player they hit, not just the one they're chasing.
+function contactOthers(e, t, was) {
+  const r = e.type === "shrike" && e.state === "lunge" ? 9 : e.type === "corvid" && e.state === "dive" ? 9 : e.type === "bulwark" ? 11 : e.type === "blackwing" && was === "lock" && e.state === "vuln" ? 26 : 0;
+  if (r) for (const q of G.crew) if (q !== t && !q.down && Math.hypot(q.x - e.x, q.y - e.y) < r) withP(q, () => playerDie(e.type));
 }
 // Instead of dying, a player goes DOWN while anyone else is still up. Stand beside them to bring them back.
 function coopDown(p, by) {
@@ -175,16 +182,18 @@ function talkView() { const T = G.talk; if (!T) return null;
 function ocView() { const o = G.oc; if (!o || !o.parts) return null; const locks = {}; o.parts.forEach(q => { locks[playerId(q)] = (q.ocLocks || []).filter(e => e.alive && e.nid).map(e => e.nid); });
   return { t: round1(o.t), s: playerId(o.starter), sn: o.starter.name || coopName(), parts: o.parts.map(playerId), pool: ocPool(o), locks }; }
 const gridString = () => G.grid ? G.grid.map(r => r.join("")).join("") : "";
-let lastGrid = "", gridT = 0;
+let lastGrid = "", gridT = 0, gridSendT = 0, lastRecipe = null;
 function worldView(rdt) {
   const inRun = RUN_MODES.has(G.mode) && !!G.crew, W = { mode: G.mode, run: inRun, paused: !!G.paused, solo: RUN_MODES.has(G.mode) && !G.crew };
   if (!inRun) return W;
-  const g = gridString(); gridT -= rdt; const sendGrid = g !== lastGrid || gridT <= 0; if (sendGrid) { lastGrid = g; gridT = 1; }
+  // The map goes out when it changes (a new district, a broken crate) and once a second; checked 4 times a second.
+  const recipe = G.mapRecipe || { key: G.mapKey }, newMap = recipe !== lastRecipe; gridT -= rdt; gridSendT -= rdt; let sendGrid = newMap || gridSendT <= 0;
+  if (newMap || gridT <= 0) { gridT = .25; const g = gridString(); if (g !== lastGrid) { lastGrid = g; sendGrid = true; } } if (sendGrid) { gridSendT = 1; lastRecipe = recipe; }
   Object.assign(W, { district: G.district, seed: G.runSeed, score: G.score, kills: G.kills, dStart: G.dStart, heat: G.heat, mult: round1(G.mult), boss: !!G.boss, phase2: !!G.phase2, oc: !!G.oc, ocs: ocView(), ocCool: round1(G.ocCool || 0), hexed: round1(G.hexed || 0),
     shake: round1(G.shake), time: round1(G.time), banner: G.banner ? plain(G.banner, 2) : null, introT: round1(G.introT || 0), clearT: round1(G.clearT || 0), deadT: round1(G.deadT || 0), killer: G.killer || "",
     lull: !!G.lull, fog: G.fog || 0, hazard: G.hazard || null, dropName: G.dropName || null, choirRounds: G.choirRounds || 0,
     camp: G.camp ? { n: G.camp.n, t: round1(G.camp.t), won: G.camp.won, floor: G.camp.floor, wave: G.camp.wave } : null, goal: G.rules ? plain(G.rules.goal, 2) : null,
-    map: { r: G.mapRecipe || { key: G.mapKey }, g: sendGrid ? g : null },
+    map: sendGrid ? { r: recipe, g: lastGrid } : null,
     talk: G.mode === "talk" ? talkView() : null });
   ["stalls", "gates", "zone", "exit", "shard", "flood", "vents", "drops", "rw", "allies", "echoAlly", "tram", "wind", "collapse", "pending", "radioQ"].forEach(k => { W[k] = plain(G[k], 4); });
   return W;
@@ -213,9 +222,9 @@ NET.on((from, m) => {
     if (m.t === "hello") { let mm = COOP.members.get(key);
       if (sub && !COOP.members.has(from)) return; // the friend joins first
       if (!mm && COOP.members.size >= COOP_MAX - 1) return NET.send(from, { t: "full", sub }, true);
-      if (!mm) { mm = { id: key, scrip: 0 }; if (sub) Object.assign(mm, { via: from, sub }); COOP.members.set(key, mm); AU.sfx("milestone"); }
+      const isNew = !mm; if (!mm) { mm = { id: key, scrip: 0 }; if (sub) Object.assign(mm, { via: from, sub }); COOP.members.set(key, mm); AU.sfx("milestone"); }
       Object.assign(mm, { name: cleanName(m.name), look: m.look && typeof m.look === "object" ? m.look : SAVE.char.look, loadout: safeLoadout(m.loadout), heard: performance.now() });
-      NET.send(from, { t: "welcome", host: coopName(), sub }, true); broadcastLobby(); if (G.mode === "title" || G.mode === "coop") G.titleMsg = { txt: mm.name + " JOINED YOUR GAME", life: 3 }; coopDropIn(mm); return; }
+      NET.send(from, { t: "welcome", host: coopName(), sub }, true); broadcastLobby(); if (isNew) { if (G.mode === "title" || G.mode === "coop") G.titleMsg = { txt: mm.name + " JOINED YOUR GAME", life: 3 }; coopDropIn(mm); } return; } /* later hellos only update a look or loadout */
     const mm = COOP.members.get(key); if (!mm) return; mm.heard = performance.now(); if (sub && COOP.members.get(from)) COOP.members.get(from).heard = mm.heard;
     if (m.t === "in") takeInput(mm, m);
     else if (m.t === "bye") COOP.peerLeft(key);

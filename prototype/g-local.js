@@ -84,7 +84,7 @@ function pollLocals(rdt) {
     else if (m) driveLocal(m, gp, b, press, rdt);
     LOCAL_PREV[gp.index] = gp.buttons.map((x, i) => b(i));
   }
-  for (const m of padPlayers()) if (!all.some(g => g.index === m.pad)) { m.input = null; m.presses = []; } // unplugged: stands still until it's back
+  for (const m of padPlayers()) { const here = all.some(g => g.index === m.pad); if (!here && !m.unplugged) { m.input = null; m.presses = []; if (m.sub && isClient()) sendSubInput(m, null); } m.unplugged = !here; } // unplugged: stands still until it's back
 }
 // Up / down picks a line of the loadout, left / right changes it. Holding keeps stepping after a short delay.
 function lobbyNav(m, gp, b, rdt) {

@@ -7,9 +7,10 @@ const path = require("path"), fs = require("fs"), steam = require("./steam");
 if (process.env.MURDER_USERDATA) app.setPath("userData", process.env.MURDER_USERDATA); // tests: a throwaway save folder
 let win = null;
 function initSteam() {
-  // Launched from Steam, the app id comes from Steam itself. For local testing, steam_appid.txt (or STEAM_APP_ID) supplies it.
+  // The App ID: STEAM_APP_ID or steam_appid.txt while testing, the id Steam sets when it launches the game (SteamAppId),
+  // and otherwise "steamAppId" in package.json, which must be your real App ID for release builds (480 is Valve's test app).
   const idFile = path.join(__dirname, "steam_appid.txt"), fromFile = fs.existsSync(idFile) ? fs.readFileSync(idFile, "utf8").trim() : "";
-  const appId = +(process.env.STEAM_APP_ID || fromFile) || 480;
+  const appId = +(process.env.STEAM_APP_ID || fromFile || process.env.SteamAppId || require("./package.json").steamAppId) || 480;
   const sdkDir = app.isPackaged ? path.join(process.resourcesPath, "steamworks_sdk") : path.join(__dirname, "steamworks_sdk");
   if (steam.init({ app, appId, sdkDir, release: app.isPackaged && !process.env.STEAM_DEV }) && process.platform === "win32") {
     app.commandLine.appendSwitch("in-process-gpu"); app.commandLine.appendSwitch("disable-direct-composition"); // lets the Steam overlay draw over the game on Windows
@@ -60,7 +61,7 @@ function createWindow() {
   // Fullscreen by default (Steam Deck included); F11 or Alt+Enter switches to a window. MURDER_WINDOWED=1 starts windowed.
   win = new BrowserWindow({ width: 1440, height: 816, minWidth: 960, minHeight: 544, backgroundColor: "#05040b", title: "MURDER.EXE", autoHideMenuBar: true, fullscreen: !process.env.MURDER_WINDOWED,
     icon: path.join(__dirname, "build", "icon.png"),
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false } });
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false, backgroundThrottling: false } }); // keeps co-op running while minimised
   win.loadFile(path.join(__dirname, "game", "index.html"));
   // Accepted a Steam invite (or Steam started the game from one): passed on once the game has loaded.
   win.webContents.once("did-finish-load", () => steam.onJoinRequest(lobbyId => { if (win && !win.isDestroyed()) win.webContents.send("coop:joinRequest", lobbyId); }));

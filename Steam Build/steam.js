@@ -62,7 +62,9 @@ async function host() {
   try {
     leave(); const r = await S.sdk.matchmaking.createLobby(S.mod.ELobbyType.FriendsOnly, 4); if (!r || !r.success) return { ok: false, error: (r && r.error) || "could not create a lobby" };
     S.lobby = { id: r.lobbyId, host: S.me.steamId }; S.sdk.matchmaking.setLobbyData(r.lobbyId, "game", "murder.exe"); S.sdk.matchmaking.setLobbyData(r.lobbyId, "host", S.me.steamId);
-    safe(() => S.sdk.richPresence.setRichPresence("connect", "+connect_lobby " + r.lobbyId));
+    // No rich-presence "connect" key: with a joinable lobby, Steam's Join Game sends a lobby join request (handled in
+    // onJoinRequest) while the game runs, or launches it with +connect_lobby.
+    safe(() => S.sdk.richPresence.setRichPresence("status", "Co-op lobby"));
     S.listen = S.sdk.networkingSockets.createListenSocketP2P(0); watchConnections();
     return { ok: true, lobbyId: r.lobbyId };
   } catch (e) { return { ok: false, error: e.message }; }
@@ -79,7 +81,7 @@ async function join(lobbyId) {
 }
 function leave() {
   if (!ready()) return;
-  for (const c of S.conns.values()) safe(() => S.sdk.networkingSockets.closeConnection(c, 0, "bye", false)); S.conns.clear();
+  for (const c of S.conns.values()) safe(() => S.sdk.networkingSockets.closeConnection(c, 0, "bye", true)); S.conns.clear(); // linger: send the queued "bye" first
   if (S.listen != null) { safe(() => S.sdk.networkingSockets.closeListenSocket(S.listen)); S.listen = null; }
   if (S.lobby) { safe(() => S.sdk.matchmaking.leaveLobby(S.lobby.id)); S.lobby = null; } safe(() => S.sdk.richPresence.clearRichPresence());
 }

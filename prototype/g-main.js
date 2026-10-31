@@ -165,7 +165,10 @@
     if (G.mode === "play" && G.paused) drawPause(c);
   }
   let last = 0;
-  function frame(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollLocals(rdt); pollPad(rdt); step(rdt, t); coopAfterStep(rdt); G.pressed.clear(); draw(t); requestAnimationFrame(frame); }
+  function tick(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollLocals(rdt); pollPad(rdt); step(rdt, t); coopAfterStep(rdt); G.pressed.clear(); draw(t); }
+  function frame(t) { tick(t); requestAnimationFrame(frame); }
+  // A hidden or minimised window stops animation frames; in co-op the game keeps ticking so friends aren't dropped.
+  setInterval(() => { if (COOP.role && performance.now() - last > 250) tick(performance.now()); }, 100);
   setupInput(cv);
   G.best = SAVE.best || 0; G.unlocked = SAVE.unlocked || 1;
   const qs = location.hash.match(/district=(\w+)/);
