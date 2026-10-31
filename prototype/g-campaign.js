@@ -96,7 +96,7 @@ function updFerry(e, dt, d) {
   }
 }
 // Story bosses take three hits. Each hit sends adds through the doors and stirs up the district hazard.
-function hurtBoss(e) { if (e.type === "choir") return hurtChoir(e); if (e.type === "corvina") return hurtCorvina(e); if (e.type === "wrenc") return hurtWrenc(e); if (e.type === "scarecrow") return hurtScarecrow(e); if (e.type === "vanexo") return hurtVane(e); if (e.type === "cinder") return hurtCinder(e); if (e.type === "widow") return hurtWidow(e); if (e.type === "archivist") return hurtArchivist(e); return hurtFerry(e); }
+function hurtBoss(e) { if (e.type === "blackwing") return hurtBlackwing(e); if (e.type === "augur") return hurtAugur(e); if (e.type === "choir") return hurtChoir(e); if (e.type === "corvina") return hurtCorvina(e); if (e.type === "wrenc") return hurtWrenc(e); if (e.type === "scarecrow") return hurtScarecrow(e); if (e.type === "vanexo") return hurtVane(e); if (e.type === "cinder") return hurtCinder(e); if (e.type === "widow") return hurtWidow(e); if (e.type === "archivist") return hurtArchivist(e); return hurtFerry(e); }
 const STORY_BOSSES = { choir: () => spawnChoir(), corvina: () => spawnCorvina(), scarecrow: () => spawnScarecrow(), vanexo: () => spawnVane(), ferryman: () => spawnFerryman(), cinder: () => spawnCinder(), widow: () => spawnWidow(), archivist: () => spawnArchivist() };
 function bossSpot() { buildFlow(); const reach = q => G.flow[Math.floor(q.y / TS) * MW + Math.floor(q.x / TS)] >= 0; return floorSpots(120).filter(reach).sort(() => Math.random() - .5)[0] || { x: GW / 2, y: 90 }; }
 // A hit while he reels the chain in costs him one of three hits. He calls the water up each time.
@@ -731,7 +731,7 @@ function startChapter(n, retry) {
   G.camp = { n, ch, t: 0, fired: new Set(), won: false, winT: 0, kills0: 0 }; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; G.runSeed = null; G.queuedSeed = null;
   const hz = HAZARDS[ch.district] || [null, null];
   G.radioQ = []; G.stalls = null; G.drops = null; G.rackFlow = null; G.raidFields = null; G.lull = false; G.zone = null; G.exit = null; G.allies = []; G.rw = null; G.choirRounds = 0; storySprites(); propSprites(); G.fog = G.rules.fog || 0; G.gates = null; G.shard = null; G.flood = null; G.vents = null; G.floodTotal = 0; G.god = false; G.dropName = hz[0]; G.hazard = hz[1];
-  AU.init(); BANK.attach(); RUN.reset(ch.district);
+  AU.init(); BANK.attach(); RUN.reset(ch.district); coopScaleRules();
   G.heatBase = G.rules.heatBase || 0; G.heat = G.heatBase; G.lastHeat = G.heat;
   for (const q of allPlayers()) q.shield = SAVE.camp.diff === "story" ? 2 : 0; // co-op friends get the host's difficulty
   const g = G.rules.goal; if (g.type === "stall" || g.type === "guard" || g.type === "escort") placeStalls(); if (g.type === "hold") placeZone();
@@ -939,7 +939,7 @@ function campHudCenter(c, t) {
   if (G.boss && D().boss === "choir") { const ch = G.en.filter(e => e.alive && e.type === "choir"), down = ch.filter(e => e.state === "down"); col = COL.magenta; k = G.choirRounds / 2;
     // Once one is down, the clock that matters is the first one to get back up.
     if (down.length && down.length < ch.length) { const left = Math.min(...down.map(e => e.t)); label = `${down.length}/3 DOWN · ${left.toFixed(1)}S`; col = left < 1.2 ? COL.red : COL.cyan; } else label = `CHOIR · ${ch.length - down.length}/3 UP`; }
-  else if (G.boss && D().boss === "archivist") { const b = G.en.find(e => e.alive && e.type === "archivist"), ech = G.en.filter(e => e.alive && e.type === "echo").length; k = b ? b.hp / 3 : 1;
+  else if (G.boss && D().boss === "archivist") { const b = G.en.find(e => e.alive && e.type === "archivist"), ech = G.en.filter(e => e.alive && e.type === "echo").length; k = b ? b.hp / (b.hpMax || 3) : 1;
     if (b && b.state === "exposed") { label = `EXPOSED · ${Math.max(0, b.t).toFixed(1)}S`; col = COL.cyan; } else { label = ech ? `ECHOES LEFT · ${ech}` : "THE ARCHIVIST"; col = COL.magenta; } }
   else if (G.boss) { const b = G.en.find(e => e.alive && e.type === D().boss); label = D().bossName; col = COL.magenta; k = b && b.hp ? b.hp / (b.hpMax || 3) : 1; }
   else if (g.type === "climb") { label = G.exit ? `FLOOR ${C.floor}/${g.floors} · LIFT` : `FLOOR ${C.floor}/${g.floors} · ${Math.min(dk(), g.kills)}/${g.kills}`; k = ((C.floor - 1) + Math.min(1, dk() / g.kills)) / g.floors; col = G.exit ? COL.cyan : COL.ink; }

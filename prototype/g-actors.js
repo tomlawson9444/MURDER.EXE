@@ -121,6 +121,7 @@ function updateOC(rdt) {
     o.locks.forEach(e => { G.tracers.push({ x0: gx, y0: gy, x1: e.x, y1: e.y - (e.alt || 0) - 10, life: .25 });
       if (prog === "crown" && e.alive && e.hp > 1) { hurtBoss(e); return; } // the crown cracks a story boss's armour; the last hit is still yours to land
       if (armored(e)) { AU.sfx("bulwark"); return; }
+      if (G.crew && e.hp > 1) { hurtBoss(e); return; } // co-op bosses take every hit they're owed, Overclock included
       if (prog === "swarm") { const ex = e.x, ey = e.y - 6; killEnemy(e, "oc"); explode(ex, ey, 30, "swarm"); } // every lock detonates, even if a neighbour's blast got it first
       else if (prog === "arc") { killEnemy(e, "oc"); arcFrom(e, 2, "oc"); }
       else if (prog === "hydra") { killEnemy(e, "oc"); arcFrom(e, 4, "oc"); }
@@ -161,7 +162,7 @@ function hack() {
   if (tg.kind === "rack") { tg.S.hp = Math.min(tg.S.max, tg.S.hp + 30); pop(tg.x, tg.y - 16, "RACK +30", COL.cyan); fx(tg.x, tg.y, 14, [COL.cyan, "#ffffff"], 60, .5); return; }
   if (tg.kind === "gate") { gateProgress(tg.g, .45); pop(tg.x, tg.y - 16, "GATE +45%", COL.cyan); return; }
   if (tg.e.type === "wrenc") return freeWren(tg.e);
-  if (tg.e.hp > 1) return hurtBoss(tg.e);
+  if (tg.e.hp > 1 && tg.e.type !== "augur") return hurtBoss(tg.e);
   if (tg.e.type === "augur") { tg.e.reveal = 2.5; pop(tg.x, tg.y - 24, "REVEALED", COL.magenta); return; }
   if (tg.e.type === "holo") { const bs = tg.e.boss; killEnemy(tg.e, "hack"); if (bs) { bs.reveal = 2.5; pop(bs.x, bs.y - 44, "REAL", COL.magenta); } return; }
   if (tg.e.type === "nest") return killEnemy(tg.e, "hack");

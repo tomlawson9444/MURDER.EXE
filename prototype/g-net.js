@@ -96,7 +96,7 @@ function updateEnemies(dt) {
   for (const e of G.en) { if (!e.alive) continue; let t = e.tgt; e.tgtT = (e.tgtT || 0) - dt;
     if (!t || t.down || !crew.includes(t) || e.tgtT <= 0) { e.tgtT = 1 + Math.random(); let bd = 1e9; const cur = t;
       for (const q of crew) { if (q.down) continue; const d = Math.hypot(q.x - e.x, q.y - e.y) * (q === cur ? .8 : 1); if (d < bd) { bd = d; t = q; } } e.tgt = t; }
-    if (!t || t.down) t = nearestAlive(e.x, e.y) || G.p; withP(t, () => updateEnemy(e, dt)); }
+    coopScaleBoss(e); if (!t || t.down) t = nearestAlive(e.x, e.y) || G.p; const edt = e.cs ? dt * bossSpeed() : dt; withP(t, () => updateEnemy(e, edt)); }
 }
 // Instead of dying, a player goes DOWN while anyone else is still up. Stand beside them to bring them back.
 function coopDown(p, by) {
@@ -110,6 +110,37 @@ function coopRevive(rdt) {
   for (const q of G.crew) { if (!q.down) continue; const helped = G.crew.some(o => o !== q && !o.down && Math.hypot(o.x - q.x, o.y - q.y) < 20);
     q.revive = helped ? q.revive + rdt : Math.max(0, q.revive - rdt * .5);
     if (q.revive >= 1.6) { q.down = false; q.revive = 0; q.iframes = 2; fx(q.x, q.y - BODY, 22, [COL.cyan, "#ffffff"], 70, .6); AU.sfx("ocSnap"); G.banner = { txt: (q.name || "PLAYER") + " IS BACK UP", col: COL.cyan, life: 1.8 }; } }
+}
+/* ---- Co-op difficulty: more players, more pressure ----
+   Ordinary enemies still die to one hit. What scales is how many come at once and how fast, how tough bosses are,
+   and story kill targets. A downed player counts half, so the fight eases a little while you go to revive them. */
+const coopHeads = () => G.crew ? G.crew.reduce((n, q) => n + (q.down ? .5 : 1), 0) : 1;
+const coopPressure = () => 1 + Math.max(0, coopHeads() - 1) * .8; // most enemies at once: x1.8 with two, x2.6 with three, x3.4 with four
+const coopRate = () => 1 + Math.max(0, coopHeads() - 1) * 1.2; // how fast they arrive: x2.2 with two, x4.6 with four
+const coopHeat = () => G.crew ? Math.min(2, Math.floor(G.crew.length / 2)) : 0; // tougher enemy types sooner: +1 Heat with two or three, +2 with four
+const bossSpeed = () => G.crew ? 1 + Math.min(.45, (G.crew.length - 1) * .15) : 1; // bosses move and attack faster: +15% per extra player
+const bossHits = (base, n) => Math.round(base * (1 + (n - 1) * .75)); // a 3-hit story boss takes 5 with two, 8 with three, 10 with four
+function coopScaleBoss(e) {
+  if (e.cs || !G.crew || G.crew.length < 2 || e.type === "wrenc") return; const n = G.crew.length;
+  if (e.type === "blackwing" || e.type === "augur") { e.cs = true; e.hp = e.hpMax = n + 1; return; } // 3 hits with two players, 5 with four (1 solo)
+  if (e.hp > 1) { e.cs = true; e.hp = e.hpMax = bossHits(e.hp, n); }
+}
+// The Market and Rookery bosses only take one hit solo; in co-op each extra hit sends them back into their pattern.
+function hurtBlackwing(e) { e.hp--; e.state = "rise"; e.t = .4; G.shake = 5; AU.sfx("land", panOf(e.x)); fx(e.x, e.y - 20, 24, [COL.amber, "#ffffff"], 90, .6); pop(e.x, e.y - 52, e.hp + " LEFT", COL.amber); }
+function hurtAugur(e) { e.hp--; G.shake = 4; fx(e.x, e.y - 20, 20, [COL.magenta, "#ffffff"], 80, .5); pop(e.x, e.y - 44, e.hp + " LEFT", COL.magenta); augurShuffle(e); }
+// During a co-op boss fight the Murder keeps sending a few of its own through the doors.
+function coopBossAdds(dt) {
+  if (!G.crew || G.crew.length < 2 || G.mode !== "play" || (G.camp && G.camp.won)) return; const extra = G.crew.length - 1;
+  G.addT = (G.addT || 4) - dt; if (G.addT > 0) return; G.addT = 5 / extra;
+  if (G.en.filter(e => e.alive && !BOSSY.has(e.type) && !e.cs).length + G.pending.length >= 3 * extra) return;
+  const ds = doors().filter(d => allPlayers().every(q => Math.hypot(d.x - q.x, d.y - q.y) > 90)), d = ds[Math.random() * ds.length | 0];
+  if (d) { G.pending.push({ type: Math.random() < .5 ? "shrike" : "rook", x: d.x, y: d.y, t: .9, door: d }); AU.sfx("door", panOf(d.x)); }
+}
+// Story kill targets go up with the team (the clock-based goals already get harder from the extra enemies).
+function coopScaleRules() {
+  if (!G.crew || G.crew.length < 2 || !G.rules) return; const g = G.rules.goal, k = 1 + (G.crew.length - 1) * .35, s = {};
+  if (g.type === "kills") s.n = Math.round(g.n * k); if (g.type === "climb") s.kills = Math.round(g.kills * k);
+  G.rules = Object.assign({}, G.rules, { goal: Object.assign({}, g, s) });
 }
 const coopReviveAll = () => { for (const q of allPlayers()) if (q && q.down) { q.down = false; q.revive = 0; q.iframes = 1; } };
 
@@ -149,7 +180,7 @@ function worldView(rdt) {
   Object.assign(W, { district: G.district, seed: G.runSeed, score: G.score, kills: G.kills, dStart: G.dStart, heat: G.heat, mult: round1(G.mult), boss: !!G.boss, phase2: !!G.phase2, oc: !!G.oc, hexed: round1(G.hexed || 0),
     shake: round1(G.shake), time: round1(G.time), banner: G.banner ? plain(G.banner, 2) : null, introT: round1(G.introT || 0), clearT: round1(G.clearT || 0), deadT: round1(G.deadT || 0), killer: G.killer || "",
     lull: !!G.lull, fog: G.fog || 0, hazard: G.hazard || null, dropName: G.dropName || null, choirRounds: G.choirRounds || 0,
-    camp: G.camp ? { n: G.camp.n, t: round1(G.camp.t), won: G.camp.won, floor: G.camp.floor, wave: G.camp.wave } : null,
+    camp: G.camp ? { n: G.camp.n, t: round1(G.camp.t), won: G.camp.won, floor: G.camp.floor, wave: G.camp.wave } : null, goal: G.rules ? plain(G.rules.goal, 2) : null,
     map: { r: G.mapRecipe || { key: G.mapKey }, g: sendGrid ? g : null },
     talk: G.mode === "talk" ? talkView() : null });
   ["stalls", "gates", "zone", "exit", "shard", "flood", "vents", "drops", "rw", "allies", "echoAlly", "tram", "wind", "collapse", "pending", "radioQ"].forEach(k => { W[k] = plain(G[k], 4); });
@@ -263,6 +294,7 @@ function applySnapshot(S) {
   ["stalls", "gates", "zone", "exit", "shard", "flood", "vents", "drops", "rw", "allies", "echoAlly", "tram", "wind", "collapse", "pending", "radioQ"].forEach(k => { G[k] = W[k] === undefined ? null : W[k]; });
   if (!G.allies) G.allies = []; if (!G.pending) G.pending = []; if (!G.radioQ) G.radioQ = [];
   if (W.camp) { if (C.chapN !== W.camp.n) { C.chapN = W.camp.n; const ch = CHAPTERS[W.camp.n]; G.rules = typeof ch.rules === "function" ? ch.rules(SAVE.camp) : ch.rules; G.chapMap = ch.map; }
+    if (W.goal && G.rules) G.rules = Object.assign({}, G.rules, { goal: W.goal }); // the host's goal, scaled for the team
     G.camp = Object.assign(G.camp && G.camp.n === W.camp.n ? G.camp : { fired: new Set(), ch: CHAPTERS[W.camp.n] }, W.camp); }
   else { G.camp = null; G.rules = null; G.chapMap = null; C.chapN = null; }
   syncMap(W);

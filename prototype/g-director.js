@@ -14,18 +14,19 @@ function updateDirector(dt) {
   const alive = G.en.filter(e => e.alive && !BOSSY.has(e.type)).length;
   // Campaign chapters set their own Phase 2 and boss kill counts (null means never), and can add Heat over time.
   const R = G.rules || {}, p2At = "p2" in R ? R.p2 : 50, bossAt = "boss" in R ? R.boss : 100;
-  G.heat = Math.min(5, G.heatBase + Math.floor(dk() / 15) + (R.timeHeat && G.camp ? Math.floor(G.camp.t / R.timeHeat) : 0)); G.mult = (1 + G.heat * .5) * (G.p.egoUsed ? .5 : 1);
+  G.heat = Math.min(5, G.heatBase + coopHeat() + Math.floor(dk() / 15) + (R.timeHeat && G.camp ? Math.floor(G.camp.t / R.timeHeat) : 0)); G.mult = (1 + G.heat * .5) * (G.p.egoUsed ? .5 : 1);
   if (G.heat !== G.lastHeat) { AU.setHeat(Math.min(5, G.heat + 2)); track("heat", G.heat); if (G.heat > (G.lastHeat || 0)) G.banner = { txt: "HEAT " + G.heat, col: COL.amber, life: 1.6 }; G.lastHeat = G.heat; }
   if (p2At != null && dk() >= p2At && !G.phase2) startPhase2();
   if (bossAt != null && dk() >= bossAt && !G.boss) { startBoss(); return; }
+  if (G.boss && G.crew) { coopBossAdds(dt); for (const s of G.pending) { s.t -= dt; if (s.t <= 0) spawnEnemy(s.type, s.x, s.y); } G.pending = G.pending.filter(s => s.t > 0); }
   if (G.boss || (G.camp && G.camp.won)) return;
   if (dailyMod("heat") || dailyMod("bottomless")) G.heatBase = Math.max(G.heatBase, 3);
-  G.spawnT -= dt; const cap = Math.round((3 + G.heat + (dk() > 70 ? 1 : 0) + Math.floor(Math.max(0, D().n - 2) / 3)) * (dailyMod("swarm") ? 1.5 : 1)); // endless depth adds pressure
+  G.spawnT -= dt; const cap = Math.round((3 + G.heat + (dk() > 70 ? 1 : 0) + Math.floor(Math.max(0, D().n - 2) / 3)) * (dailyMod("swarm") ? 1.5 : 1) * coopPressure()); // endless depth adds pressure; co-op adds more
   if (G.spawnT <= 0 && alive + G.pending.length < cap && !G.lull) {
-    G.spawnT = Math.max(.6, 1.7 - G.heat * .2); const type = pickType();
+    G.spawnT = Math.max(.6, 1.7 - G.heat * .2) / coopRate(); const type = pickType();
     if (type === "corvid") { const x = rnd(40, GW - 40); G.pending.push({ type, x, y: 34, t: .8, door: null }); AU.sfx("caw", panOf(x)); }
     else if (type === "jackdaw") { const ps = G.perch; if (ps) G.pending.push({ type, x: ps.x, y: ps.y, t: .8, door: null, perch: true }); }
-    else { const ds = doors().filter(d => Math.hypot(d.x - G.p.x, d.y - G.p.y) > 90); const d = ds[Math.random() * ds.length | 0]; if (d) { G.pending.push({ type, x: d.x, y: d.y, t: .9, door: d }); AU.sfx("door", panOf(d.x)); } }
+    else { const far = doors().filter(d => allPlayers().every(q => Math.hypot(d.x - q.x, d.y - q.y) > 90)), ds = far.length ? far : doors().filter(d => Math.hypot(d.x - G.p.x, d.y - G.p.y) > 90); /* never on top of anyone */ const d = ds[Math.random() * ds.length | 0]; if (d) { G.pending.push({ type, x: d.x, y: d.y, t: .9, door: d }); AU.sfx("door", panOf(d.x)); } }
   }
   for (const s of G.pending) { s.t -= dt; if (s.t <= 0) spawnEnemy(s.type, s.x, s.y); }
   G.pending = G.pending.filter(s => s.t > 0);
