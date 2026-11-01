@@ -68,6 +68,7 @@
           "**/*"
         ]
       }
-    ]
+    ],
+    "afterPack": "./tools/linux-launcher.js"
   }
 }

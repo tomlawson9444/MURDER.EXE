@@ -46,7 +46,7 @@ bin="$(find "$tmp/unpacked" -maxdepth 3 -type f -name murder-exe | head -n 1)"
 app="$(dirname "$bin")"
 
 # Zips from GitHub Actions lose the executable bits; put them back.
-chmod +x "$app/murder-exe"; for f in chrome_crashpad_handler chrome-sandbox; do [[ -f "$app/$f" ]] && chmod +x "$app/$f"; done
+chmod +x "$app/murder-exe"; for f in murder-exe-bin chrome_crashpad_handler chrome-sandbox; do [[ -f "$app/$f" ]] && chmod +x "$app/$f"; done
 
 say "Installing to $DEST"
 mkdir -p "$(dirname "$DEST")"; rm -rf "$DEST.new"; mv "$app" "$DEST.new"; rm -rf "$DEST"; mv "$DEST.new" "$DEST"
