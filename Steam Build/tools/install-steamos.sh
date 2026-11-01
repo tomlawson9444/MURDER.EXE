@@ -32,16 +32,20 @@ else
   die "Give me the downloaded build (the $ARTIFACT zip from the Actions tab on GitHub), install the GitHub CLI (gh) and run 'gh auth login', or set MURDER_URL."
 fi
 
-# Unpack whatever we were given into $tmp/unpacked.
+# Unpack whatever we were given into $tmp/unpacked. Several unpackers are tried in turn: bsdtar (part of SteamOS, reads zip
+# and tar.gz), unzip, Python, then tar. Newer Python (3.14 on SteamOS) refuses the zips GitHub Actions makes.
+unpack() {
+  local f="$1" d="$2"
+  try() { rm -rf "$d"; mkdir -p "$d"; "$@" >/dev/null 2>&1; }
+  command -v bsdtar >/dev/null 2>&1 && try bsdtar -xf "$f" -C "$d" && return 0
+  command -v unzip >/dev/null 2>&1 && try unzip -q -o "$f" -d "$d" && return 0
+  command -v python3 >/dev/null 2>&1 && try python3 -m zipfile -e "$f" "$d" && return 0
+  try tar -xzf "$f" -C "$d" && return 0
+  return 1
+}
 if [[ ! -d "$tmp/unpacked" ]]; then
-  mkdir -p "$tmp/unpacked"
-  # Python (on every SteamOS) checks and unpacks the archive itself, rather than trusting its name or first bytes.
-  kind="$(python3 -c 'import sys, zipfile, tarfile; p = sys.argv[1]; print("zip" if zipfile.is_zipfile(p) else "tar" if tarfile.is_tarfile(p) else "")' "$src" 2>/dev/null || true)"
-  case "$kind" in
-    zip) say "Unpacking zip"; python3 -m zipfile -e "$src" "$tmp/unpacked" ;;
-    tar) say "Unpacking tar.gz"; tar -xzf "$src" -C "$tmp/unpacked" ;;
-    *) die "$src isn't a .zip or .tar.gz build ($(du -h "$src" | cut -f1), $(file -b "$src" 2>/dev/null || echo "unknown type")). If it's small, download it again while signed in to GitHub." ;;
-  esac
+  say "Unpacking $(basename "$src")"
+  unpack "$src" "$tmp/unpacked" || die "Couldn't unpack $src ($(du -h "$src" | cut -f1), $(file -b "$src" 2>/dev/null || echo "unknown type")). If it's small, download it again while signed in to GitHub; check it with sha256sum against the digest shown on the GitHub run."
 fi
 bin="$(find "$tmp/unpacked" -maxdepth 3 -type f -name murder-exe | head -n 1)"
 [[ -n "$bin" ]] || die "That doesn't look like the Linux build (no murder-exe inside)."
