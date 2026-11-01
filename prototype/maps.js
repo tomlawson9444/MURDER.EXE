@@ -74,6 +74,25 @@ function groups(G) {
   return out;
 }
 
+// Readability: make what you can't walk through stand out from the floor, whatever the art looks like. Solid tiles get a
+// light rim where they meet walkable floor and a shadow cast onto the floor below them, so they read as raised blocks;
+// low cover (which a dash clears) gets a dashed amber rim instead. Built from the same tile rules as collision.
+function markSolids(c, G) {
+  if (typeof WALK_BLOCK === "undefined") return; // the Map Lab page renders maps without the game's collision rules
+  const solid = ch => ch !== null && ch !== "h" && WALK_BLOCK.has(ch), low = ch => ch === "h", floor = ch => ch !== null && !WALK_BLOCK.has(ch) && ch !== "o";
+  const at = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? null : G[y][x];
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const ch = G[y][x]; if (!solid(ch) && !low(ch)) continue; const X = x * TS, Y = y * TS;
+    if (floor(at(x, y + 1))) { c.fillStyle = "rgba(0,0,0,.42)"; c.fillRect(X, Y + TS, TS, 3); c.fillStyle = "rgba(0,0,0,.2)"; c.fillRect(X, Y + TS + 3, TS, 2); } // shadow on the floor below
+    if (solid(ch)) { c.fillStyle = "rgba(0,0,0,.16)"; c.fillRect(X, Y, TS, TS); }
+    const rim = solid(ch) ? "rgba(232,224,255,.5)" : "rgba(255,186,80,.75)", edge = (x0, y0, w, h) => { c.fillStyle = rim; if (solid(ch)) c.fillRect(x0, y0, w, h); else for (let i = 0; i < Math.max(w, h); i += 4) c.fillRect(x0 + (w > 1 ? i : 0), y0 + (h > 1 ? i : 0), w > 1 ? 2 : 1, h > 1 ? 2 : 1); };
+    if (floor(at(x, y - 1))) edge(X, Y, TS, 1);
+    if (floor(at(x, y + 1))) edge(X, Y + TS - 1, TS, 1);
+    if (floor(at(x - 1, y))) edge(X, Y, 1, TS);
+    if (floor(at(x + 1, y))) edge(X + TS - 1, Y, 1, TS);
+  }
+}
+
 function renderMap(key, phase2, SP, Gover) {
   const M = MAPS[key], th = THEMES[M.theme], G = Gover || buildGrid(M, phase2), r = rngF(M.seed);
   const W = MW * TS, H = MH * TS, C = mk(W, H), c = C.getContext("2d"); c.imageSmoothingEnabled = false;
@@ -101,6 +120,7 @@ function renderMap(key, phase2, SP, Gover) {
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (G[y][x] === "g") steamPts.push([x * TS + 8, y * TS + 8]);
   const weather = th.weather || (th.rain ? "rain" : null);
   if (weather === "smog") { c.fillStyle = rgba(th.fog || "#3a4a2a", .22); c.fillRect(0, 0, W, H); }
+  markSolids(c, G);
   return { C, W, H, G, M, steam: steamPts, weather, rain: weather && weather !== "smog" && weather !== "clear" ? mkRain(W, H, M.seed + 7) : null };
 }
 

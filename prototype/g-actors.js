@@ -84,7 +84,7 @@ function updatePlayer(dt, rdt) {
     if (hasImp("toll") && (p.tollCd || 0) <= 0) { const v = G.en.find(e => e.alive && !BOSSY.has(e.type) && !armored(e) && e.type !== "holo" && e.type !== "echo" && Math.hypot(e.x - p.x, e.y - p.y) < 13); if (v) { p.tollCd = 1; killEnemy(v, "dash"); fx(v.x, v.y - 10, 14, [COL.amber, "#ffffff"], 80, .4); AU.sfx("impactMetal", panOf(v.x)); } }
     if (p.dash <= 0 && hasImp("shockdash") && (p.shockCd || 0) <= 0) { p.shockCd = 4; explode(p.x, p.y - 6, 30, "dash", true); }
     if (p.dash <= 0) { let n = 0; while (boxBlocked(p.x, p.y, p.r, false) && n++ < 20) { p.x += p.dx * 2; p.y += p.dy * 2; } if (boxBlocked(p.x, p.y, p.r, false)) { p.x -= p.dx * 40; p.y -= p.dy * 40; } } }
-  else { const od = hasImp("overdrive") ? 1 + Math.min(.25, Math.floor((p.streak || 0) / 10) * .05) : 1; const ad = hasImp("adrenal") ? 1.12 : 1; moveBody(p, mx * 112 * od * ad * dt, my * 112 * od * ad * dt); }
+  else { const od = hasImp("overdrive") ? 1 + Math.min(.25, Math.floor((p.streak || 0) / 10) * .05) : 1; const ad = hasImp("adrenal") ? 1.12 : 1; slideMove(p, mx * 112 * od * ad * dt, my * 112 * od * ad * dt); }
   if (ml > 0 || p.dash > 0) p.still = 0; else { p.still = (p.still || 0) + dt; if (p.still > 2) p.streak = 0; }
   p.moving = ml > 0 || p.dash > 0;
   if (ml > 0 && p.dash <= 0) { p.stepT = (p.stepT || 0) - dt; if (p.stepT <= 0) { AU.sfx("step", panOf(p.x)); p.stepT = .24; if (tileOf(p.x, p.y) === "w") fx(p.x, p.y, 3, ["#9aa4c8"], 30, .25); } }

@@ -33,6 +33,19 @@ function moveBody(e, dx, dy, overLow) {
   if (dy) { if (!boxBlocked(e.x, e.y + dy, e.r, overLow)) e.y += dy; else hitWall = true; }
   return hitWall;
 }
+// Player movement that slips around corners: pushing mostly along one axis into the corner of a block nudges you
+// sideways past it (up to 6 px), instead of stopping you dead on a pixel of overlap.
+function slideMove(e, dx, dy, overLow) {
+  const x0 = e.x, y0 = e.y, hit = moveBody(e, dx, dy, overLow); if (!hit) return false;
+  const free = (x, y) => !boxBlocked(x, y, e.r, overLow);
+  const nudge = (along, other, horiz) => { // blocked moving `along`; look for an opening up to 6 px either side on the other axis
+    for (let k = 1; k <= 6; k++) for (const s of other ? [Math.sign(other)] : [1, -1]) {
+      const ox = horiz ? 0 : s * k, oy = horiz ? s * k : 0;
+      if (free(e.x + ox, e.y + oy) && free(e.x + ox + (horiz ? along : 0), e.y + oy + (horiz ? 0 : along))) { const step = Math.min(k, Math.abs(along)) * s; moveBody(e, horiz ? 0 : step, horiz ? step : 0, overLow); return; } } };
+  if (dx && e.x === x0 && Math.abs(dy) < Math.abs(dx) * .5) nudge(dx, dy, true);
+  else if (dy && e.y === y0 && Math.abs(dx) < Math.abs(dy) * .5) nudge(dy, dx, false);
+  return hit;
+}
 function los(x0, y0, x1, y1, skipLow = 20) {
   const d = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(d / 4);
   for (let i = 1; i < n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, ch = tileOf(x, y);

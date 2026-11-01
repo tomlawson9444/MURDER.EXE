@@ -361,7 +361,7 @@ function clientInput(rdt) {
   if (live && !C.oc) {
     if ((hit(" ") || hit("shift")) && p.dashCdL <= 0 && !(p.dashL > 0)) { const l = Math.hypot(mx, my); p.dashL = .16; p.ddx = l ? mx / l : p.face; p.ddy = l ? my / l : 0; p.dashCdL = .4; }
     if (p.dashL > 0) { p.dashL -= rdt; moveBody(p, p.ddx * 370 * rdt, p.ddy * 370 * rdt, true); p.trail.push({ x: p.x, y: p.y, life: .2 }); p.moving = true; }
-    else { moveBody(p, mx * 112 * rdt, my * 112 * rdt); p.moving = Math.hypot(mx, my) > 0; }
+    else { slideMove(p, mx * 112 * rdt, my * 112 * rdt); p.moving = Math.hypot(mx, my) > 0; }
   }
   C.hist.push({ s, x: p.x, y: p.y }); if (C.hist.length > 240) C.hist.shift();
 }
