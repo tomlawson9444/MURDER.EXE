@@ -88,7 +88,7 @@ function updateBodyshop(rdt, actions) {
   if (t === "INVENTORY") { const rows = Math.ceil(n / INV_COLS), r = Math.floor(B.sel / INV_COLS); B.iscroll = Math.max(0, Math.min(B.iscroll || 0, rows - INV_ROWS)); if (r < B.iscroll) B.iscroll = r; if (r >= B.iscroll + INV_ROWS) B.iscroll = r - INV_ROWS + 1;
     if (G.wheel) { B.iscroll = Math.max(0, Math.min(rows - INV_ROWS, B.iscroll + Math.sign(G.wheel))); B.sel = Math.max(B.iscroll * INV_COLS, Math.min((B.iscroll + INV_ROWS) * INV_COLS - 1, B.sel)); G.wheel = 0; } }
   const cellAt = (x, y) => { const cx = Math.floor((x - 200) / INV_W), cy = Math.floor((y - 44) / INV_H); return cx >= 0 && cx < INV_COLS && cy >= 0 && cy < INV_ROWS ? (cy + (B.iscroll || 0)) * INV_COLS + cx : -1; };
-  if (Math.hypot(mouse.x - B.mx, mouse.y - B.my) > .5) { B.mx = mouse.x; B.my = mouse.y; if (mouse.x > 198) { const i = t === "INVENTORY" ? cellAt(mouse.x, mouse.y) : rowAt(mouse.y); if (i >= 0 && i < n && mouse.y >= BROW_Y && mouse.y < 236) B.sel = i; } }
+  if (!PAD.active && Math.hypot(mouse.x - B.mx, mouse.y - B.my) > .5) { B.mx = mouse.x; B.my = mouse.y; if (mouse.x > 198) { const i = t === "INVENTORY" ? cellAt(mouse.x, mouse.y) : rowAt(mouse.y); if (i >= 0 && i < n && mouse.y >= BROW_Y && mouse.y < 236) B.sel = i; } }
   if (hit("lmb")) { const x = mouse.x, y = mouse.y;
     if (y >= 20 && y < 36 && x > 196) { const k = Math.min(BTABS.length - 1, Math.floor((x - 198) / BTAB_W)); if (k !== B.tab) { B.tab = k; B.sel = 0; AU.sfx("lock", 1); } }
     else if (inBox(BTN_DONE, x, y)) bodyDone(actions); else if (inBox(BTN_BBACK, x, y)) actions.back();

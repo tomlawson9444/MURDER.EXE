@@ -44,10 +44,21 @@ function padHackTarget(ox, oy) { let best = null, bs = 1e9;
     const sc = da * 300 + d * .2; if (sc < bs) { bs = sc; best = { kind: "enemy", e, x: e.x, y: ey, r: BOSSY.has(e.type) && e.type !== "nest" ? 18 : 10 }; } }
   return best; }
 // Menus: holding the stick or D-pad keeps scrolling after a short delay.
-function navRepeat(rdt, dir, key) { const R = PAD.rep || (PAD.rep = {}); if (!dir) { R[key] = null; return; } if (!R[key]) { R[key] = .32; G.pressed.add(key); return; } R[key] -= rdt; if (R[key] <= 0) { R[key] = .07; G.pressed.add(key); } }
+function navRepeat(rdt, dir, key) { const R = PAD.rep || (PAD.rep = {}); if (!dir) { R[key] = null; return; } if (!R[key]) { R[key] = .4; G.pressed.add(key); return; } R[key] -= rdt; if (R[key] <= 0) { R[key] = .11; G.pressed.add(key); } }
+// The stick counts as pushed past 0.6 and stays pushed until it falls back under 0.35, so a stick resting near the edge
+// doesn't flicker into extra presses. When a direction lets go, the opposite one is ignored for a moment: a stick
+// springing back to the centre can overshoot and would otherwise step back one.
+const NAV_OPP = { arrowup: "arrowdown", arrowdown: "arrowup", arrowleft: "arrowright", arrowright: "arrowleft" };
+function stickDirs(rdt, v) { // v: { key: how far the stick points that way }; returns { key: pushed }
+  const N = PAD.nav || (PAD.nav = { on: {}, block: {} });
+  for (const k in v) { N.block[k] = Math.max(0, (N.block[k] || 0) - rdt); if (N.on[k] && v[k] <= .35) { N.on[k] = false; N.block[NAV_OPP[k]] = .2; } } // let go first
+  for (const k in v) if (!N.on[k] && v[k] > .6 && N.block[k] <= 0) N.on[k] = true;
+  return N.on;
+}
 function menuNav(rdt, lx, ly, b, horiz) {
-  navRepeat(rdt, b(BTN.UP) || ly < -.6, "arrowup"); navRepeat(rdt, b(BTN.DOWN) || ly > .6, "arrowdown");
-  if (horiz) { navRepeat(rdt, b(BTN.LEFT) || lx < -.6, "arrowleft"); navRepeat(rdt, b(BTN.RIGHT) || lx > .6, "arrowright"); }
+  const on = stickDirs(rdt, { arrowup: -ly, arrowdown: ly, arrowleft: -lx, arrowright: lx });
+  navRepeat(rdt, b(BTN.UP) || on.arrowup, "arrowup"); navRepeat(rdt, b(BTN.DOWN) || on.arrowdown, "arrowdown");
+  if (horiz) { navRepeat(rdt, b(BTN.LEFT) || on.arrowleft, "arrowleft"); navRepeat(rdt, b(BTN.RIGHT) || on.arrowright, "arrowright"); }
 }
 function pollPad(rdt) {
   // Player 1 gets the first controller that a local co-op player hasn't claimed.
@@ -68,7 +79,7 @@ function pollPad(rdt) {
     const sp = 240 + 560 * rm * rm; mouse.x = Math.max(4, Math.min(GW - 4, mouse.x + rx * sp * rdt)); mouse.y = Math.max(4, Math.min(GH - 4, mouse.y + ry * sp * rdt));
     if (rm < .5) { let n = null, nd = 30; for (const e of G.en) { if (!e.alive || G.oc.locks.includes(e)) continue; const d = Math.hypot(e.x - mouse.x, e.y - (e.alt || 0) - 10 - mouse.y); if (d < nd) { nd = d; n = e; } }
       if (n) { const k = Math.min(1, rdt * 9); mouse.x += (n.x - mouse.x) * k; mouse.y += (n.y - (n.alt || 0) - 10 - mouse.y) * k; } }
-  } else if (p && !G.paused) {
+  } else if (p && !G.paused && G.mode === "play") {
     // Aim: the right stick, smoothed a little so it doesn't jitter; without it, aim follows your movement until you first touch it.
     let want = null; if (rm > .15) { want = Math.atan2(ry, rx); PAD.aimed = true; } else if (PAD.mag > .3 && !PAD.aimed) want = Math.atan2(PAD.my, PAD.mx);
     if (want != null) PAD.aimA += angDiff(want, PAD.aimA) * Math.min(1, rdt * 28);

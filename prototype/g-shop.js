@@ -89,7 +89,7 @@ function updateShop(rdt, actions) {
   if (hit("t")) tryItem();
   ["1", "2", "3"].forEach((k, i) => { if (hit(k)) { if (loadBuild(i)) { S.line = "BUILD " + (i + 1) + " LOADED. " + buildName(SAVE.builds[i]); S.lineT = 0; AU.sfx("lock", 4); } else { S.line = "BUILD " + (i + 1) + " IS EMPTY. SAVE ONE IN THE BODYSHOP."; S.lineT = 0; AU.sfx("hackFail"); } } });
   if (G.wheel) { S.sel = Math.max(0, Math.min(n - 1, S.sel + Math.sign(G.wheel) * 3)); G.wheel = 0; }
-  if (Math.hypot(mouse.x - S.mx, mouse.y - S.my) > .5) { S.mx = mouse.x; S.my = mouse.y; const row = Math.floor((mouse.y - ROW_Y) / ROW_H); if (mouse.x > LIST_X && mouse.y >= ROW_Y && row >= 0 && row < VIS && S.scroll + row < n) S.sel = S.scroll + row; }
+  if (!PAD.active && Math.hypot(mouse.x - S.mx, mouse.y - S.my) > .5) { S.mx = mouse.x; S.my = mouse.y; const row = Math.floor((mouse.y - ROW_Y) / ROW_H); if (mouse.x > LIST_X && mouse.y >= ROW_Y && row >= 0 && row < VIS && S.scroll + row < n) S.sel = S.scroll + row; }
   if (hit("lmb")) {
     const x = mouse.x, y = mouse.y, row = Math.floor((y - ROW_Y) / ROW_H), idx = (S.scroll || 0) + row;
     if (y >= 20 && y < 36 && x > 196) { const t = Math.min(CATS.length - 1, Math.floor((x - 198) / TAB_W)); if (t !== S.tab) { S.tab = t; S.sel = 0; S.scroll = 0; AU.sfx("lock", 1); } }
@@ -158,7 +158,7 @@ function runMenu(items) {
   if (hit("arrowup") || hit("w")) { G.menuSel = (G.menuSel - 1 + n) % n; AU.sfx("lock", 0); }
   if (hit("arrowdown") || hit("s")) { G.menuSel = (G.menuSel + 1) % n; AU.sfx("lock", 0); }
   const hov = items.findIndex(it => inBox(it.box, mouse.x, mouse.y));
-  if (mouse.x !== G.menuMx || mouse.y !== G.menuMy) { G.menuMx = mouse.x; G.menuMy = mouse.y; if (hov >= 0) G.menuSel = hov; }
+  if (mouse.x !== G.menuMx || mouse.y !== G.menuMy) { G.menuMx = mouse.x; G.menuMy = mouse.y; if (hov >= 0 && !PAD.active) G.menuSel = hov; } // a controller never picks by pointer
   if (hit("enter") || hit(" ")) items[G.menuSel].act(); else if (hit("lmb") && hov >= 0) items[hov].act();
 }
 function drawMenu(c, items, t) {
