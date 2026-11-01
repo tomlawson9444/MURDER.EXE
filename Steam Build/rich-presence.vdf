@@ -1,0 +1,15 @@
+"lang"
+{
+	"Language"	"english"
+	"Tokens"
+	{
+		"#StatusMenu"		"In the menus"
+		"#StatusCoopLobby"	"In a co-op game"
+		"#StatusStory"		"Story · Chapter %chapter% · %title%"
+		"#StatusArcade"		"Arcade · %district%"
+		"#StatusEndless"	"Endless Sprawl · District %depth%"
+		"#StatusDaily"		"Daily Challenge"
+		"#StatusRush"		"Boss Rush"
+		"#StatusRange"		"At the firing range"
+	}
+}

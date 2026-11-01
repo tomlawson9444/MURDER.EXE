@@ -10,6 +10,13 @@ contextBridge.exposeInMainWorld("steamBridge", {
   me: ipcRenderer.sendSync("steam:me"),
   activate: name => ipcRenderer.send("steam:activate", String(name)),
   quit: () => ipcRenderer.send("app:quit"),
+  setFullscreen: on => ipcRenderer.send("app:fullscreen", !!on),
+  isFullscreen: () => ipcRenderer.sendSync("app:isFullscreen"),
+  onDeck: () => ipcRenderer.sendSync("steam:onDeck"),
+  // Steam's floating keyboard (Steam Deck / Big Picture); returns false when Steam can't show one.
+  keyboard: (x, y, w, h) => ipcRenderer.sendSync("steam:keyboard", +x, +y, +w, +h),
+  keyboardClose: () => ipcRenderer.send("steam:keyboardClose"),
+  presence: p => ipcRenderer.send("steam:presence", p && typeof p === "object" ? Object.fromEntries(Object.entries(p).map(([k, v]) => [String(k), String(v)])) : null),
   readSave: () => ipcRenderer.sendSync("save:read"),
   writeSave: text => ipcRenderer.send("save:write", String(text)),
   lbSubmit: (name, score, details) => ipcRenderer.invoke("lb:submit", String(name), +score, (details || []).map(Number)),

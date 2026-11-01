@@ -5,15 +5,17 @@ const AU = (() => {
   let voices = 0; const MAX_VOICES = 90; // sound pieces playing at once; past this, new effects are skipped so the audio thread keeps up
   const voice = n => { voices++; n.addEventListener("ended", () => { voices--; }); return n; };
   const A = { heat: 1, oc: false, playing: false, onHit: null };
+  let volM = 1, volS = 1; // player volume settings (0-1), set from the settings menu
+  const applyVol = () => { if (!ctx) return; const t = ctx.currentTime; music.gain.setTargetAtTime(.5 * volM, t, .03); amb.gain.setTargetAtTime(.42 * volM, t, .03); sfx.gain.setTargetAtTime(.9 * volS, t, .03); };
   function init() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4; comp.connect(ctx.destination);
     master = ctx.createGain(); master.gain.value = .85; master.connect(comp);
-    sfx = ctx.createGain(); sfx.gain.value = .9; sfx.connect(master);
+    sfx = ctx.createGain(); sfx.gain.value = .9 * volS; sfx.connect(master);
     busLP = ctx.createBiquadFilter(); busLP.type = "lowpass"; busLP.frequency.value = 18000; busLP.Q.value = 2; busLP.connect(master);
-    music = ctx.createGain(); music.gain.value = .5; music.connect(busLP);
-    amb = ctx.createGain(); amb.gain.value = .42; amb.connect(busLP);
+    music = ctx.createGain(); music.gain.value = .5 * volM; music.connect(busLP);
+    amb = ctx.createGain(); amb.gain.value = .42 * volM; amb.connect(busLP);
     delay = ctx.createDelay(1); delay.delayTime.value = 60 / 132 * .75; const fb = ctx.createGain(); fb.gain.value = .35; const dl = ctx.createBiquadFilter(); dl.type = "lowpass"; dl.frequency.value = 2500;
     delay.connect(dl).connect(fb).connect(delay); dl.connect(music);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -210,6 +212,7 @@ const AU = (() => {
   A.setSFX = (k, fn) => { SFX[k] = fn; };
   A.has = k => !!SFX[k];
   A.init = init;
+  A.setVolumes = (m, s) => { volM = Math.max(0, Math.min(1, +m || 0)); volS = Math.max(0, Math.min(1, +s || 0)); applyVol(); };
   A.play = k => { init(); SFX[k](); };
   A.ambience = ambience;
   A.start = () => { init(); if (A.playing) return; A.playing = true; step = 0; nextT = T() + .1; timer = setInterval(sched, 25); };

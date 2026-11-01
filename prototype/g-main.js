@@ -42,14 +42,9 @@
   function startDaily() { const d = dailyOf(); leaveCampaign(); G.daily = Object.assign({ recorded: false }, d); G.tryLoadout = d.kit; G.startDistrict = "market"; G.runSeed = d.seed; G.queuedSeed = null; SAVE.mapMode = "gen";
     resetEndless(); reset("market"); G.mode = "play"; G.paused = false; AU.init(); BANK.attach(); music(); buildFlow(); G.banner = { txt: "DAILY · " + d.mod[1] + " · " + d.mod[2], col: COL.amber, life: 3.2 }; }
   Object.assign(RUN, { reset, music, enter: enterDistrict, startRange, startDaily, leave: leaveCampaign });
-  // Pause menu: resume, controller settings and quit. Left / right (or Enter) changes a setting.
-  function pauseItems() { const P = padCfg(), onOff = v => v ? "ON" : "OFF";
-    return [{ k: "resume", label: "RESUME" },
-      { k: "assist", label: "AIM ASSIST", val: ["OFF", "NORMAL", "STRONG"][P.assist], step: d => { P.assist = (P.assist + d + 3) % 3; } },
-      { k: "autofire", label: "AUTO-FIRE (RIGHT STICK)", val: onOff(P.autofire), step: () => { P.autofire = !P.autofire; } },
-      { k: "aimline", label: "AIM LINE", val: onOff(P.aimline), step: () => { P.aimline = !P.aimline; } },
-      { k: "rumble", label: "RUMBLE", val: onOff(P.rumble), step: () => { P.rumble = !P.rumble; if (P.rumble) rumble(.6, .6, 200); } },
-      { k: "dz", label: "STICK DEADZONE", val: ["LOW", "MEDIUM", "HIGH (WORN STICKS)"][P.dz], step: d => { P.dz = (P.dz + d + 3) % 3; } },
+  // Pause menu: resume, settings (g-settings.js) and quit.
+  function pauseItems() {
+    return [{ k: "resume", label: "RESUME" }, { k: "settings", label: "SETTINGS" },
       { k: "quit", label: G.range ? "LEAVE THE RANGE" : G.camp ? "QUIT TO CAMPAIGN MENU" : "QUIT TO TITLE" }]; }
   function updatePause() {
     const items = G.pauseItems = pauseItems(), n = items.length; G.pauseSel = Math.max(0, Math.min(n - 1, G.pauseSel || 0));
@@ -58,7 +53,7 @@
     if (!PAD.active && (mouse.x !== G.pmx || mouse.y !== G.pmy)) { G.pmx = mouse.x; G.pmy = mouse.y; if (hov >= 0) G.pauseSel = hov; }
     const it = items[G.pauseSel], d = hit("arrowleft") || hit("a") ? -1 : hit("arrowright") || hit("d") ? 1 : 0;
     if (d && it.step) { it.step(d); persist(); AU.sfx("lock", 2); }
-    if (hit("enter") || hit(" ") || (hit("lmb") && hov === G.pauseSel)) { if (it.k === "resume") G.paused = false; else if (it.k === "quit") { G.paused = false; if (G.range) endRange(); else if (G.rush) { AU.stop(); leaveCampaign(); openExtras(); } else if (G.camp) { AU.setOC(false); G.oc = null; toCamp(); } else cashOut(); } else { it.step(1); persist(); AU.sfx("lock", 2); } }
+    if (hit("enter") || hit(" ") || (hit("lmb") && hov === G.pauseSel)) { if (it.k === "resume") G.paused = false; else if (it.k === "settings") openSettings("pause"); else if (it.k === "quit") { G.paused = false; if (G.range) endRange(); else if (G.rush) { AU.stop(); leaveCampaign(); openExtras(); } else if (G.camp) { AU.setOC(false); G.oc = null; toCamp(); } else cashOut(); } else { it.step(1); persist(); AU.sfx("lock", 2); } }
   }
   const toCamp = () => { persist(); AU.stop(); AU.ambience("off"); openCamp(); };
   const chapActions = { toCamp };
@@ -84,8 +79,9 @@
         { label: made ? "OPERATIVE" : "CREATE OPERATIVE", act: () => openBodyshop(made ? "title" : "create"), desc: "YOUR LOOK, NAME, ORIGIN AND GEAR" },
         { label: "MAGPIE'S", col: COL.magenta, act: () => openShop("title"), desc: "SPEND SCRIP ON GUNS, IMPLANTS AND STYLE" },
         { label: "CHALLENGES", col: COL.red, act: () => made ? openExtras() : openBodyshop("create"), desc: made ? `DAILY CHALLENGE · BOSS RUSH · ACHIEVEMENTS ${Object.keys(SAVE.ach).length}/${ACH.length}` : need },
-        { label: COOP.role === "host" ? `CO-OP · ${COOP.members.size + 1} IN YOUR GAME` : "CO-OP", col: COL.cyan, act: () => made ? openCoop() : openBodyshop("create"), desc: made ? "PLAY ARCADE AND THE STORY WITH UP TO THREE FRIENDS" : need }]
-        .concat(desktop ? [{ label: "QUIT GAME", col: COL.dim, act: () => { persist(); window.steamBridge.quit(); }, desc: "SEE YOU IN THE RAIN" }] : []), desktop ? 162 : 163, desktop ? 10 : 11); runMenu(G.menu); return; }
+        { label: COOP.role === "host" ? `CO-OP · ${COOP.members.size + 1} IN YOUR GAME` : "CO-OP", col: COL.cyan, act: () => made ? openCoop() : openBodyshop("create"), desc: made ? "PLAY ARCADE AND THE STORY WITH UP TO THREE FRIENDS" : need },
+        { label: "SETTINGS", col: COL.dim, act: () => openSettings("title"), desc: "SOUND · DISPLAY · CONTROLS · KEYS · CREDITS" }]
+        .concat(desktop ? [{ label: "QUIT GAME", col: COL.dim, act: () => { persist(); window.steamBridge.quit(); }, desc: "SEE YOU IN THE RAIN" }] : []), desktop ? 162 : 163, desktop ? 9 : 10); runMenu(G.menu); return; }
     if (G.mode === "arcade") {
       // New maps every run: no district to pick, runs start at District 1 (or jump into the Endless Sprawl once unlocked).
       const n = Math.min(DORDER.length, G.unlocked || 1), fresh = arcadeFresh(), move = d => { G.sel = Math.max(0, Math.min(n - 1, (G.sel || 0) + d)); AU.sfx("lock", 1); };
@@ -98,6 +94,7 @@
         { label: mapLabel, col: COL.amber, act: () => { if (G.queuedSeed != null) G.queuedSeed = null; else SAVE.mapMode = SAVE.mapMode === "gen" ? "classic" : "gen"; persist(); AU.sfx("lock", 2); } },
         { label: "MAGPIE'S FIRST", col: COL.magenta, act: () => { if (fresh) G.sel = 0; openShop("arcade"); } },
         { label: "BACK", col: COL.dim, act: () => { G.mode = "title"; G.menuMode = null; } }]), fresh ? 134 : 174, 13); runMenu(G.menu); return; }
+    if (G.mode === "settings") { updateSettings(rdt); return; }
     if (G.mode === "extras") { updateExtras(rdt); return; }
     if (G.mode === "coop") { updateCoop(rdt); return; }
     if (G.mode === "talk") { updateTalk(rdt); return; }
@@ -127,6 +124,7 @@
     if (G.mode === "intro") { G.introT += rdt; if (G.introT > 3) { G.mode = "play"; if (D().boss === "augur") augurShuffle(spawnEnemy("augur", GW / 2, 100)); else if (STORY_BOSSES[D().boss]) STORY_BOSSES[D().boss](); else spawnEnemy("blackwing", G.p.x, G.p.y); } return; }
     if (G.mode === "play" && G.range && !G.paused) { if (hit("escape")) { endRange(); return; } updateRange(rdt); } // Esc leaves; P / Start opens the pause menu
     if (G.mode === "play") {
+      if (G.paused && G.settingsOpen) { updateSettings(rdt); return; }
       if (hit("p") || hit("escape")) { G.paused = !G.paused; G.pauseSel = 0; } if (G.paused) { updatePause(); return; }
       if (G.hitstop > 0) { G.hitstop -= rdt; return; }
     }
@@ -148,6 +146,7 @@
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
     if (coopClientDraw(c, t)) return;
     if (G.mode === "coop") return drawCoop(c, t);
+    if (G.mode === "settings") return drawSettings(c, t);
     if (G.mode === "extras") return drawExtras(c, t);
     if (G.mode === "title") return drawTitle(c, t);
     if (G.mode === "arcade") return drawArcade(c, t);
@@ -162,7 +161,7 @@
     if (G.mode === "dead") drawDead(c, t);
     if (G.mode === "intro") drawIntro(c, t);
     if (G.mode === "clear") drawClear(c, t);
-    if (G.mode === "play" && G.paused) drawPause(c);
+    if (G.mode === "play" && G.paused) { if (G.settingsOpen) drawSettings(c, t); else drawPause(c); }
   }
   let last = 0;
   function tick(t) { const rdt = Math.min(.05, (t - last) / 1000 || 0); last = t; pollLocals(rdt); pollPad(rdt); step(rdt, t); coopAfterStep(rdt); G.pressed.clear(); draw(t); }

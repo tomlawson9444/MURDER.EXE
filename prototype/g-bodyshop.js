@@ -37,9 +37,17 @@ function cycleGear(row, d) {
   else { if (owned.length < 2) { say2("BUY MORE AT MAGPIE'S."); AU.sfx("hackFail"); return; } L[cat] = owned[(owned.indexOf(L[cat]) + d + owned.length) % owned.length]; }
   AU.sfx("lock", 3); persist();
 }
+// With a controller, Steam's floating keyboard (Steam Deck, Big Picture) types the name; it sends ordinary key presses.
+// It is placed clear of the name at the top of the screen. Without Steam, a controller picks a random name instead.
+function deckKeyboard() {
+  const SB = window.steamBridge; if (!SB || !SB.keyboard || !SB.available) return false;
+  const r = document.querySelector("canvas").getBoundingClientRect(), k = r.width / GW * (window.devicePixelRatio || 1), d = window.devicePixelRatio || 1;
+  return !!SB.keyboard(r.left * d, r.top * d, 192 * k, 34 * k);
+}
+const endNameEdit = () => { G.body.edit = false; persist(); if (window.steamBridge && window.steamBridge.keyboardClose) window.steamBridge.keyboardClose(); };
 function bodyConfirm(actions) {
   const B = G.body, t = BTABS[B.tab];
-  if (t === "LOOK" && B.sel === 0) { if (PAD.active) { SAVE.char.name = randomName(); persist(); AU.sfx("lock", 4); } else { B.edit = !B.edit; } return; }
+  if (t === "LOOK" && B.sel === 0) { if (PAD.active && !deckKeyboard()) { SAVE.char.name = randomName(); persist(); AU.sfx("lock", 4); } else { B.edit = !B.edit; } return; }
   if (t === "LOOK" && B.sel === 1) return randomLook();
   if (t === "LOOK" && B.sel === 2) return defaultLook();
   if (t === "LOOK") return cycleLook(LOOK_SLOTS[B.sel - LOOK_OFF], 1);
@@ -60,9 +68,9 @@ function updateBodyshop(rdt, actions) {
   const B = G.body, n = bodyRows(), t = BTABS[B.tab]; B.t += rdt; B.msgT += rdt;
   if (B.edit) { // typing a name
     const nm = SAVE.char.name;
-    for (const k of G.pressed) { if (k === "enter" || k === "escape") { B.edit = false; persist(); AU.sfx("lock", 4); return; }
+    for (const k of G.pressed) { if (k === "enter" || k === "escape") { endNameEdit(); AU.sfx("lock", 4); return; }
       if (k === "backspace") SAVE.char.name = nm.slice(0, -1); else if (/^[a-z0-9 .\-]$/.test(k) && nm.length < 14) SAVE.char.name = nm + k.toUpperCase(); }
-    if (hit("lmb")) { B.edit = false; persist(); } return;
+    if (hit("lmb")) endNameEdit(); return;
   }
   const tab = d => { B.tab = (B.tab + d + BTABS.length) % BTABS.length; B.sel = 0; AU.sfx("lock", 1); };
   if (hit("q")) tab(-1); if (hit("e") || hit("tab")) tab(1);

@@ -16,8 +16,9 @@ function reticle(c, x, y, r, col, n) { c.fillStyle = col; [[-1, -1], [1, -1], [-
 
 function drawWorld(c, t) {
   const p = G.p; c.save(); G.tagRects = [];
-  if (G.shake > 0) c.translate(Math.round(rnd(-G.shake, G.shake)), Math.round(rnd(-G.shake, G.shake)));
-  if (G.kick && G.kick.t > 0) c.translate(Math.round(G.kick.x), Math.round(G.kick.y));
+  const FX = setCfg();
+  if (G.shake > 0 && FX.shake) c.translate(Math.round(rnd(-G.shake, G.shake)), Math.round(rnd(-G.shake, G.shake)));
+  if (G.kick && G.kick.t > 0 && FX.shake) c.translate(Math.round(G.kick.x), Math.round(G.kick.y));
   c.drawImage(G.base.C, 0, 0); G.base.steam.forEach(([x, y]) => steam(c, x, y, t));
   // telegraphs on the floor
   for (const s of G.pending) { const on = Math.floor(t / 100) % 2; if (s.door) { c.fillStyle = rgba(COL.magenta, on ? .9 : .4); c.fillRect(s.door.tx * TS + 1, s.door.ty * TS + 1, 14, 14); } else if (s.perch) { c.save(); c.globalCompositeOperation = "lighter"; glow(c, s.x, s.y - 10, 18, COL.amber, on ? .6 : .2); c.restore(); } }
@@ -66,7 +67,7 @@ function drawWorld(c, t) {
   for (const tr of G.tracers) { c.strokeStyle = rgba(COL.cyan, tr.life * 4); c.lineWidth = 1; c.beginPath(); c.moveTo(tr.x0, tr.y0); c.lineTo(tr.x1, tr.y1); c.stroke(); }
   for (const b of G.blasts) { const k = 1 - b.life / .35; c.save(); c.globalCompositeOperation = "lighter"; glow(c, b.x, b.y, b.r * (1 + k), COL.amber, .8 * (1 - k)); c.restore(); c.strokeStyle = rgba("#fff0c8", 1 - k); c.beginPath(); c.ellipse(b.x, b.y, b.r * k, b.r * k * .65, 0, 0, TAU); c.stroke(); }
   for (const q of G.parts) { c.fillStyle = q.col; c.globalAlpha = Math.min(1, q.life / q.max * 2); c.fillRect(Math.round(q.x), Math.round(q.y), 1, 1); } c.globalAlpha = 1;
-  if (G.flash > 0) { c.save(); c.globalCompositeOperation = "lighter"; glow(c, p.x + p.face * 14, p.y - BODY - 2, 18, COL.cyan, 1); glow(c, p.x + p.face * 14, p.y - BODY - 2, 40, "#c9f8ff", .25); c.restore(); }
+  if (G.flash > 0 && FX.flashes) { c.save(); c.globalCompositeOperation = "lighter"; glow(c, p.x + p.face * 14, p.y - BODY - 2, 18, COL.cyan, 1); glow(c, p.x + p.face * 14, p.y - BODY - 2, 40, "#c9f8ff", .25); c.restore(); }
   drawRain(c, G.base, t, G.oc ? 0 : 1);
   c.restore();
 }
@@ -141,7 +142,8 @@ function drawTitle(c, t) {
   c.save(); c.imageSmoothingEnabled = false; c.translate(GW / 2 - s.w, 148 - s.h * 2 + 4); c.scale(2, 2); c.drawImage(s.cv, 0, 0); c.globalCompositeOperation = "lighter"; c.drawImage(s.gc, -s.G, -s.G); c.restore();
   txt(c, SAVE.char.created ? SAVE.char.name + " · " + ORIGIN[SAVE.char.origin].name : "NO OPERATIVE YET", GW / 2, 154, SAVE.char.created ? rgba(COL.ink, .8) : COL.magenta, 8, "center");
   drawMenu(c, G.menu, t);
-  const cur = G.menu && G.menu[G.menuMode === G.mode ? G.menuSel : 0]; if (cur && cur.desc) txt(c, cur.desc, GW / 2, 232, rgba(COL.cyan, .8), 8, "center");
+  const cur = G.menu && G.menu[G.menuMode === G.mode ? G.menuSel : 0]; if (cur && cur.desc) txt(c, cur.desc, GW / 2, 238, rgba(COL.cyan, .8), 8, "center");
+  txt(c, versionLabel(), 6, 6, rgba(COL.dim, .55));
   if (G.titleMsg) txt(c, G.titleMsg.txt, GW / 2, 86, rgba(COL.amber, Math.min(1, G.titleMsg.life * 2)), 8, "center");
   txt(c, SAVE.scrip + " SCRIP   ·   " + (PAD.active ? L.name + " CONTROLLER · UP / DOWN + " + L.confirm : "W / S + ENTER OR CLICK · CONTROLLERS SUPPORTED"), GW / 2, GH - 16, rgba(COL.dim, .7), 8, "center");
 }
@@ -175,7 +177,7 @@ function drawArcade(c, t) {
 }
 function drawDead(c, t) {
   c.save(); c.globalCompositeOperation = "multiply"; c.fillStyle = "#b03048"; c.fillRect(0, 0, GW, GH); c.restore();
-  const r = rngF(Math.floor(t / 140)); for (let i = 0; i < 10; i++) { const sy = r() * GH | 0, sh = 2 + r() * 8 | 0, dx = (r() - .5) * 20 | 0; c.drawImage(c.canvas, 0, sy, GW, sh, dx, sy, GW, sh); }
+  const r = rngF(Math.floor(t / 140)); if (setCfg().flashes) for (let i = 0; i < 10; i++) { const sy = r() * GH | 0, sh = 2 + r() * 8 | 0, dx = (r() - .5) * 20 | 0; c.drawImage(c.canvas, 0, sy, GW, sh, dx, sy, GW, sh); }
   c.fillStyle = "rgba(5,3,10,.6)"; c.fillRect(0, 80, GW, 150);
   ["#2be4ff", "#ff2d8a", "#ffe8ee"].forEach((col, i) => txt(c, "FLATLINE", GW / 2 + (i === 0 ? -2 : i === 1 ? 2 : 0), 88, col, 32, "center"));
   txt(c, "KILLED BY  " + G.killer + (G.mapKey === "run" ? "   ·   SEED " + PG.seedName(G.runSeed) : ""), GW / 2, 130, COL.amber, 8, "center");
@@ -204,7 +206,7 @@ function drawClear(c, t) {
   else txt(c, "RUN COMPLETE · DATACRYPT ARRIVES IN THE NEXT BUILD", GW / 2, 160, COL.magenta, 8, "center");
   if (G.clearT > 1) { drawMenu(c, G.menu, t); txt(c, "LOADOUT: " + loadoutLine(), GW / 2, 220, rgba(COL.cyan, .7), 8, "center"); }
 }
-function drawPause(c) { veil(c, .78); txt(c, "PAUSED", GW / 2, 50, COL.ink, 16, "center"); txt(c, "CONTROLLER" + (PAD.active ? " · " + lab().name : "") + " SETTINGS SAVE AUTOMATICALLY", GW / 2, 74, COL.dim, 8, "center");
+function drawPause(c) { veil(c, .78); txt(c, "PAUSED", GW / 2, 50, COL.ink, 16, "center"); txt(c, "SOUND, DISPLAY, CONTROLLER AND KEYS ARE IN SETTINGS", GW / 2, 74, COL.dim, 8, "center");
   (G.pauseItems || []).forEach((it, i) => { const on = i === G.pauseSel, y = 92 + i * 14; if (on) { c.fillStyle = rgba(COL.cyan, .14); c.fillRect(GW / 2 - 120, y - 3, 240, 13); c.fillStyle = COL.cyan; c.fillRect(GW / 2 - 120, y - 3, 2, 13); }
     if (it.val != null) { txt(c, it.label, GW / 2 - 112, y, on ? COL.ink : COL.dim); txt(c, on ? "< " + it.val + " >" : it.val, GW / 2 + 112, y, on ? COL.cyan : COL.ink, 8, "right"); }
     else txt(c, it.label, GW / 2, y, on ? (it.k === "quit" ? COL.magenta : COL.cyan) : COL.dim, 8, "center"); });

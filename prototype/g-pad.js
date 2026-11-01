@@ -81,6 +81,8 @@ function pollPad(rdt) {
     if (press(BTN.RT)) G.pressed.add("lmb"); if (press(BTN.LT)) G.pressed.add("rmb");
     if (press(BTN.A) || press(BTN.LB)) G.pressed.add(" "); if (press(BTN.X)) G.pressed.add("r");
     if (press(BTN.Y) || press(BTN.RB)) G.pressed.add(ocIn(G.p) ? "oclock" : "q"); if (press(BTN.START) || press(BTN.BACK)) G.pressed.add("p");
+  } else if (G.mode === "body" && G.body && G.body.edit) { // typing a name (Steam's keyboard types it): A or B finishes
+    if (press(BTN.A)) G.pressed.add("enter"); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");
   } else if (G.mode === "body") {
     if (press(BTN.X)) G.pressed.add("r"); if (press(BTN.Y)) G.pressed.add("x");
     if (press(BTN.A)) G.pressed.add("enter"); if (press(BTN.START)) G.pressed.add(" "); if (press(BTN.B) || press(BTN.BACK)) G.pressed.add("escape");

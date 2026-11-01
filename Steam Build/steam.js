@@ -64,7 +64,6 @@ async function host() {
     S.lobby = { id: r.lobbyId, host: S.me.steamId }; S.sdk.matchmaking.setLobbyData(r.lobbyId, "game", "murder.exe"); S.sdk.matchmaking.setLobbyData(r.lobbyId, "host", S.me.steamId);
     // No rich-presence "connect" key: with a joinable lobby, Steam's Join Game sends a lobby join request (handled in
     // onJoinRequest) while the game runs, or launches it with +connect_lobby.
-    safe(() => S.sdk.richPresence.setRichPresence("status", "Co-op lobby"));
     S.listen = S.sdk.networkingSockets.createListenSocketP2P(0); watchConnections();
     return { ok: true, lobbyId: r.lobbyId };
   } catch (e) { return { ok: false, error: e.message }; }
@@ -79,11 +78,29 @@ async function join(lobbyId) {
     return { ok: true, lobbyId: r.lobbyId, host: hostId };
   } catch (e) { return { ok: false, error: e.message }; }
 }
+/* ---- Steam Deck keyboard and rich presence ---- */
+// The floating keyboard types straight into the window as key presses, so the game's own text entry just works.
+// x, y, w, h: the text field in window pixels, which the keyboard keeps clear of.
+function keyboard(x, y, w, h) {
+  if (!ready()) return false; const U = S.sdk.utils, M = S.mod.EFloatingGamepadTextInputMode;
+  return safe(() => U.showFloatingGamepadTextInput(M ? M.SingleLine : 0, x | 0, y | 0, w | 0, h | 0), false);
+}
+const keyboardClose = () => ready() && safe(() => S.sdk.utils.dismissFloatingGamepadTextInput(), false);
+const onDeck = () => ready() && safe(() => S.sdk.utils.isSteamRunningOnSteamDeck(), false);
+// What friends see in their Steam friends list: { display: "#StatusStory", chapter: "3", title: "…" }. The "#…" tokens
+// are defined in rich-presence.vdf, uploaded in Steamworks. Kept so it can be put back after leaving a lobby clears it.
+let shown = null;
+function presence(p) {
+  shown = p && typeof p === "object" ? p : null; if (!ready()) return;
+  const R = S.sdk.richPresence; safe(() => R.clearRichPresence()); if (!shown) return;
+  for (const [k, v] of Object.entries(shown)) if (/^[a-z_]{1,30}$/.test(k) && v != null) safe(() => R.setRichPresence(k === "display" ? "steam_display" : k, String(v).slice(0, 255)));
+  if (S.lobby) { safe(() => R.setRichPresence("steam_player_group", String(S.lobby.id))); safe(() => R.setRichPresence("steam_player_group_size", String(memberIds().length || 1))); }
+}
 function leave() {
   if (!ready()) return;
   for (const c of S.conns.values()) safe(() => S.sdk.networkingSockets.closeConnection(c, 0, "bye", true)); S.conns.clear(); // linger: send the queued "bye" first
   if (S.listen != null) { safe(() => S.sdk.networkingSockets.closeListenSocket(S.listen)); S.listen = null; }
-  if (S.lobby) { safe(() => S.sdk.matchmaking.leaveLobby(S.lobby.id)); S.lobby = null; } safe(() => S.sdk.richPresence.clearRichPresence());
+  if (S.lobby) { safe(() => S.sdk.matchmaking.leaveLobby(S.lobby.id)); S.lobby = null; } safe(() => S.sdk.richPresence.clearRichPresence()); if (shown) presence(shown);
 }
 let watching = false;
 function watchConnections() {
@@ -117,4 +134,4 @@ function poll() { if (!ready() || !S.conns.size) return []; const out = [];
   for (const [id, c] of S.conns) for (const m of safe(() => S.sdk.networkingSockets.receiveMessages(c, 64), [])) out.push({ from: id, text: m.data.toString("utf8") });
   return out; }
 
-module.exports = { init, ready, me: () => S.me, unlock, submit, top, host, join, leave, lobbyState, friends, invite, inviteOverlay, onJoinRequest, sendTo, poll, onPeer: fn => { S.onPeer = fn; } };
+module.exports = { keyboard, keyboardClose, onDeck, presence, init, ready, me: () => S.me, unlock, submit, top, host, join, leave, lobbyState, friends, invite, inviteOverlay, onJoinRequest, sendTo, poll, onPeer: fn => { S.onPeer = fn; } };

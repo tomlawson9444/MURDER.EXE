@@ -6,8 +6,12 @@ const keys = new Set(), mouse = { x: 240, y: 136, down: false, rdown: false };
 const GAME_KEYS = [" ", "shift", "enter", "tab", "e", "backspace", "w", "a", "s", "d", "q", "r", "f", "p", "escape", "arrowup", "arrowdown", "arrowleft", "arrowright", "1", "2", "3", "4", "5"];
 
 function setupInput(cv) {
-  addEventListener("keydown", e => { const k = e.key.toLowerCase(); if (GAME_KEYS.includes(k)) e.preventDefault(); if (!keys.has(k)) G.pressed.add(k); keys.add(k); });
-  addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+  // Rebound keys (g-settings.js) are turned into the key the game listens for; held keys remember what they became.
+  const held = new Map();
+  addEventListener("keydown", e => { const raw = e.key.toLowerCase(), k = typeof remapKey === "function" ? remapKey(raw) : raw;
+    if (GAME_KEYS.includes(k) || GAME_KEYS.includes(raw) || k !== raw) e.preventDefault(); if (!k) return;
+    const was = held.get(raw); if (was && was !== k) keys.delete(was); held.set(raw, k); if (!keys.has(k)) G.pressed.add(k); keys.add(k); });
+  addEventListener("keyup", e => { const raw = e.key.toLowerCase(); keys.delete(held.get(raw) || raw); keys.delete(raw); held.delete(raw); });
   const pos = e => { const r = cv.getBoundingClientRect(); mouse.x = (e.clientX - r.left) / r.width * GW; mouse.y = (e.clientY - r.top) / r.height * GH; };
   cv.addEventListener("pointermove", pos);
   cv.addEventListener("pointerdown", e => { pos(e); e.preventDefault(); cv.focus(); if (e.button === 0) { mouse.down = true; G.pressed.add("lmb"); } if (e.button === 2) { mouse.rdown = true; G.pressed.add("rmb"); } });

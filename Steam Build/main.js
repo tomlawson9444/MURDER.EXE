@@ -20,6 +20,12 @@ function initSteam() {
 ipcMain.on("steam:available", e => { e.returnValue = steam.ready(); });
 ipcMain.on("steam:me", e => { e.returnValue = steam.me(); });
 ipcMain.on("app:quit", () => app.quit());
+ipcMain.on("app:fullscreen", (e, on) => { if (win && !win.isDestroyed()) win.setFullScreen(!!on); });
+ipcMain.on("app:isFullscreen", e => { e.returnValue = !!(win && !win.isDestroyed() && win.isFullScreen()); });
+ipcMain.on("steam:keyboard", (e, x, y, w, h) => { e.returnValue = !!steam.keyboard(+x, +y, +w, +h); });
+ipcMain.on("steam:keyboardClose", () => steam.keyboardClose());
+ipcMain.on("steam:onDeck", e => { e.returnValue = !!steam.onDeck(); });
+ipcMain.on("steam:presence", (e, p) => steam.presence(p));
 ipcMain.on("steam:activate", (e, name) => { steam.unlock(String(name)); });
 ipcMain.handle("lb:submit", (e, name, score, details) => steam.submit(String(name), +score, details));
 ipcMain.handle("lb:get", (e, name, scope) => steam.top(String(name), String(scope)));

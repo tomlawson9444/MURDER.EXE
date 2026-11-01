@@ -18,7 +18,7 @@ function updateDirector(dt) {
   if (G.heat !== G.lastHeat) { AU.setHeat(Math.min(5, G.heat + 2)); track("heat", G.heat); if (G.heat > (G.lastHeat || 0)) G.banner = { txt: "HEAT " + G.heat, col: COL.amber, life: 1.6 }; G.lastHeat = G.heat; }
   if (p2At != null && dk() >= p2At && !G.phase2) startPhase2();
   if (bossAt != null && dk() >= bossAt && !G.boss) { startBoss(); return; }
-  if (G.boss && G.crew) { coopBossAdds(dt); for (const s of G.pending) { s.t -= dt; if (s.t <= 0) spawnEnemy(s.type, s.x, s.y); } G.pending = G.pending.filter(s => s.t > 0); }
+  if (G.boss) { if (G.crew) coopBossAdds(dt); /* boss reinforcements (the Ferryman's and others') arrive solo too */ for (const s of G.pending) { s.t -= dt; if (s.t <= 0) spawnEnemy(s.type, s.x, s.y); } G.pending = G.pending.filter(s => s.t > 0); }
   if (G.boss || (G.camp && G.camp.won)) return;
   if (dailyMod("heat") || dailyMod("bottomless")) G.heatBase = Math.max(G.heatBase, 3);
   G.spawnT -= dt; const cap = Math.round((3 + G.heat + (dk() > 70 ? 1 : 0) + Math.floor(Math.max(0, D().n - 2) / 3)) * (dailyMod("swarm") ? 1.5 : 1) * coopPressure()); // endless depth adds pressure; co-op adds more

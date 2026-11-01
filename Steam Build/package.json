@@ -1,7 +1,7 @@
 {
   "name": "murder-exe",
   "productName": "MURDER.EXE",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MURDER.EXE desktop build for Steam: the browser game in Electron, with Steam achievements through steamworks.js.",
   "author": "MURDER.EXE",
   "repository": "github:tomlawson9444/MURDER.EXE",

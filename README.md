@@ -36,7 +36,7 @@ Then open <http://localhost:8000/prototype/>.
 | Overclock (slow time, sweep to lock up to 6 targets) | Hold right click or F | Hold LT and sweep (Y / RB locks the nearest); tap LT to auto-lock | Hold L2 and sweep (△ / R1 locks the nearest); tap L2 to auto-lock |
 | Short Circuit hack | Q | Y or RB / R1 (hits what you're roughly aiming at) | △ or R1 |
 | Reload | R | X | □ |
-| Pause (and controller settings) | P or Esc | Menu | Options |
+| Pause (resume, settings, quit) | P or Esc | Menu | Options |
 | Cash out after a district clear | Esc | B | ○ |
 | Pick a district on the ARCADE screen | A / D or ← / → | D-pad or left stick | D-pad or left stick |
 | Magpie's: switch tab | Q / E or Tab | LB / RB | L1 / R1 |
@@ -47,7 +47,17 @@ Then open <http://localhost:8000/prototype/>.
 
 Browsers only detect a controller after you press one of its buttons. Rumble works in Chrome and Edge.
 
-**Controller settings (pause menu):** aim assist (off, normal or strong), auto-fire when the right stick is pushed fully, the aim line, rumble, and the stick deadzone (raise it for worn or drifting sticks, such as an older Steam Deck). They save automatically. Holding the stick or D-pad in any menu keeps scrolling, and the pause menu can also quit to the title or campaign menu, or leave the firing range.
+**Settings** (from the title screen, or SETTINGS in the pause menu), all saved at once:
+
+- **Sound:** music and sound-effect volume, 0 to 100% in steps of 10.
+- **Display and accessibility:** fullscreen, screen shake on or off, and flashing effects (REDUCED turns off the muzzle glow and the flatline glitch).
+- **Controller:** aim assist (off, normal or strong), auto-fire when the right stick is pushed fully, the aim line, rumble, and the stick deadzone (raise it for worn or drifting sticks, such as an older Steam Deck).
+- **Keyboard:** rebind move, dash, reload, hack, Overclock and pause. Picking a key that's already in use swaps the two. The arrow keys always move, Esc always pauses, and RESET KEYS puts the defaults back. Menus always use the standard keys.
+- **Credits and licences:** who made the game and the licences of the fonts and libraries it ships with. To change the credit line, edit `CREDIT_NAME` in `prototype/g-settings.js`.
+
+Holding the stick or D-pad in any menu keeps scrolling. The pause menu can also quit to the title or campaign menu, or leave the firing range. The title screen shows the build version in the top-left corner (DEV BUILD in the browser; the version, commit and date in the Steam build).
+
+**Naming your operative with a controller:** in the Steam build, NAME opens Steam's on-screen keyboard (on the Steam Deck or in Big Picture); A or B finishes. Without Steam, a controller picks a random name instead.
 
 ## Title screen
 
@@ -59,6 +69,7 @@ The title screen lists these choices, with a one-line description under the sele
 - **MAGPIE'S:** the shop.
 - **CHALLENGES:** the Daily Challenge, Boss Rush, leaderboards and achievements.
 - **CO-OP:** play Arcade or the story with friends (see below).
+- **SETTINGS:** sound, display, controller, keys, and credits (see Controls).
 
 ## Co-op
 
@@ -216,11 +227,13 @@ The Steam version saves to `save.json` in the app-data folder instead (`%APPDATA
 | `g-talk.js` | Conversation screen, reply choices, trust and Resonance, and in-game radio chatter |
 | `g-campaign.js` | Campaign mode: chapter runs and objectives, story district styles, the Gutterline Canals and floodwater, the Kiln and its vents, the docks fog, escort and guard objectives, hold and extract objectives, Halvorsen Wardens and crossfire, THE FERRYMAN, CINDER, the WIDOW CRANE, THE ARCHIVIST, SCARECROW, DIRECTOR VANE, THE CHOIR and MOTHER CORVINA, climbing, allies, the Nest's rewriting floor, the endings, the campaign menu, archive and chapter-complete screen |
 | `g-extras.js` | Achievements, the Daily Challenge, Boss Rush and the CHALLENGES screen |
-| `g-platform.js` | Platform layer: Steam achievements and leaderboards in the Steam build, local bests in a browser |
+| `g-platform.js` | Platform layer: Steam achievements, leaderboards and rich presence in the Steam build, local bests in a browser |
 | `g-local.js` | Local co-op: extra controllers join on one screen, their twin-stick controls, and their panels |
 | `g-net.js` | Co-op: Steam or two-tab transport, lobby and invites, the host running friends' players, snapshots, and the friend's view |
 | `g-districts.js` | District definitions, Trace, Rookery wind and bridge collapse, Hexer, Nest and THE AUGUR |
 | `g-render.js` | World, effects, HUD and screens |
+| `g-settings.js` | SETTINGS screen: volumes, fullscreen, screen shake and flashing effects, controller options, key rebinding, credits and licences |
+| `version.js` | The build version shown on the title screen (the Steam build writes the real one) |
 | `g-main.js` | Boot, run reset and the game loop |
 
 ## Roadmap

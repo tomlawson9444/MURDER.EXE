@@ -18,10 +18,13 @@ This folder builds MURDER.EXE as a desktop game for Steam using [Electron](https
 | `steam_appid.txt` | Your Steam App ID for local testing (starts as `480`, Valve's test app) |
 | `achievements.csv`, `achievements.json`, `icons/` | Everything to enter on the Steamworks partner site; remake with `node tools/make-icons.js` |
 | `steampipe/` | SteamPipe scripts for uploading builds with `steamcmd` |
+| `rich-presence.vdf` | The rich-presence text friends see in Steam (step 5) |
 
 ## Desktop behaviour
 
-- Starts **fullscreen**; **F11** or **Alt+Enter** switches to a window (`MURDER_WINDOWED=1` starts windowed).
+- Starts **fullscreen**; **F11**, **Alt+Enter** or SETTINGS → FULLSCREEN switches to a window (`MURDER_WINDOWED=1` starts windowed).
+- The title screen and the credits show the version: `version` in `package.json`, the commit and the build date, written into the game by `copy-game.js`. Raise `version` for each release.
+- On the Steam Deck (or in Big Picture), naming your operative with a controller opens Steam's on-screen keyboard.
 - The browser help line is gone and the game fills the screen. The title menu gets **QUIT GAME**.
 - Works offline: the game files and the Silkscreen and Chakra Petch fonts are packed in.
 - If Steam isn't running, the game still plays; achievements reach Steam the next time it starts with Steam open.
@@ -141,6 +144,7 @@ Co-op needs no Steamworks setup: it uses friends-only Steam lobbies (up to 4 pla
 - **Hosting:** CO-OP → HOST A GAME creates a joinable friends-only lobby, so friends see **Join Game** on the host in their Steam friends list. INVITE FRIENDS lists online friends to invite, or opens the Steam overlay's invite dialog.
 - **Joining:** accepting an invite (or Join Game) while MURDER.EXE is running joins straight away. If the game isn't running, Steam starts it with `+connect_lobby <id>` and it joins once it has loaded.
 - **How it works:** the host's game runs the world. Each friend sends their controls about 60 times a second and receives the world about 20 times a second (around 2 KB each). Friends' own movement is shown immediately and corrected towards the host's copy. Only lobby members can connect to the host.
+- **Rich presence:** friends see what you're doing under your name: *In the menus*, *Story · Chapter 3 · Price of Chrome*, *Arcade · Rain Market*, *Endless Sprawl · District 5*, *Daily Challenge*, *Boss Rush*. In co-op, Steam groups the party together. The text comes from `rich-presence.vdf`: in Steamworks, open your app's **Community → Rich Presence** page (*Edit Steamworks Settings → Community → Rich Presence Localization*), upload the file, then **Publish**. Until it's uploaded, Steam shows nothing extra. Test it with the Rich Presence tester at `https://steamcommunity.com/dev/testrichpresence`.
 - **Testing:** you need two Steam accounts on two machines (Steam allows one account per machine). Set the same App ID on both (`steam_appid.txt`), host on one, and invite the other.
 
 ## 6. Build for release

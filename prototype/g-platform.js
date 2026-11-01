@@ -35,3 +35,26 @@ const PLATFORM = (() => {
       return { source: "offline", rows: local() }; },
   };
 })();
+
+/* Steam rich presence: what friends see under your name ("Story · Chapter 3 · Price of Chrome"). The "#Status…" tokens
+   live in Steam Build/rich-presence.vdf, which is uploaded on the app's Rich Presence page in Steamworks. Checked every
+   two seconds and only sent when it changes. */
+const SMALL_WORDS = new Set(["of", "the", "a", "an", "in", "on", "to", "and", "at", "for"]);
+const titleCase = s => String(s || "").toLowerCase().split(" ").map((w, i) => i && SMALL_WORDS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+function presenceNow() {
+  const playing = ["play", "intro", "dead", "clear", "talk", "chap"].includes(G.mode);
+  if (G.mode === "coopwait" || (COOP.role === "client" && !playing)) return { display: "#StatusCoopLobby" };
+  if (!playing) return { display: G.mode === "coop" ? "#StatusCoopLobby" : "#StatusMenu" };
+  if (G.camp && G.camp.ch) return { display: "#StatusStory", chapter: String(G.camp.n), title: titleCase(G.camp.ch.title) };
+  if (G.rush) return { display: "#StatusRush" };
+  if (G.daily) return { display: "#StatusDaily" };
+  if (G.range) return { display: "#StatusRange" };
+  const m = /^x(\d+)$/.exec(G.district || "");
+  if (m) return { display: "#StatusEndless", depth: m[1] };
+  return { display: "#StatusArcade", district: titleCase(DIST[G.district] ? DIST[G.district].name : G.district) };
+}
+(() => {
+  let last = "";
+  setInterval(() => { const SB = typeof window !== "undefined" && window.steamBridge; if (!SB || !SB.available || !SB.presence) return;
+    try { const p = presenceNow(); if (COOP.role) p.crew = String(1 + (COOP.members ? COOP.members.size : 0)); const k = JSON.stringify(p); if (k !== last) { last = k; SB.presence(p); } } catch (e) {} }, 2000);
+})();
