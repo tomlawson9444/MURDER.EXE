@@ -35,10 +35,12 @@ fi
 # Unpack whatever we were given into $tmp/unpacked.
 if [[ ! -d "$tmp/unpacked" ]]; then
   mkdir -p "$tmp/unpacked"
-  case "$(head -c 4 "$src" | od -An -tx1 | tr -d ' \n')" in
-    504b0304) say "Unpacking zip"; python3 -m zipfile -e "$src" "$tmp/unpacked" ;; # python3 is on every SteamOS
-    1f8b*) say "Unpacking tar.gz"; tar -xzf "$src" -C "$tmp/unpacked" ;;
-    *) die "$src isn't a .zip or .tar.gz build" ;;
+  # Python (on every SteamOS) checks and unpacks the archive itself, rather than trusting its name or first bytes.
+  kind="$(python3 -c 'import sys, zipfile, tarfile; p = sys.argv[1]; print("zip" if zipfile.is_zipfile(p) else "tar" if tarfile.is_tarfile(p) else "")' "$src" 2>/dev/null || true)"
+  case "$kind" in
+    zip) say "Unpacking zip"; python3 -m zipfile -e "$src" "$tmp/unpacked" ;;
+    tar) say "Unpacking tar.gz"; tar -xzf "$src" -C "$tmp/unpacked" ;;
+    *) die "$src isn't a .zip or .tar.gz build ($(du -h "$src" | cut -f1), $(file -b "$src" 2>/dev/null || echo "unknown type")). If it's small, download it again while signed in to GitHub." ;;
   esac
 fi
 bin="$(find "$tmp/unpacked" -maxdepth 3 -type f -name murder-exe | head -n 1)"
