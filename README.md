@@ -93,6 +93,10 @@ Local and online players can share one game (still up to four in all). In an onl
 
 Online co-op uses Steam, so it's in the Steam Build. In a browser you can try it with two tabs: in one, CO-OP → HOST ON THIS COMPUTER (TEST); in the other, JOIN ON THIS COMPUTER (TEST). The two tabs share one save, so this is for testing only.
 
+## Store page kit
+
+`store/` holds everything for the Steam store page: 10 screenshots at 1920×1080 (plus spares), every capsule and library image at Steam's sizes, and the store text, tags, system requirements and content-survey answers ready to paste. Start with [store/STORE-PAGE.md](store/STORE-PAGE.md). `store/tools/make-capsules.js` redraws the capsules from the game's key art.
+
 ## Steam Build
 
 The `Steam Build/` folder builds the game as a desktop app for Steam with [Electron](https://www.electronjs.org/): fullscreen, offline, an app icon, a QUIT GAME option, **Steam achievements** (all 39 map to Steam API names like `MURDER_CH1` and re-sync on every launch), **Steam leaderboards**, **Steam Cloud saves** and **co-op with Steam invites**. It also holds the Steamworks achievement list and icons, SteamPipe upload scripts, and a GitHub Actions workflow that builds Windows and Linux for you. Start with [Steam Build/README.md](Steam%20Build/README.md).
