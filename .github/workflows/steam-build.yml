@@ -44,7 +44,7 @@ jobs:
       - name: Smoke test (Linux)
         if: runner.os == 'Linux'
         working-directory: Steam Build/dist/linux-unpacked
-        run: MURDER_SMOKE=1 timeout 120 xvfb-run -a ./murder-exe --no-sandbox --disable-gpu
+        run: MURDER_SMOKE=1 timeout 120 xvfb-run -a ./murder-exe --no-sandbox --disable-gpu && rm -f smoke-test.png # the check's screenshot doesn't belong in the build
       - uses: actions/upload-artifact@v4
         with:
           name: MURDER.EXE-${{ matrix.out }}
