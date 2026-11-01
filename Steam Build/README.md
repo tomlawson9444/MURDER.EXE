@@ -194,6 +194,8 @@ bash install-steamos.sh ~/Downloads/MURDER.EXE-linux-unpacked.zip
 
 On Linux, `murder-exe` is a small launcher that starts the real program (`murder-exe-bin`) the way SteamOS needs. It uses X11, because Electron would otherwise use Wayland and Game Mode never shows the window. It also leaves out Steam's overlay library (`gameoverlayrenderer.so`), which crashes Electron's helper processes. In Game Mode the Steam button and Quick Access menu still work; only the desktop Shift+Tab overlay is lost. For a build made before this launcher existed, set the game's Steam launch options to `LD_PRELOAD= %command% --ozone-platform=x11`.
 
+**Library artwork:** the installer also gives the shortcut its Steam library art (the card, wide card, banner, logo and icon from `store/capsules`), so it isn't a blank tile. Steam saves a new shortcut a little after it's added, so on the very first install restart Steam once and run `bash install-steamos.sh --art`. After that, every update re-applies it. Restart Steam (or switch to Game Mode) to see changes.
+
 Builds without the Steamworks SDK files (see step 1) run fine but have Steam features switched off. Adding to Steam uses SteamOS's `steamos-add-to-steam` helper, which needs Steam running; elsewhere, use **Games → Add a Non-Steam Game**.
 
 ## 8. Upload to Steam (SteamPipe)

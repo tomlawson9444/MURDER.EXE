@@ -5,6 +5,7 @@
 #   bash install-steamos.sh ~/Downloads/MURDER.EXE-linux-unpacked.zip   install a build you downloaded from GitHub Actions
 #   bash install-steamos.sh build.tar.gz             install a .tar.gz of dist/linux-unpacked
 #   MURDER_URL=https://… bash install-steamos.sh     download from a link
+#   bash install-steamos.sh --art                    only (re)apply the Steam library artwork
 #
 # It installs into ~/Games/MURDER.EXE (set MURDER_DIR to change it), adds an application-menu entry, and on the first
 # install adds the game to Steam as a non-Steam game, so it shows up in Game Mode. Run it again to update; your save
@@ -18,6 +19,68 @@ say() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+
+# Steam library artwork for the non-Steam shortcut: the card, wide card, banner, logo and icon. Steam keeps custom art
+# for a shortcut in userdata/<account>/config/grid/, named after the shortcut's ID (read from shortcuts.vdf). The images
+# come from the repo's store kit (store/capsules), or from MURDER_ART_DIR if set. Steam shows them after a restart.
+apply_art() {
+  local art="$tmp/art" base="https://raw.githubusercontent.com/$REPO/main/store/capsules"; mkdir -p "$art"
+  local files=(library_capsule.png library_header.png library_hero.jpg library_logo.png)
+  for f in "${files[@]}"; do
+    if [[ -n "${MURDER_ART_DIR:-}" ]]; then cp "$MURDER_ART_DIR/$f" "$art/$f" 2>/dev/null || true
+    else curl -fsSL "$base/$f" -o "$art/$f" 2>/dev/null || rm -f "$art/$f"; fi
+  done
+  [[ -f "$DEST/icon.png" ]] && cp "$DEST/icon.png" "$art/icon.png"
+  [[ -f "$art/library_capsule.png" ]] || { say "Couldn't fetch the library artwork (offline?); the game still works. Run 'bash $0 --art' later to add it."; return 0; }
+  command -v python3 >/dev/null 2>&1 || { say "Python 3 is needed to add the library artwork; skipping it."; return 0; }
+  python3 - "$art" "$DEST" <<'PY'
+import sys, os, glob, struct, zlib, shutil, json
+art, dest = sys.argv[1], sys.argv[2]
+roots = [os.path.expanduser(p) for p in ("~/.steam/steam/userdata", "~/.local/share/Steam/userdata", "~/.var/app/com.valvesoftware.Steam/data/Steam/userdata")]
+def shortcuts(data):
+    # Binary VDF: 0x00 key (map start), 0x01 key string, 0x02 key int32, 0x08 map end. Yields each shortcut's fields.
+    i, stack, cur = 0, [], None
+    def cstr(j):
+        k = data.index(b"\0", j); return data[j:k].decode("utf-8", "replace"), k + 1
+    while i < len(data):
+        t = data[i]; i += 1
+        if t == 8:
+            if stack:
+                done = stack.pop()
+                if len(stack) == 1: yield done  # a shortcut entry just closed (the list itself is the one left)
+            continue
+        key, i = cstr(i)
+        if t == 0: m = {}; stack.append(m)
+        elif t == 1: v, i = cstr(i); stack and stack[-1].__setitem__(key.lower(), v)
+        elif t == 2: v = struct.unpack("<i", data[i:i + 4])[0]; i += 4; stack and stack[-1].__setitem__(key.lower(), v)
+        elif t == 7: i += 8
+        else: return
+done = set()
+for root in roots:
+    for vdf in glob.glob(os.path.join(root, "*", "config", "shortcuts.vdf")):
+        try: data = open(vdf, "rb").read()
+        except OSError: continue
+        for sc in shortcuts(data):
+            name, exe = sc.get("appname", ""), sc.get("exe", "")
+            if name.upper() != "MURDER.EXE" and "murder-exe" not in exe: continue
+            appid = sc.get("appid")
+            appid = (appid & 0xFFFFFFFF) if appid is not None else (zlib.crc32((exe + name).encode()) | 0x80000000)
+            grid = os.path.join(os.path.dirname(vdf), "grid"); os.makedirs(grid, exist_ok=True)
+            for src, out in (("library_capsule.png", f"{appid}p.png"), ("library_header.png", f"{appid}.png"), ("library_hero.jpg", f"{appid}_hero.jpg"), ("library_logo.png", f"{appid}_logo.png"), ("icon.png", f"{appid}_icon.png")):
+                if os.path.exists(os.path.join(art, src)): shutil.copyfile(os.path.join(art, src), os.path.join(grid, out))
+            json.dump({"nVersion": 1, "logoPosition": {"pinnedPosition": "BottomLeft", "nWidthPct": 42, "nHeightPct": 60}}, open(os.path.join(grid, f"{appid}.json"), "w"))
+            done.add((vdf, appid))
+for vdf, appid in sorted(done): print(f"   artwork added for shortcut {appid} ({vdf.split('/userdata/')[-1].split('/')[0]})")
+sys.exit(0 if done else 3)
+PY
+  case $? in
+    0) say "Library artwork added. Restart Steam (or switch to Game Mode) to see the card, banner and logo." ;;
+    3) say "Steam hasn't saved the MURDER.EXE shortcut yet. Restart Steam once, then run: bash $0 --art" ;;
+    *) say "Couldn't add the library artwork; the game still works." ;;
+  esac
+}
+if [[ "${1:-}" == "--art" ]]; then apply_art; exit 0; fi
+
 src="${1:-}"
 if [[ -n "$src" ]]; then
   [[ -f "$src" ]] || die "No such file: $src"
@@ -82,4 +145,5 @@ if (( first )); then
     say "To play from Steam: Games > Add a Non-Steam Game to My Library, then pick MURDER.EXE."
   fi
 fi
+apply_art || true
 say "Done. MURDER.EXE is installed in $DEST (start it from Steam, the app menu, or $DEST/murder-exe)."
