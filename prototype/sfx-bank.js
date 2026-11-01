@@ -160,8 +160,8 @@ const BANK = (() => {
   function play(k, o = {}) {
     const list = B[k]; if (!list) return false; const { ctx, sfx } = AU.raw();
     const s = ctx.createBufferSource(); s.buffer = list[Math.random() * list.length | 0]; s.playbackRate.value = (o.rate || 1) * rr(.96, 1.04);
-    const g = ctx.createGain(); g.gain.value = o.vol == null ? 1 : o.vol; const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, o.pan || 0));
-    s.connect(g).connect(p).connect(sfx); s.start(ctx.currentTime + (o.at || 0)); return true;
+    const g = ctx.createGain(); g.gain.value = o.vol == null ? 1 : o.vol; const p = ctx.createStereoPanner(); p.pan.value = Number.isFinite(o.pan) ? Math.max(-1, Math.min(1, o.pan)) : 0;
+    AU.voice(s); s.connect(g).connect(p).connect(sfx); s.start(ctx.currentTime + (o.at || 0)); return true;
   }
   function hook() {
     const wrap = (key, fn) => AU.setSFX(key, fn);

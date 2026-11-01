@@ -2,6 +2,8 @@
 "use strict";
 const AU = (() => {
   let ctx, master, sfx, music, amb, busLP, noiseBuf, delay;
+  let voices = 0; const MAX_VOICES = 90; // sound pieces playing at once; past this, new effects are skipped so the audio thread keeps up
+  const voice = n => { voices++; n.addEventListener("ended", () => { voices--; }); return n; };
   const A = { heat: 1, oc: false, playing: false, onHit: null };
   function init() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
@@ -15,20 +17,24 @@ const AU = (() => {
     delay = ctx.createDelay(1); delay.delayTime.value = 60 / 132 * .75; const fb = ctx.createGain(); fb.gain.value = .35; const dl = ctx.createBiquadFilter(); dl.type = "lowpass"; dl.frequency.value = 2500;
     delay.connect(dl).connect(fb).connect(delay); dl.connect(music);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // The system can suspend the audio output (a device change, another app taking the sound card). Resume it rather than
+    // staying silent until the next run starts.
+    const wake = () => { if (ctx.state !== "running" && ctx.state !== "closed" && document.visibilityState === "visible") ctx.resume().catch(() => {}); };
+    ctx.addEventListener("statechange", () => setTimeout(wake, 100)); setInterval(wake, 1000);
   }
   const T = () => ctx.currentTime;
   function env(g, t, a, peak, d) { g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(peak, .0002), t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + d); }
   function osc(type, f, t, dur, peak, out = sfx, o = {}) {
     const n = ctx.createOscillator(), g = ctx.createGain(); n.type = type; n.frequency.setValueAtTime(f, t);
     if (o.f2) n.frequency.exponentialRampToValueAtTime(o.f2, t + (o.fT || dur)); if (o.detune) n.detune.value = o.detune;
-    env(g, t, o.a || .003, peak, dur); let last = n; if (o.through) { n.connect(o.through); last = o.through; } last.connect(g).connect(out); n.start(t); n.stop(t + (o.a || .003) + dur + .05); return n;
+    voice(n); env(g, t, o.a || .003, peak, dur); let last = n; if (o.through) { n.connect(o.through); last = o.through; } last.connect(g).connect(out); n.start(t); n.stop(t + (o.a || .003) + dur + .05); return n;
   }
   function noise(t, dur, peak, out = sfx, o = {}) {
     const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; const fl = ctx.createBiquadFilter(); fl.type = o.type || "bandpass";
     fl.frequency.setValueAtTime(o.f || 1000, t); if (o.f2) fl.frequency.exponentialRampToValueAtTime(o.f2, t + (o.fT || dur)); fl.Q.value = o.q || 1;
-    const g = ctx.createGain(); env(g, t, o.a || .002, peak, dur); s.connect(fl).connect(g).connect(out); s.start(t, Math.random() * 1.5); s.stop(t + (o.a || .002) + dur + .05); return s;
+    voice(s); const g = ctx.createGain(); env(g, t, o.a || .002, peak, dur); s.connect(fl).connect(g).connect(out); s.start(t, Math.random() * 1.5); s.stop(t + (o.a || .002) + dur + .05); return s;
   }
-  function pan(x) { const p = ctx.createStereoPanner(); p.pan.value = x; p.connect(sfx); return p; }
+  function pan(x) { const p = ctx.createStereoPanner(); p.pan.value = Number.isFinite(x) ? x : 0; p.connect(sfx); return p; }
   function shaper(k) { const ws = ctx.createWaveShaper(), n = 1024, cu = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / n * 2 - 1; cu[i] = (1 + k) * x / (1 + k * Math.abs(x)); } ws.curve = cu; return ws; }
   const mf = m => 440 * Math.pow(2, (m - 69) / 12);
   function caw(t, out = sfx, p = 1, vol = .45) {
@@ -170,7 +176,8 @@ const AU = (() => {
     if (H >= 2 && bar === 3 && st === 8) riser(t, SPB * 8);
     if (H >= 5) { if (st === 0 || st === 8) { caw(t, M.vsend, [1, .9, .95, .85][bar], .22); hit(5, t); } if (st === 0) osc("sawtooth", 700, t, SPB * 15, .02, M.vsend, { f2: 1100, fT: SPB * 8, a: .2 }); }
   }
-  function sched() { while (nextT < T() + .15) { playStep(step, nextT); step = (step + 1) % 64; nextT += SPB; } }
+  // A stall (a long frame) would otherwise make the loop play every missed note at once; skip them instead.
+  function sched() { if (nextT < T() - .1) { const missed = Math.ceil((T() - nextT) / SPB); step = (step + missed) % 64; nextT += missed * SPB; } while (nextT < T() + .15) { playStep(step, nextT); step = (step + 1) % 64; nextT += SPB; } }
 
   const P = p => pan(Math.max(-1, Math.min(1, p || 0)));
   Object.assign(SFX, {
@@ -196,8 +203,10 @@ const AU = (() => {
     tramRun: () => { const t = T(); noise(t, 1.4, .55, sfx, { f: 250, f2: 600, fT: .7, q: .8, a: .4 }); const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1800; lp.connect(sfx); [330, 415, 494].forEach(f => osc("sawtooth", f, t, 1, .05, lp, { f2: f * .84, a: .2 })); },
   });
   const lim = {};
-  A.sfx = (k, p) => { if (!ctx || !SFX[k]) return; const n = performance.now(); if (lim[k] && n - lim[k] < 45) return; lim[k] = n; SFX[k](p); };
+  A.sfx = (k, p) => { if (!ctx || !SFX[k] || voices > MAX_VOICES) return; const n = performance.now(); if (lim[k] && n - lim[k] < 45) return; lim[k] = n; SFX[k](p); };
   A.raw = () => ({ ctx, sfx });
+  A.voice = voice; // the sound bank counts its voices too
+  A.voices = () => voices;
   A.setSFX = (k, fn) => { SFX[k] = fn; };
   A.has = k => !!SFX[k];
   A.init = init;
