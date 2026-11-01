@@ -13,6 +13,7 @@ This folder builds MURDER.EXE as a desktop game for Steam using [Electron](https
 | `copy-game.js` | Copies `../prototype` into `game/` and bundles the fonts, so the build works offline |
 | `package.json` | Versions, scripts and the electron-builder settings |
 | `build/icon.png` | The app icon (512×512); remake it with `node tools/make-app-icon.js` |
+| `tools/install-steamos.sh` | Installs or updates a test build on SteamOS / Steam Deck and adds it to Steam (step 7) |
 | `tools/set-app-id.js` | `npm run set-app-id -- APP_ID` points the build, `steam_appid.txt` and the SteamPipe scripts at your Steam app |
 | `steam_appid.txt` | Your Steam App ID for local testing (starts as `480`, Valve's test app) |
 | `achievements.csv`, `achievements.json`, `icons/` | Everything to enter on the Steamworks partner site; remake with `node tools/make-icons.js` |
@@ -171,7 +172,25 @@ This updates `steamAppId` in `package.json` (release builds use it to relaunch t
 
 Don't ship `steam_appid.txt`; Steam supplies the App ID when it launches the game. Release builds relaunch through Steam if someone opens the .exe directly (set `STEAM_DEV=1` to skip that while developing).
 
-## 7. Upload to Steam (SteamPipe)
+## 7. Install a test build on SteamOS / Steam Deck
+
+To play the current build on a Steam Deck (or any Linux PC) before it's on Steam, switch to **Desktop Mode** and use `tools/install-steamos.sh`. It installs the game into `~/Games/MURDER.EXE`, adds an application-menu entry, and adds it to Steam as a non-Steam game the first time, so it shows up in Game Mode. Run it again to update; your save (`~/.config/MURDER.EXE`) is never touched.
+
+**From a downloaded build:** on GitHub, open **Actions → Steam Build**, pick the newest green run, download **MURDER.EXE-linux-unpacked** (you need to be signed in), then in Konsole:
+
+```bash
+curl -fsSLO "https://raw.githubusercontent.com/tomlawson9444/MURDER.EXE/main/Steam%20Build/tools/install-steamos.sh"
+```
+
+```bash
+bash install-steamos.sh ~/Downloads/MURDER.EXE-linux-unpacked.zip
+```
+
+**Straight from GitHub:** with the [GitHub CLI](https://cli.github.com/) installed and signed in (`gh auth login`), `bash install-steamos.sh` with no file downloads the newest successful build of `main` itself. It also accepts a `.tar.gz` of `dist/linux-unpacked`, or a link in `MURDER_URL`.
+
+Builds without the Steamworks SDK files (see step 1) run fine but have Steam features switched off. Adding to Steam uses SteamOS's `steamos-add-to-steam` helper, which needs Steam running; elsewhere, use **Games → Add a Non-Steam Game**.
+
+## 8. Upload to Steam (SteamPipe)
 
 1. On Steamworks, open **SteamPipe → Depots** and note the App ID and one depot ID each for Windows and Linux.
 2. Put those IDs in with `npm run set-app-id -- APP_ID WINDOWS_DEPOT_ID LINUX_DEPOT_ID` (see step 6), or edit `steampipe/app_build.vdf`, `steampipe/depot_windows.vdf` and `steampipe/depot_linux.vdf` by hand (they start as 1234560, 1234561 and 1234562).
